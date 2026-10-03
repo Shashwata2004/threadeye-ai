@@ -54,6 +54,14 @@ def _seed_demo_users(_: argparse.Namespace) -> int:
     return 0
 
 
+def _cloud_check(_: argparse.Namespace) -> int:
+    from threadeye.db.cloud_check import run_cloud_check
+
+    report = run_cloud_check()
+    print(report.render())
+    return 0 if report.ok else 1
+
+
 def _spike_pdf(args: argparse.Namespace) -> int:
     from threadeye.reports.spike import build_spike_pdf
 
@@ -82,6 +90,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("seed-demo-users", help="create one demo account per role (password from env)")
     p.set_defaults(fn=_seed_demo_users)
+
+    p = sub.add_parser("cloud-check", help="verify a cloud database: schema, guards, audit chain")
+    p.set_defaults(fn=_cloud_check)
 
     p = sub.add_parser("spike-pdf", help="render the Bangla shaping spike PDF")
     p.add_argument("output", nargs="?", default="out/spike_bangla.pdf")
