@@ -51,3 +51,25 @@ def seed_demo_users(db: Session, password: str) -> list[str]:
         )
     db.commit()
     return created
+
+
+def seed_demo_users_sql(password: str) -> str:
+    """The same seeding as INSERT statements, for Supabase's Management API (no DB password).
+
+    The password is hashed here, so only the argon2id hash reaches the database.
+    ``ON CONFLICT DO NOTHING`` keeps it safe to run again.
+    """
+    pw_hash = hash_password(password)
+    if "'" in pw_hash:  # argon2 output is base64; a quote would mean something is very wrong
+        raise ValueError("unexpected character in password hash")
+    rows = ",\n  ".join(
+        f"(gen_random_uuid(), '{username}', '{display}', '{pw_hash}', "
+        f"'{role.value}', '{DEFAULT_LOCALE[role]}', 'latin', true)"
+        for username, display, role in DEMO_USERS
+    )
+    return (
+        "INSERT INTO threadeye.users\n"
+        "  (id, username, display_name, password_hash, role, locale, digit_style, active)\n"
+        f"VALUES\n  {rows}\n"
+        "ON CONFLICT (username) DO NOTHING;"
+    )

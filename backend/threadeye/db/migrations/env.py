@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from alembic import context
 from sqlalchemy import create_engine, pool, text
 
@@ -9,6 +11,10 @@ from threadeye.settings import get_settings
 
 config = context.config
 target_metadata = Base.metadata
+
+
+def _only_our_schema(name: str | None, type_: str, _parent: Any) -> bool:
+    return type_ != "schema" or name == SCHEMA
 
 
 def run_migrations_online() -> None:
@@ -26,13 +32,35 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             version_table_schema=SCHEMA,
             include_schemas=True,
-            include_name=lambda name, type_, _parent: type_ != "schema" or name == SCHEMA,
+            include_name=_only_our_schema,
             compare_type=True,
         )
         with context.begin_transaction():
             context.run_migrations()
 
 
+def run_migrations_offline() -> None:
+    """Emit the migrations as SQL instead of running them.
+
+    Used by ``threadeye migrate --sql``, so the schema can be created through Supabase's
+    Management API (``supabase db query``), which needs no database password.
+    """
+    print(f'CREATE SCHEMA IF NOT EXISTS "{SCHEMA}";')
+    context.configure(
+        url=config.get_main_option("sqlalchemy.url") or get_settings().ddl_database_url,
+        target_metadata=target_metadata,
+        version_table_schema=SCHEMA,
+        include_schemas=True,
+        include_name=_only_our_schema,
+        compare_type=True,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 if context.is_offline_mode():
-    raise SystemExit("offline migrations are not supported; run against a database")
-run_migrations_online()
+    run_migrations_offline()
+else:
+    run_migrations_online()

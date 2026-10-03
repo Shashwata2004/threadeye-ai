@@ -30,24 +30,31 @@ def _validate_dataset(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
-def _migrate(_: argparse.Namespace) -> int:
+def _migrate(args: argparse.Namespace) -> int:
     from alembic import command
 
     from threadeye.db.migrate import alembic_config
 
-    command.upgrade(alembic_config(), "head")
+    # sql=True prints the statements instead of connecting, so the schema can be created
+    # through Supabase's Management API (`supabase db query`), which needs no DB password.
+    command.upgrade(alembic_config(), "head", sql=args.sql)
     return 0
 
 
-def _seed_demo_users(_: argparse.Namespace) -> int:
-    from threadeye.db.session import get_sessionmaker
-    from threadeye.security.seed import seed_demo_users
+def _seed_demo_users(args: argparse.Namespace) -> int:
+    from threadeye.security.seed import seed_demo_users, seed_demo_users_sql
     from threadeye.settings import get_settings
 
     password = get_settings().demo_password
     if not password:
         print("THREADEYE_DEMO_PASSWORD is not set; skipping demo users", file=sys.stderr)
         return 1
+    if args.sql:
+        print(seed_demo_users_sql(password))
+        return 0
+
+    from threadeye.db.session import get_sessionmaker
+
     with get_sessionmaker()() as db:
         created = seed_demo_users(db, password)
     print(f"demo users created: {', '.join(created) if created else 'none (already present)'}")
@@ -86,9 +93,11 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(fn=_validate_dataset)
 
     p = sub.add_parser("migrate", help="apply database migrations (alembic upgrade head)")
+    p.add_argument("--sql", action="store_true", help="print the SQL instead of connecting")
     p.set_defaults(fn=_migrate)
 
     p = sub.add_parser("seed-demo-users", help="create one demo account per role (password from env)")
+    p.add_argument("--sql", action="store_true", help="print the SQL instead of connecting")
     p.set_defaults(fn=_seed_demo_users)
 
     p = sub.add_parser("cloud-check", help="verify a cloud database: schema, guards, audit chain")

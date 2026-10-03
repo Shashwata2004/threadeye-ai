@@ -7,7 +7,7 @@ TEST_DATABASE_URL ?= postgresql+psycopg://threadeye:threadeye@localhost:$(TEST_D
 
 .PHONY: help env up down logs ps build test test-db test-db-stop test-backend test-frontend lint check \
         openapi openapi-check verify-offline spike-pdf validate-sample micro-fixture save-images \
-        cloud-env cloud-migrate cloud-seed cloud-check cloud-setup
+        cloud-env cloud-migrate cloud-seed cloud-check cloud-setup cloud-sql
 
 help: ## list commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk -F ':.*?## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -97,3 +97,7 @@ cloud-check: ## verify the Supabase connection, schema isolation and audit chain
 	$(cloud_run) $(UV) run threadeye cloud-check
 
 cloud-setup: cloud-migrate cloud-seed cloud-check ## migrate + seed + verify in one go
+
+cloud-sql: ## print the setup SQL to paste into the Supabase SQL editor (no password needed)
+	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
+	@$(cloud_run) $(UV) run threadeye migrate --sql && $(cloud_run) $(UV) run threadeye seed-demo-users --sql
