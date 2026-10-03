@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "ThreadEye AI: fabric inspection assistant (backend, API, worker, core pipeline)"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-license = { text = "Proprietary. All rights reserved." }
+license = { text = "MIT" }
 # Core dependencies must stay cloud-safe (Vercel Python bundle): no OpenCV/numpy here.
 dependencies = [
   "fastapi>=0.115",

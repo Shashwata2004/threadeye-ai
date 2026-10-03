@@ -86,5 +86,4 @@ flowchart LR
 
 ## Licence
 
-All rights reserved; see [LICENSE](LICENSE). Third-party components keep their own licences
-(PROVENANCE.md).
+MIT, see [LICENSE](LICENSE). Third-party components keep their own licences (PROVENANCE.md).
