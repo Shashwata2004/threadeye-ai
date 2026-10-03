@@ -18,8 +18,8 @@ from threadeye.settings import get_settings
 
 EXPECTED_TABLES = {"users", "sessions", "audit_log", "settings", "component_heartbeats"}
 APPEND_ONLY_TABLES = {"audit_log"}
-# Supabase exposes these to the public Data API (PostgREST/GraphQL). Ours must not be among them.
-PUBLIC_API_ROLE = "authenticator"
+# The roles behind Supabase's public Data API (PostgREST/GraphQL).
+PUBLIC_API_ROLES = ("anon", "authenticated")
 
 
 @dataclass
@@ -88,29 +88,48 @@ def _rls(db: Session, report: Report) -> None:
     )
 
 
-def _data_api_exposure(db: Session, report: Report) -> None:
-    """Supabase's Data API exposes only the schemas listed on the `authenticator` role."""
-    settings = db.scalars(
-        text(
-            "SELECT unnest(s.setconfig) FROM pg_db_role_setting s"
-            " JOIN pg_roles r ON r.oid = s.setrole WHERE r.rolname = :r"
-        ),
-        {"r": PUBLIC_API_ROLE},
+def _public_role_access(db: Session, report: Report) -> None:
+    """Supabase's public API roles must not be able to touch our schema.
+
+    Supabase keeps the "exposed schemas" list in its own platform config, not in Postgres, so SQL
+    cannot read it. What SQL *can* verify is the thing that actually matters: whether the roles
+    behind the Data API hold any privilege on our schema. If they hold none, exposing the schema
+    would still return nothing.
+    """
+    roles = db.scalars(
+        text("SELECT rolname FROM pg_roles WHERE rolname = ANY(:r)"),
+        {"r": list(PUBLIC_API_ROLES)},
     ).all()
-    exposed = next(
-        (v.split("=", 1)[1] for v in settings if v.startswith("pgrst.db_schemas=")),
-        None,
-    )
-    if exposed is None:
-        report.add(True, "no Supabase Data API on this database (nothing exposed)")
+    if not roles:
+        report.add(True, "no Supabase public API roles on this database")
         return
-    schemas = {s.strip() for s in exposed.split(",")}
+
+    table_grants = db.execute(
+        text(
+            "SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants"
+            " WHERE table_schema = :s AND grantee = ANY(:r)"
+        ),
+        {"s": SCHEMA, "r": list(roles)},
+    ).all()
+    schema_usage = [
+        role
+        for role in roles
+        if db.scalar(text("SELECT has_schema_privilege(:r, :s, 'USAGE')"), {"r": role, "s": SCHEMA})
+    ]
     report.add(
-        SCHEMA not in schemas,
-        f"schema {SCHEMA!r} is NOT exposed to the public Data API (exposed: {exposed})"
-        if SCHEMA not in schemas
-        else f"schema {SCHEMA!r} IS EXPOSED to the public Data API: turn it off in"
-        " Supabase → Settings → API → Exposed schemas",
+        not table_grants and not schema_usage,
+        f"Supabase public roles ({', '.join(sorted(roles))}) have no access to schema {SCHEMA!r}"
+        if not table_grants and not schema_usage
+        else "Supabase public roles CAN reach our schema: "
+        + ", ".join(
+            filter(
+                None,
+                [
+                    f"{len(table_grants)} table grants" if table_grants else "",
+                    f"USAGE for {', '.join(schema_usage)}" if schema_usage else "",
+                ],
+            )
+        ),
     )
 
 
@@ -129,7 +148,7 @@ def run_cloud_check() -> Report:
     report = Report()
     report.add(True, f"profile: {settings.deploy_profile}")
     with get_sessionmaker()() as db:
-        for check in (_server_info, _tables, _append_only, _rls, _data_api_exposure, _audit_chain):
+        for check in (_server_info, _tables, _append_only, _rls, _public_role_access, _audit_chain):
             check(db, report)
     get_engine().dispose()
     return report

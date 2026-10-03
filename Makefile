@@ -1,7 +1,23 @@
 # ThreadEye AI: developer commands. Run `make help`.
 SHELL := /bin/bash
-UV ?= uv
 PNPM ?= pnpm
+
+# Prefer uv; fall back to the backend virtualenv so the commands work without uv on PATH.
+HAVE_UV := $(shell command -v uv >/dev/null 2>&1 && echo yes || echo no)
+ifeq ($(HAVE_UV),yes)
+  THREADEYE    = uv run threadeye
+  PYTEST       = uv run pytest
+  RUFF         = uv run ruff
+  MYPY         = uv run mypy
+  LINT_IMPORTS = uv run lint-imports
+else
+  VENV_BIN     = $(CURDIR)/backend/.venv/bin
+  THREADEYE    = $(VENV_BIN)/threadeye
+  PYTEST       = $(VENV_BIN)/pytest
+  RUFF         = $(VENV_BIN)/ruff
+  MYPY         = $(VENV_BIN)/mypy
+  LINT_IMPORTS = $(VENV_BIN)/lint-imports
+endif
 TEST_DB_PORT ?= 55432
 TEST_DATABASE_URL ?= postgresql+psycopg://threadeye:threadeye@localhost:$(TEST_DB_PORT)/threadeye_test
 
@@ -44,7 +60,7 @@ test-db-stop: ## remove the throwaway test database
 	-docker rm -f threadeye-testdb
 
 test-backend: test-db ## backend unit + integration tests
-	cd backend && TEST_DATABASE_URL=$(TEST_DATABASE_URL) $(UV) run pytest
+	cd backend && TEST_DATABASE_URL=$(TEST_DATABASE_URL) $(PYTEST)
 
 test-frontend: ## frontend checks (i18n parity, lint, typecheck)
 	cd frontend && $(PNPM) check
@@ -52,11 +68,11 @@ test-frontend: ## frontend checks (i18n parity, lint, typecheck)
 test: test-backend test-frontend ## all tests
 
 lint: ## static checks (ruff, mypy strict, import contracts, eslint, tsc, i18n)
-	cd backend && $(UV) run ruff check . && $(UV) run ruff format --check . && $(UV) run mypy threadeye && $(UV) run lint-imports
+	cd backend && $(RUFF) check . && $(RUFF) format --check . && $(MYPY) threadeye && $(LINT_IMPORTS)
 	cd frontend && $(PNPM) check
 
 openapi: ## regenerate docs/api/openapi.json and the frontend TS types from the backend
-	cd backend && $(UV) run threadeye export-openapi ../docs/api/openapi.json
+	cd backend && $(THREADEYE) export-openapi ../docs/api/openapi.json
 	cd frontend && $(PNPM) gen:api
 
 openapi-check: openapi ## fail if the committed contract is stale
@@ -65,10 +81,10 @@ openapi-check: openapi ## fail if the committed contract is stale
 check: lint test openapi-check ## everything CI runs (except the compose job)
 
 spike-pdf: ## render the Bangla PDF spike to backend/out/spike_bangla.pdf
-	cd backend && $(UV) run threadeye spike-pdf out/spike_bangla.pdf
+	cd backend && $(THREADEYE) spike-pdf out/spike_bangla.pdf
 
 validate-sample: ## validate data/sample_roll against the simulator data contracts
-	cd backend && $(UV) run threadeye validate-dataset ../data/sample_roll
+	cd backend && $(THREADEYE) validate-dataset ../data/sample_roll
 
 micro-fixture: ## regenerate the synthetic test fixture
 	python3 scripts/make_micro_fixture.py backend/tests/fixtures/micro_roll
@@ -86,18 +102,18 @@ cloud-env: ## write .env.cloud from a pasted Supabase connection string (input s
 
 cloud-migrate: ## create the threadeye schema and tables in Supabase (session pooler)
 	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
-	$(cloud_run) $(UV) run threadeye migrate
+	$(cloud_run) $(THREADEYE) migrate
 
 cloud-seed: ## create the demo accounts in Supabase
 	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
-	$(cloud_run) $(UV) run threadeye seed-demo-users
+	$(cloud_run) $(THREADEYE) seed-demo-users
 
 cloud-check: ## verify the Supabase connection, schema isolation and audit chain
 	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
-	$(cloud_run) $(UV) run threadeye cloud-check
+	$(cloud_run) $(THREADEYE) cloud-check
 
 cloud-setup: cloud-migrate cloud-seed cloud-check ## migrate + seed + verify in one go
 
 cloud-sql: ## print the setup SQL to paste into the Supabase SQL editor (no password needed)
 	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
-	@$(cloud_run) $(UV) run threadeye migrate --sql && $(cloud_run) $(UV) run threadeye seed-demo-users --sql
+	@$(cloud_run) $(THREADEYE) migrate --sql && $(cloud_run) $(THREADEYE) seed-demo-users --sql
