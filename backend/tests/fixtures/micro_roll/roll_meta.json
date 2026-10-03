@@ -1,0 +1,23 @@
+{
+  "px_per_cm": 10.0,
+  "view_region": {
+    "x": 0,
+    "y": 0,
+    "w": 1920,
+    "h": 1008
+  },
+  "fabric_width_cm": 150.0,
+  "fabric_width_in": 59.055,
+  "roll_length_yd": 3.0,
+  "fps": 30.0,
+  "frames": 205,
+  "expected_score": {
+    "total_points": 7,
+    "points_per_100_sq_yd": 142.24,
+    "threshold": 40,
+    "verdict": "FAIL"
+  },
+  "selvage_band_px": 15.0,
+  "mode": "clean",
+  "fixture_note": "SYNTHETIC micro-fixture for tests (scripts/make_micro_fixture.py); not a simulation."
+}

@@ -1,0 +1,30 @@
+# Edge reverse proxy: one origin for the browser (cookies stay first-party, no CORS).
+#   /api/*, /health → FastAPI      everything else → Next.js
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000 {
+			# Stream Server-Sent Events immediately (live inspection, M2).
+			flush_interval -1
+		}
+	}
+
+	handle /health {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

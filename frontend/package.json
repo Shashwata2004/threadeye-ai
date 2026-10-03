@@ -1,0 +1,42 @@
+{
+  "name": "threadeye-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "i18n:check": "node scripts/check-i18n.mjs",
+    "gen:api": "openapi-typescript ../docs/api/openapi.json -o src/lib/api/schema.d.ts",
+    "check": "pnpm i18n:check && pnpm lint && pnpm typecheck"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.104.1",
+    "clsx": "^2.1.1",
+    "next": "16.3.8",
+    "next-intl": "^4.14.9",
+    "openapi-fetch": "^0.17.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.8",
+    "msw": "^3.0.2",
+    "openapi-typescript": "^7.13.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.30.2",
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

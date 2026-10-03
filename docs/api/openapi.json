@@ -1,0 +1,5124 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ThreadEye AI API",
+    "description": "\nThreadEye AI: fabric inspection assistant. **API contract v0 (M0).**\n\nEndpoints that return **501** are part of the agreed contract and are implemented in the milestone\nnamed in the response (`planned_milestone`). Every mutating endpoint is permission-checked\nserver-side and writes an append-only audit row.\n\n**SIMULATED MODE:** only the simulated detector exists in this phase. It is not AI, and every\nscreen and report says so.\n",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials"
+          },
+          "429": {
+            "description": "Too many failures"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Patch Me",
+        "operationId": "patch_me_api_v1_auth_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Users",
+        "operationId": "list_users_api_v1_users_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Users Api V1 Users Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create User",
+        "operationId": "create_user_api_v1_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Patch User",
+        "operationId": "patch_user_api_v1_users__user_id__patch",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "System Status",
+        "operationId": "system_status_api_v1_system_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatusOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/providers": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "List Providers",
+        "operationId": "list_providers_api_v1_providers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderAvailabilityOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Providers Api V1 Providers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "tags": [
+          "system",
+          "audit"
+        ],
+        "summary": "List Audit",
+        "operationId": "list_audit_api_v1_audit_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "before_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before Id"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "entity_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntryOut"
+                  },
+                  "title": "Response List Audit Api V1 Audit Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/verify": {
+      "get": {
+        "tags": [
+          "system",
+          "audit"
+        ],
+        "summary": "Verify Audit",
+        "operationId": "verify_audit_api_v1_audit_verify_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditVerifyOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "List Suppliers",
+        "operationId": "list_suppliers_api_v1_suppliers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SupplierOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Suppliers Api V1 Suppliers Get"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Create Supplier",
+        "operationId": "create_supplier_api_v1_suppliers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplierIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/buyers": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "List Buyers",
+        "operationId": "list_buyers_api_v1_buyers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BuyerOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Buyers Api V1 Buyers Get"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "List Machines",
+        "operationId": "list_machines_api_v1_machines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MachineOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Machines Api V1 Machines Get"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rule-profiles": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "List Rule Profiles",
+        "operationId": "list_rule_profiles_api_v1_rule_profiles_get",
+        "parameters": [
+          {
+            "name": "buyer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Buyer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleProfileSummary"
+                  },
+                  "title": "Response List Rule Profiles Api V1 Rule Profiles Get"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lots": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "List Lots",
+        "operationId": "list_lots_api_v1_lots_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LotOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Lots Api V1 Lots Get"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Create Lot",
+        "operationId": "create_lot_api_v1_lots_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lots/{lot_id}": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Get Lot",
+        "operationId": "get_lot_api_v1_lots__lot_id__get",
+        "parameters": [
+          {
+            "name": "lot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lots/{lot_id}/rolls": {
+      "post": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Add Rolls",
+        "operationId": "add_rolls_api_v1_lots__lot_id__rolls_post",
+        "parameters": [
+          {
+            "name": "lot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollsBulkCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RollOut"
+                  },
+                  "title": "Response Add Rolls Api V1 Lots  Lot Id  Rolls Post"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lots/{lot_id}/sampling-suggestion": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Sampling Suggestion",
+        "operationId": "sampling_suggestion_api_v1_lots__lot_id__sampling_suggestion_get",
+        "parameters": [
+          {
+            "name": "lot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SamplingSuggestionOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lots/{lot_id}/labels.pdf": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Lot Labels Pdf",
+        "operationId": "lot_labels_pdf_api_v1_lots__lot_id__labels_pdf_get",
+        "parameters": [
+          {
+            "name": "lot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF document",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rolls": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "List Rolls",
+        "operationId": "list_rolls_api_v1_rolls_get",
+        "parameters": [
+          {
+            "name": "lot_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lot Id"
+            }
+          },
+          {
+            "name": "status_filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status Filter"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RollOut"
+                  },
+                  "title": "Response List Rolls Api V1 Rolls Get"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rolls/by-code/{roll_code}": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Roll By Code",
+        "operationId": "roll_by_code_api_v1_rolls_by_code__roll_code__get",
+        "parameters": [
+          {
+            "name": "roll_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Roll Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RollOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rolls/{roll_id}": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Get Roll",
+        "operationId": "get_roll_api_v1_rolls__roll_id__get",
+        "parameters": [
+          {
+            "name": "roll_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Roll Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RollOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rolls/{roll_id}/label.pdf": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Roll Label Pdf",
+        "operationId": "roll_label_pdf_api_v1_rolls__roll_id__label_pdf_get",
+        "parameters": [
+          {
+            "name": "roll_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Roll Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF document",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Create Inspection",
+        "description": "Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "create_inspection_api_v1_inspections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Get Inspection",
+        "operationId": "get_inspection_api_v1_inspections__inspection_id__get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/start": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Endpoint",
+        "description": "Start the inspection. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "inspection_start",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/pause": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Endpoint",
+        "description": "Pause the inspection. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "inspection_pause",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/resume": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Endpoint",
+        "description": "Resume the inspection. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "inspection_resume",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/complete": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Endpoint",
+        "description": "Complete the inspection. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "inspection_complete",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/abort": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Endpoint",
+        "description": "Abort the inspection. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "inspection_abort",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/plan": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Sampling Plan",
+        "operationId": "sampling_plan_api_v1_inspections__inspection_id__plan_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SamplingPlanOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/track": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Frame Track",
+        "operationId": "frame_track_api_v1_inspections__inspection_id__track_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/advance": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Advance",
+        "description": "Browser-clocked processing of frames (checkpoint, until_frame] in one transaction. Only the driver-lease holder may call it. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "advance_api_v1_inspections__inspection_id__advance_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/events": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events_api_v1_inspections__inspection_id__events_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "after_seq",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "After Seq"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsPage"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/stream": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Stream Events",
+        "description": "Server-Sent Events. Resume with `Last-Event-ID` (= seq) or `?after_seq=`.",
+        "operationId": "stream_events_api_v1_inspections__inspection_id__stream_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "after_seq",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "After Seq"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE (edge profile)",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/score": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Get Score",
+        "operationId": "get_score_api_v1_inspections__inspection_id__score_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreSummary"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/measurements": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Add Measurement",
+        "operationId": "add_measurement_api_v1_inspections__inspection_id__measurements_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasurementIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/finalize": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Finalize",
+        "operationId": "finalize_api_v1_inspections__inspection_id__finalize_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/decision": {
+      "post": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Decide",
+        "operationId": "decide_api_v1_inspections__inspection_id__decision_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionSnapshot"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/defects": {
+      "get": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "List Defects",
+        "operationId": "list_defects_api_v1_inspections__inspection_id__defects_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DefectOut"
+                  },
+                  "title": "Response List Defects Api V1 Inspections  Inspection Id  Defects Get"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Add Manual Defect",
+        "description": "Inspector adds a defect the detector missed. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "add_manual_defect_api_v1_inspections__inspection_id__defects_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualDefectIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/defects/{defect_id}": {
+      "get": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Get Defect",
+        "operationId": "get_defect_api_v1_defects__defect_id__get",
+        "parameters": [
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/defects/{defect_id}/confirm": {
+      "post": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Confirm Defect",
+        "operationId": "confirm_defect_api_v1_defects__defect_id__confirm_post",
+        "parameters": [
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/defects/{defect_id}/reject": {
+      "post": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Reject Defect",
+        "operationId": "reject_defect_api_v1_defects__defect_id__reject_post",
+        "parameters": [
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/defects/{defect_id}/reclassify": {
+      "post": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Reclassify Defect",
+        "operationId": "reclassify_defect_api_v1_defects__defect_id__reclassify_post",
+        "parameters": [
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReclassifyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/defects/{defect_id}/promote": {
+      "post": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Promote Nondefect",
+        "operationId": "promote_nondefect_api_v1_defects__defect_id__promote_post",
+        "parameters": [
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/defects/{defect_id}/length": {
+      "post": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Edit Length",
+        "operationId": "edit_length_api_v1_defects__defect_id__length_post",
+        "parameters": [
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LengthIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectOut"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Contract v0: not implemented yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Actor": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "engine",
+              "system"
+            ],
+            "title": "Kind"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "Actor"
+      },
+      "AdvanceIn": {
+        "properties": {
+          "until_frame": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Until Frame"
+          },
+          "after_seq": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "After Seq"
+          },
+          "captures": {
+            "items": {
+              "$ref": "#/components/schemas/Capture"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Captures"
+          }
+        },
+        "type": "object",
+        "required": [
+          "until_frame",
+          "after_seq"
+        ],
+        "title": "AdvanceIn"
+      },
+      "AdvanceOut": {
+        "properties": {
+          "checkpoint_frame": {
+            "type": "integer",
+            "title": "Checkpoint Frame"
+          },
+          "last_seq": {
+            "type": "integer",
+            "title": "Last Seq"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventEnvelope"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "blocked_on_captures": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Blocked On Captures"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checkpoint_frame",
+          "last_seq",
+          "events",
+          "blocked_on_captures"
+        ],
+        "title": "AdvanceOut"
+      },
+      "AuditEntryOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor User Id"
+          },
+          "actor_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Role"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip"
+          },
+          "hash": {
+            "type": "string",
+            "title": "Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "at",
+          "actor_user_id",
+          "actor_role",
+          "action",
+          "entity_type",
+          "entity_id",
+          "before",
+          "after",
+          "ip",
+          "hash"
+        ],
+        "title": "AuditEntryOut"
+      },
+      "AuditVerifyOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "checked": {
+            "type": "integer",
+            "title": "Checked"
+          },
+          "first_bad_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Bad Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "checked",
+          "first_bad_id",
+          "reason"
+        ],
+        "title": "AuditVerifyOut"
+      },
+      "BuyerOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "is_sample_data": {
+            "type": "boolean",
+            "title": "Is Sample Data",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "BuyerOut"
+      },
+      "Capture": {
+        "properties": {
+          "frame": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Frame"
+          },
+          "jpeg_b64": {
+            "type": "string",
+            "maxLength": 2000000,
+            "title": "Jpeg B64"
+          },
+          "width": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frame",
+          "jpeg_b64",
+          "width",
+          "height"
+        ],
+        "title": "Capture"
+      },
+      "ConfirmIn": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "ConfirmIn"
+      },
+      "DecisionIn": {
+        "properties": {
+          "final_verdict": {
+            "type": "string",
+            "enum": [
+              "ACCEPT",
+              "ACCEPT_WITH_CLAIM",
+              "REJECT"
+            ],
+            "title": "Final Verdict"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "final_verdict",
+          "reason"
+        ],
+        "title": "DecisionIn"
+      },
+      "DefectOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "defect_no": {
+            "type": "string",
+            "title": "Defect No"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "detector",
+              "manual"
+            ],
+            "title": "Origin"
+          },
+          "predicted_cls": {
+            "type": "string",
+            "title": "Predicted Cls"
+          },
+          "current_cls": {
+            "type": "string",
+            "title": "Current Cls"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "defect",
+              "nondefect"
+            ],
+            "title": "Kind"
+          },
+          "nondefect_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nondefect Category"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "start_yd": {
+            "type": "number",
+            "title": "Start Yd"
+          },
+          "end_yd": {
+            "type": "number",
+            "title": "End Yd"
+          },
+          "center_yd": {
+            "type": "number",
+            "title": "Center Yd"
+          },
+          "across_start_cm": {
+            "type": "number",
+            "title": "Across Start Cm"
+          },
+          "across_end_cm": {
+            "type": "number",
+            "title": "Across End Cm"
+          },
+          "length_in": {
+            "type": "number",
+            "title": "Length In"
+          },
+          "length_source": {
+            "type": "string",
+            "enum": [
+              "pixels",
+              "inspector"
+            ],
+            "title": "Length Source"
+          },
+          "is_continuous": {
+            "type": "boolean",
+            "title": "Is Continuous"
+          },
+          "sightings": {
+            "type": "integer",
+            "title": "Sightings"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          },
+          "excluded_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excluded Reason"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "provider_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Label"
+          },
+          "crop_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crop Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "defect_no",
+          "origin",
+          "predicted_cls",
+          "current_cls",
+          "kind",
+          "nondefect_category",
+          "status",
+          "start_yd",
+          "end_yd",
+          "center_yd",
+          "across_start_cm",
+          "across_end_cm",
+          "length_in",
+          "length_source",
+          "is_continuous",
+          "sightings",
+          "points",
+          "excluded_reason",
+          "explanation",
+          "provider_label",
+          "crop_url"
+        ],
+        "title": "DefectOut"
+      },
+      "EventEnvelope": {
+        "properties": {
+          "v": {
+            "type": "integer",
+            "const": 1,
+            "title": "V",
+            "default": 1
+          },
+          "inspection_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Inspection Id"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Seq"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EventType"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/Actor"
+          },
+          "simulated": {
+            "type": "boolean",
+            "title": "Simulated"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inspection_id",
+          "seq",
+          "type",
+          "at",
+          "actor",
+          "simulated",
+          "payload"
+        ],
+        "title": "EventEnvelope"
+      },
+      "EventType": {
+        "type": "string",
+        "enum": [
+          "session.started",
+          "session.paused",
+          "session.resumed",
+          "session.interrupted",
+          "session.completed",
+          "session.aborted",
+          "machine.stopped",
+          "machine.started",
+          "frame.sampled",
+          "detection.batch",
+          "defect.upserted",
+          "score.updated",
+          "measurement.recorded",
+          "verdict.computed",
+          "verdict.decided",
+          "clip.ready",
+          "alert"
+        ],
+        "title": "EventType"
+      },
+      "EventsPage": {
+        "properties": {
+          "inspection_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Inspection Id"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventEnvelope"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "last_seq": {
+            "type": "integer",
+            "title": "Last Seq"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inspection_id",
+          "events",
+          "last_seq",
+          "has_more"
+        ],
+        "title": "EventsPage"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "db": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Db"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "edge",
+              "cloud_demo"
+            ],
+            "title": "Profile"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "simulated_mode": {
+            "type": "boolean",
+            "title": "Simulated Mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "db",
+          "profile",
+          "version",
+          "simulated_mode"
+        ],
+        "title": "HealthOut"
+      },
+      "InspectionCreate": {
+        "properties": {
+          "roll_code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Roll Code"
+          },
+          "machine_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Machine Id"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceSpec"
+          },
+          "provider_config_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roll_code",
+          "machine_id",
+          "source"
+        ],
+        "title": "InspectionCreate"
+      },
+      "InspectionSnapshot": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "roll_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Roll Id"
+          },
+          "roll_code": {
+            "type": "string",
+            "title": "Roll Code"
+          },
+          "machine_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Machine Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "running",
+              "paused",
+              "interrupted",
+              "completed",
+              "aborted"
+            ],
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "production",
+              "demo",
+              "verification",
+              "evaluation"
+            ],
+            "title": "Mode"
+          },
+          "is_simulated": {
+            "type": "boolean",
+            "title": "Is Simulated"
+          },
+          "clock": {
+            "type": "string",
+            "enum": [
+              "browser",
+              "server",
+              "headless"
+            ],
+            "title": "Clock"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderInfoOut"
+          },
+          "rule_profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Rule Profile Id"
+          },
+          "checkpoint_frame": {
+            "type": "integer",
+            "title": "Checkpoint Frame"
+          },
+          "checkpoint_yd": {
+            "type": "number",
+            "title": "Checkpoint Yd"
+          },
+          "last_seq": {
+            "type": "integer",
+            "title": "Last Seq"
+          },
+          "driver_session": {
+            "type": "boolean",
+            "title": "Driver Session"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "system_verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PASS",
+                  "BORDERLINE",
+                  "FAIL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Verdict"
+          },
+          "final_verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ACCEPT",
+                  "ACCEPT_WITH_CLAIM",
+                  "REJECT"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Verdict"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "roll_id",
+          "roll_code",
+          "machine_id",
+          "status",
+          "mode",
+          "is_simulated",
+          "clock",
+          "provider",
+          "rule_profile_id",
+          "checkpoint_frame",
+          "checkpoint_yd",
+          "last_seq",
+          "driver_session",
+          "score",
+          "system_verdict",
+          "final_verdict",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "InspectionSnapshot"
+      },
+      "LengthIn": {
+        "properties": {
+          "length_in": {
+            "type": "number",
+            "maximum": 2000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Length In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "length_in"
+        ],
+        "title": "LengthIn"
+      },
+      "LoginIn": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginIn"
+      },
+      "LotCreate": {
+        "properties": {
+          "challan_no": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Challan No"
+          },
+          "supplier_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Supplier Id"
+          },
+          "buyer_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Buyer Id"
+          },
+          "order_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Ref"
+          },
+          "fabric_type": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Fabric Type"
+          },
+          "colour": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colour"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date",
+            "title": "Received At"
+          },
+          "declared_rolls": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Declared Rolls"
+          },
+          "declared_total_yd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Total Yd"
+          },
+          "rule_profile_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Profile Id"
+          },
+          "sampling_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampling Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "challan_no",
+          "supplier_id",
+          "buyer_id",
+          "fabric_type",
+          "received_at",
+          "declared_rolls"
+        ],
+        "title": "LotCreate"
+      },
+      "LotOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "challan_no": {
+            "type": "string",
+            "title": "Challan No"
+          },
+          "supplier": {
+            "$ref": "#/components/schemas/NamedRef"
+          },
+          "buyer": {
+            "$ref": "#/components/schemas/NamedRef"
+          },
+          "order_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Ref"
+          },
+          "fabric_type": {
+            "type": "string",
+            "title": "Fabric Type"
+          },
+          "colour": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colour"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date",
+            "title": "Received At"
+          },
+          "declared_rolls": {
+            "type": "integer",
+            "title": "Declared Rolls"
+          },
+          "declared_total_yd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Total Yd"
+          },
+          "rule_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuleProfileSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sampling_pct": {
+            "type": "number",
+            "title": "Sampling Pct"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "lot_verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PENDING_SAMPLE",
+                  "ACCEPT",
+                  "HOLD_INSPECT_ALL",
+                  "ACCEPT_WITH_REJECTS",
+                  "REJECT"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lot Verdict"
+          },
+          "is_sample_data": {
+            "type": "boolean",
+            "title": "Is Sample Data"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "challan_no",
+          "supplier",
+          "buyer",
+          "order_ref",
+          "fabric_type",
+          "colour",
+          "received_at",
+          "declared_rolls",
+          "declared_total_yd",
+          "rule_profile",
+          "sampling_pct",
+          "status",
+          "lot_verdict",
+          "is_sample_data",
+          "created_at"
+        ],
+        "title": "LotOut"
+      },
+      "MachineOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "active"
+        ],
+        "title": "MachineOut"
+      },
+      "ManualDefectIn": {
+        "properties": {
+          "cls": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Cls"
+          },
+          "center_yd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Center Yd"
+          },
+          "across_cm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Across Cm"
+          },
+          "length_in": {
+            "type": "number",
+            "maximum": 2000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Length In"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cls",
+          "center_yd",
+          "length_in"
+        ],
+        "title": "ManualDefectIn"
+      },
+      "MeOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "bn",
+              "en"
+            ],
+            "title": "Locale"
+          },
+          "digit_style": {
+            "type": "string",
+            "enum": [
+              "latin",
+              "bengali"
+            ],
+            "title": "Digit Style"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "role",
+          "locale",
+          "digit_style",
+          "permissions"
+        ],
+        "title": "MeOut"
+      },
+      "MePatch": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bn",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          },
+          "digit_style": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "latin",
+                  "bengali"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Digit Style"
+          }
+        },
+        "type": "object",
+        "title": "MePatch"
+      },
+      "MeasurementIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "width",
+              "length"
+            ],
+            "title": "Kind"
+          },
+          "position_yd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Yd"
+          },
+          "value": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "in",
+              "yd",
+              "cm",
+              "m"
+            ],
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "value",
+          "unit"
+        ],
+        "title": "MeasurementIn"
+      },
+      "NamedRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "is_sample_data": {
+            "type": "boolean",
+            "title": "Is Sample Data",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "NamedRef"
+      },
+      "NotImplementedOut": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "planned_milestone": {
+            "type": "string",
+            "title": "Planned Milestone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "planned_milestone"
+        ],
+        "title": "NotImplementedOut",
+        "description": "Returned (HTTP 501) by contract-v0 endpoints that are not built yet."
+      },
+      "ProviderAvailabilityOut": {
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "title": "Provider Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "simulated",
+              "api",
+              "local_model",
+              "classical"
+            ],
+            "title": "Kind"
+          },
+          "is_simulated": {
+            "type": "boolean",
+            "title": "Is Simulated"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "planned",
+              "stub"
+            ],
+            "title": "Availability"
+          },
+          "milestone": {
+            "type": "string",
+            "title": "Milestone"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id",
+          "display_name",
+          "kind",
+          "is_simulated",
+          "availability",
+          "milestone",
+          "note",
+          "active"
+        ],
+        "title": "ProviderAvailabilityOut"
+      },
+      "ProviderInfoOut": {
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "title": "Provider Id"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "simulated",
+              "api",
+              "local_model",
+              "classical"
+            ],
+            "title": "Kind"
+          },
+          "is_simulated": {
+            "type": "boolean",
+            "title": "Is Simulated"
+          },
+          "requires_image": {
+            "type": "boolean",
+            "title": "Requires Image"
+          },
+          "calibrated_confidence": {
+            "type": "boolean",
+            "title": "Calibrated Confidence"
+          },
+          "bbox_quality": {
+            "type": "string",
+            "enum": [
+              "precise",
+              "approximate"
+            ],
+            "title": "Bbox Quality"
+          },
+          "config_hash": {
+            "type": "string",
+            "title": "Config Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id",
+          "version",
+          "display_name",
+          "kind",
+          "is_simulated",
+          "requires_image",
+          "calibrated_confidence",
+          "bbox_quality",
+          "config_hash"
+        ],
+        "title": "ProviderInfoOut"
+      },
+      "ReclassifyIn": {
+        "properties": {
+          "to_cls": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "To Cls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to_cls"
+        ],
+        "title": "ReclassifyIn"
+      },
+      "RejectIn": {
+        "properties": {
+          "reason_category": {
+            "type": "string",
+            "enum": [
+              "sticker",
+              "loose_thread",
+              "wrinkle",
+              "pin_hole",
+              "hand",
+              "board",
+              "not_visible",
+              "other"
+            ],
+            "title": "Reason Category"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason_category"
+        ],
+        "title": "RejectIn"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "inspector",
+          "qc_supervisor",
+          "store_incharge",
+          "cutting_master",
+          "merchandiser",
+          "management",
+          "admin"
+        ],
+        "title": "Role"
+      },
+      "RollCreate": {
+        "properties": {
+          "mill_roll_no": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Mill Roll No"
+          },
+          "dye_lot": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dye Lot"
+          },
+          "declared_length_yd": {
+            "type": "number",
+            "maximum": 2000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Declared Length Yd"
+          },
+          "declared_width_in": {
+            "type": "number",
+            "maximum": 200.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Declared Width In"
+          },
+          "gsm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gsm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mill_roll_no",
+          "declared_length_yd",
+          "declared_width_in"
+        ],
+        "title": "RollCreate"
+      },
+      "RollOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "lot_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Lot Id"
+          },
+          "roll_code": {
+            "type": "string",
+            "title": "Roll Code"
+          },
+          "mill_roll_no": {
+            "type": "string",
+            "title": "Mill Roll No"
+          },
+          "dye_lot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dye Lot"
+          },
+          "declared_length_yd": {
+            "type": "number",
+            "title": "Declared Length Yd"
+          },
+          "declared_width_in": {
+            "type": "number",
+            "title": "Declared Width In"
+          },
+          "gsm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gsm"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "registered",
+              "in_inspection",
+              "inspected",
+              "on_hold",
+              "released",
+              "returned"
+            ],
+            "title": "Status"
+          },
+          "selected_for_inspection": {
+            "type": "boolean",
+            "title": "Selected For Inspection"
+          },
+          "label_printed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Printed At"
+          },
+          "is_sample_data": {
+            "type": "boolean",
+            "title": "Is Sample Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "lot_id",
+          "roll_code",
+          "mill_roll_no",
+          "dye_lot",
+          "declared_length_yd",
+          "declared_width_in",
+          "gsm",
+          "status",
+          "selected_for_inspection",
+          "label_printed_at",
+          "is_sample_data"
+        ],
+        "title": "RollOut"
+      },
+      "RollsBulkCreate": {
+        "properties": {
+          "rolls": {
+            "items": {
+              "$ref": "#/components/schemas/RollCreate"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Rolls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rolls"
+        ],
+        "title": "RollsBulkCreate"
+      },
+      "RuleProfileSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "buyer_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "retired"
+            ],
+            "title": "Status"
+          },
+          "threshold_per_100": {
+            "type": "number",
+            "title": "Threshold Per 100"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "buyer_id",
+          "name",
+          "version",
+          "status",
+          "threshold_per_100"
+        ],
+        "title": "RuleProfileSummary"
+      },
+      "SamplingPlanOut": {
+        "properties": {
+          "inspection_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Inspection Id"
+          },
+          "overlap": {
+            "type": "number",
+            "title": "Overlap"
+          },
+          "view_length_px": {
+            "type": "integer",
+            "title": "View Length Px"
+          },
+          "step_px": {
+            "type": "number",
+            "title": "Step Px"
+          },
+          "frames": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Frames"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inspection_id",
+          "overlap",
+          "view_length_px",
+          "step_px",
+          "frames"
+        ],
+        "title": "SamplingPlanOut"
+      },
+      "SamplingSuggestionOut": {
+        "properties": {
+          "total_rolls": {
+            "type": "integer",
+            "title": "Total Rolls"
+          },
+          "suggested_count": {
+            "type": "integer",
+            "title": "Suggested Count"
+          },
+          "sampling_pct": {
+            "type": "number",
+            "title": "Sampling Pct"
+          },
+          "basis": {
+            "type": "string",
+            "const": "profile",
+            "title": "Basis"
+          },
+          "mill_recent_fail_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mill Recent Fail Rate"
+          },
+          "mill_recent_rolls": {
+            "type": "integer",
+            "title": "Mill Recent Rolls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_rolls",
+          "suggested_count",
+          "sampling_pct",
+          "basis",
+          "mill_recent_fail_rate",
+          "mill_recent_rolls"
+        ],
+        "title": "SamplingSuggestionOut"
+      },
+      "ScoreSummary": {
+        "properties": {
+          "provisional_points": {
+            "type": "integer",
+            "title": "Provisional Points"
+          },
+          "confirmed_points": {
+            "type": "integer",
+            "title": "Confirmed Points"
+          },
+          "per_100_provisional": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per 100 Provisional"
+          },
+          "per_100_confirmed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per 100 Confirmed"
+          },
+          "threshold": {
+            "type": "number",
+            "title": "Threshold"
+          },
+          "borderline_below": {
+            "type": "number",
+            "title": "Borderline Below"
+          },
+          "borderline_above": {
+            "type": "number",
+            "title": "Borderline Above"
+          },
+          "points_budget": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points Budget"
+          },
+          "provisional_verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PASS",
+                  "BORDERLINE",
+                  "FAIL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provisional Verdict"
+          },
+          "yards_inspected": {
+            "type": "number",
+            "title": "Yards Inspected"
+          },
+          "coverage_pct": {
+            "type": "number",
+            "title": "Coverage Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provisional_points",
+          "confirmed_points",
+          "per_100_provisional",
+          "per_100_confirmed",
+          "threshold",
+          "borderline_below",
+          "borderline_above",
+          "points_budget",
+          "provisional_verdict",
+          "yards_inspected",
+          "coverage_pct"
+        ],
+        "title": "ScoreSummary"
+      },
+      "SourceSpec": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "video_file",
+            "title": "Kind",
+            "default": "video_file"
+          },
+          "dataset_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Dataset Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id"
+        ],
+        "title": "SourceSpec"
+      },
+      "SupplierIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SupplierIn"
+      },
+      "SupplierOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "is_sample_data": {
+            "type": "boolean",
+            "title": "Is Sample Data",
+            "default": false
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "country"
+        ],
+        "title": "SupplierOut"
+      },
+      "SystemStatusOut": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "enum": [
+              "edge",
+              "cloud_demo"
+            ],
+            "title": "Profile"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "db": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Db"
+          },
+          "worker": {
+            "$ref": "#/components/schemas/WorkerStatus"
+          },
+          "active_provider": {
+            "$ref": "#/components/schemas/ProviderAvailabilityOut"
+          },
+          "simulated_mode": {
+            "type": "boolean",
+            "title": "Simulated Mode"
+          },
+          "sample_data_present": {
+            "type": "boolean",
+            "title": "Sample Data Present"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile",
+          "version",
+          "db",
+          "worker",
+          "active_provider",
+          "simulated_mode",
+          "sample_data_present"
+        ],
+        "title": "SystemStatusOut"
+      },
+      "TrackOut": {
+        "properties": {
+          "fps": {
+            "type": "number",
+            "title": "Fps"
+          },
+          "frame_count": {
+            "type": "integer",
+            "title": "Frame Count"
+          },
+          "px_per_cm": {
+            "type": "number",
+            "title": "Px Per Cm"
+          },
+          "view_region": {
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "View Region"
+          },
+          "roll_y_top_px": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Roll Y Top Px"
+          },
+          "top_yd": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Top Yd"
+          },
+          "bottom_yd": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Bottom Yd"
+          },
+          "speed_m_min": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Speed M Min"
+          },
+          "state": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "running",
+                "stopped"
+              ]
+            },
+            "type": "array",
+            "title": "State"
+          },
+          "fabric_x0_px": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Fabric X0 Px"
+          },
+          "hand_visible": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Hand Visible"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fps",
+          "frame_count",
+          "px_per_cm",
+          "view_region",
+          "roll_y_top_px",
+          "top_yd",
+          "bottom_yd",
+          "speed_m_min",
+          "state",
+          "fabric_x0_px",
+          "hand_visible"
+        ],
+        "title": "TrackOut",
+        "description": "Per-frame positions (columnar) so the browser can draw boxes that move with the fabric."
+      },
+      "UserCreate": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 3,
+            "pattern": "^[a-z0-9_.-]+$",
+            "title": "Username"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Display Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 10,
+            "title": "Password"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bn",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "display_name",
+          "role",
+          "password"
+        ],
+        "title": "UserCreate"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "bn",
+              "en"
+            ],
+            "title": "Locale"
+          },
+          "digit_style": {
+            "type": "string",
+            "enum": [
+              "latin",
+              "bengali"
+            ],
+            "title": "Digit Style"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "role",
+          "locale",
+          "digit_style",
+          "active",
+          "created_at",
+          "last_login_at"
+        ],
+        "title": "UserOut"
+      },
+      "UserPatch": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bn",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          }
+        },
+        "type": "object",
+        "title": "UserPatch"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkerStatus": {
+        "properties": {
+          "alive": {
+            "type": "boolean",
+            "title": "Alive"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alive",
+          "last_seen_at"
+        ],
+        "title": "WorkerStatus"
+      }
+    }
+  }
+}

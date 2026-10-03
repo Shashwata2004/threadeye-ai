@@ -1,0 +1,102 @@
+# ThreadEye AI: edge profile. One laptop, works without internet once images are built.
+#   make env && make up   →   http://localhost:8080
+#
+# Network design (offline proof): db, api, worker and web sit on an `internal` network with no
+# route to the internet. Only the proxy also joins `public`, to publish the port to the host.
+# `make verify-offline` checks this.
+name: threadeye
+
+x-backend: &backend
+  build:
+    context: ./backend
+    args:
+      GIT_SHA: ${GIT_SHA:-dev}
+  image: threadeye-backend:latest
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    THREADEYE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-threadeye}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (make env)}@db:5432/${POSTGRES_DB:-threadeye}
+  volumes:
+    - storage:/data/storage
+    - ./data:/data/datasets:ro
+  networks: [internal]
+
+services:
+  db:
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-threadeye}
+      POSTGRES_USER: ${POSTGRES_USER:-threadeye}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (make env)}
+    # Power-loss safety: never trade durability for speed (PLAN.md §12).
+    command: ["postgres", "-c", "fsync=on", "-c", "synchronous_commit=on", "-c", "full_page_writes=on"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    networks: [internal]
+
+  api:
+    <<: *backend
+    command: ["api"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    depends_on:
+      api:
+        condition: service_healthy  # migrations have run
+
+  web:
+    build:
+      context: ./frontend
+    image: threadeye-web:latest
+    restart: unless-stopped
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [internal]
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${THREADEYE_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks: [internal, public]
+
+networks:
+  internal:
+    internal: true
+  public: {}
+
+volumes:
+  pgdata:
+  storage:
+  caddy_data:

@@ -1,0 +1,38 @@
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.pnpm-store/
+
+# Runtime data (never commit)
+storage/
+data/generated/
+backend/out/
+*.log
+
+# Large simulator outputs: commit only after the licence check (PLAN.md Q2)
+data/sample_roll/*.mp4
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

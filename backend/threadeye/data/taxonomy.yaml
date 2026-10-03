@@ -1,0 +1,52 @@
+# ThreadEye defect taxonomy. DRAFT v0 (M0).
+# Canonical ids are used by the API, events, reports and the 4-point engine. The UI shows en/bn labels.
+# Bangla labels must be confirmed by the textile domain member (docs/glossary-bn-en.md).
+# "ভাঁজের দাগ" (crease mark, a DEFECT) and "নাড়াচাড়ার ভাঁজ" (handling wrinkle, NOT a defect) are
+# deliberately different words.
+version: "0.1-draft"
+
+defects:
+  - {id: hole, en: Hole, bn: ফুটো, is_hole: true}
+  - {id: stain, en: Stain, bn: দাগ}
+  - {id: oil_stain, en: Oil stain, bn: তেলের দাগ}
+  - {id: slub, en: Slub / thick yarn, bn: মোটা সুতা (স্লাব)}
+  - {id: broken_yarn, en: Broken end / pick, bn: ছেঁড়া সুতা}
+  - {id: missing_yarn, en: Missing end / pick, bn: সুতা বাদ পড়া}
+  - {id: knot, en: Knot, bn: গিঁট}
+  - {id: crease_mark, en: Crease mark, bn: ভাঁজের দাগ}
+  - {id: contamination, en: Contamination, bn: অন্য সুতা/ময়লা}
+  - {id: shade_bar, en: Shade bar, bn: রঙের ডোরা, continuous_default: true}
+  - {id: selvage_defect, en: Selvage defect, bn: কিনারার ত্রুটি}
+  - {id: other_defect, en: Other defect, bn: অন্যান্য ত্রুটি}
+
+# Shown on screen, never scored, counted per category (false-alarm filter).
+nondefects:
+  - {id: sticker, en: Inspector sticker, bn: স্টিকার}
+  - {id: loose_thread, en: Loose thread, bn: আলগা সুতা}
+  - {id: wrinkle, en: Handling wrinkle, bn: নাড়াচাড়ার ভাঁজ}
+  - {id: pin_hole, en: Selvage pin holes, bn: কিনারার পিনের ছিদ্র}
+  - {id: hand, en: Inspector's hand, bn: হাত}
+  - {id: board, en: Board beside fabric, bn: বোর্ড}
+
+# Simulator / dataset class names → canonical ids. Best-effort AITEX names; confirm against
+# data/sample_roll/ground_truth.csv when it lands (owner C). Unknown names map to other_defect
+# and are reported by `threadeye validate-dataset`.
+aliases:
+  broken_end: broken_yarn
+  broken_pick: broken_yarn
+  weft_crack: missing_yarn
+  missing_pick: missing_yarn
+  missing_end: missing_yarn
+  knots: knot
+  nep: slub
+  fuzzyball: slub
+  warp_ball: slub
+  weft_curling: slub
+  crease: crease_mark
+  cut_selvage: selvage_defect
+  oil: oil_stain
+  spot: stain
+  dirt: contamination
+  pinhole: pin_hole
+  pin_holes: pin_hole
+  stenter_pin_hole: pin_hole

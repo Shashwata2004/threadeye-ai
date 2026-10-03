@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env:
+          POSTGRES_USER: threadeye
+          POSTGRES_PASSWORD: threadeye
+          POSTGRES_DB: threadeye_test
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U threadeye -d threadeye_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://threadeye:threadeye@localhost:55432/threadeye_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install uv==0.12.22
+      - run: uv sync --frozen
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
+      - name: Lint (ruff)
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Types (mypy strict)
+        run: uv run mypy threadeye
+      - name: Import contracts (answer key isolation, pure core)
+        run: uv run lint-imports
+      - name: Tests (unit + integration)
+        run: uv run pytest
+      - name: OpenAPI contract is up to date
+        run: |
+          uv run threadeye export-openapi ../docs/api/openapi.json
+          git diff --exit-code -- ../docs/api/openapi.json
+      - name: Micro-fixture is reproducible
+        run: |
+          python3 ../scripts/make_micro_fixture.py tests/fixtures/micro_roll
+          git diff --exit-code -- tests/fixtures/micro_roll
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: i18n parity (bn/en)
+        run: pnpm i18n:check
+      - name: Lint
+        run: pnpm lint
+      - name: Types
+        run: pnpm typecheck
+      - name: Generated API types match the OpenAPI contract
+        run: |
+          pnpm gen:api
+          git diff --exit-code -- src/lib/api/schema.d.ts
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  compose-offline:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - name: Build and start the edge stack
+        run: GIT_SHA=${GITHUB_SHA::7} docker compose up -d --build --wait
+      - name: Offline check (internal network, no internet, app works)
+        run: ./scripts/verify_offline.sh
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+      - if: always()
+        run: docker compose down -v

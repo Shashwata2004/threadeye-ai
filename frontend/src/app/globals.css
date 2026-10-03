@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* ThreadEye palette (from the team's planning documents). */
+@theme {
+  --color-brand-navy: #13304d;
+  --color-brand-teal: #127c71;
+  --color-brand-blue: #1d6a96;
+  --color-brand-amber: #b8740f;
+  --font-sans: var(--font-latin), var(--font-bengali), system-ui, sans-serif;
+  --font-mono: var(--font-mono-latin), monospace;
+}
+
+html,
+body {
+  font-family: var(--font-latin), var(--font-bengali), system-ui, sans-serif;
+  color: #0f172a;
+}
+
+/* Bangla needs more line height for vowel signs above and below the line. */
+html:lang(bn) body {
+  line-height: 1.7;
+}

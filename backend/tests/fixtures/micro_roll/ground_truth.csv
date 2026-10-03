@@ -1,0 +1,4 @@
+defect_id,class,center_yd,start_yd,end_yd,across_cm,length_in,points,first_full_frame,last_full_frame,operator_stop_frame,x0_px,y0_px,x1_px,y1_px,source
+D1,hole,0.5,0.49563,0.50437,40.0,0.315,2,0,45,,396.0,453.2,404.0,461.2,synthetic_fixture
+D2,stain,1.6,1.56719,1.63281,75.0,4.7244,2,49,173,100,690.0,1433.04,810.0,1493.04,synthetic_fixture
+D3,slub,2.4,2.29064,2.50936,110.0,7.874,3,159,204,,1095.0,2094.56,1105.0,2294.56,synthetic_fixture

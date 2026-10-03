@@ -1,0 +1,110 @@
+[project]
+name = "threadeye"
+version = "0.1.0"
+description = "ThreadEye AI: fabric inspection assistant (backend, API, worker, core pipeline)"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary. All rights reserved." }
+# Core dependencies must stay cloud-safe (Vercel Python bundle): no OpenCV/numpy here.
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+  "sqlalchemy>=2.0.30",
+  "alembic>=1.13",
+  "psycopg[binary]>=3.2",
+  "argon2-cffi>=23.1",
+  "fpdf2>=2.8",
+  "uharfbuzz>=0.39",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Edge-only: video decoding and future local inference (installed in the worker image from M1).
+vision = ["numpy>=2.0", "opencv-python-headless>=4.10"]
+
+[project.scripts]
+threadeye = "threadeye.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "httpx>=0.27",
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "import-linter>=2.1",
+  "types-PyYAML>=6.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["threadeye"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = [
+  "S101",   # assert is fine in tests
+  "RUF001", "RUF002", "RUF003",  # Bangla text in strings/comments is intentional
+  "B008",   # FastAPI Depends() in defaults is idiomatic
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic/versions/"]
+
+[[tool.mypy.overrides]]
+module = ["uharfbuzz.*", "fpdf.*", "importlinter.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["integration: needs a PostgreSQL database (TEST_DATABASE_URL)"]
+
+# The answer key (ground truth) is reachable only by the simulated provider and the
+# verification/benchmark services (PLAN.md §6.2, §12). Everything else must not import it.
+[tool.importlinter]
+root_package = "threadeye"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Answer key is only reachable by the simulator provider and evaluation services"
+type = "forbidden"
+source_modules = [
+  "threadeye.core",
+  "threadeye.api",
+  "threadeye.db",
+  "threadeye.security",
+  "threadeye.reports",
+  "threadeye.jobs",
+  "threadeye.sources",
+]
+forbidden_modules = ["threadeye.datasets.answer_key"]
+
+[[tool.importlinter.contracts]]
+name = "Core pipeline is pure (no web, DB or vision imports)"
+type = "forbidden"
+source_modules = ["threadeye.core"]
+forbidden_modules = [
+  "threadeye.api",
+  "threadeye.db",
+  "fastapi",
+  "sqlalchemy",
+  "cv2",
+  "numpy",
+]
+allow_indirect_imports = true

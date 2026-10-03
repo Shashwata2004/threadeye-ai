@@ -1,0 +1,102 @@
+{
+  "app": {
+    "name": "ThreadEye AI",
+    "tagline": "Smart assistant for fabric inspection",
+    "language": "Language"
+  },
+  "mode": {
+    "simulatedBanner": "SIMULATION MODE: simulated video and detections, not real AI",
+    "sampleData": "Sample data",
+    "provider": "Detector: {name}",
+    "edge": "Edge box (offline)",
+    "cloud": "Cloud demo"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "lots": "Deliveries & rolls",
+    "inspect": "Inspect a roll",
+    "verification": "Daily verification",
+    "benchmark": "Benchmark",
+    "suppliers": "Mill scorecards",
+    "audit": "Change ledger",
+    "admin": "Admin",
+    "logout": "Log out"
+  },
+  "login": {
+    "title": "Log in",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Log in",
+    "submitting": "Logging in…",
+    "invalid": "Wrong username or password.",
+    "locked": "Too many failed attempts. Try again in a few minutes.",
+    "error": "Could not reach the server.",
+    "demoHint": "Demo accounts: inspector, supervisor, store, cutting, merchandiser, management, admin (password in .env)."
+  },
+  "dashboard": {
+    "title": "Today at a glance",
+    "welcome": "Welcome, {name}",
+    "role": "Role: {role}",
+    "rollsInspected": "Rolls inspected today",
+    "verdicts": "Pass / Borderline / Fail",
+    "avgPer100": "Average points per 100 sq yd",
+    "falseAlarms": "False-alarm rate",
+    "noData": "No inspections yet",
+    "noDataHint": "Inspection screens arrive in M1–M2. Numbers appear here only when they are measured.",
+    "verification": "Daily verification",
+    "verificationNone": "Not run yet today",
+    "system": "System status",
+    "db": "Database",
+    "worker": "Background worker",
+    "workerAlive": "running",
+    "workerDown": "not running",
+    "ok": "OK",
+    "down": "error",
+    "providers": "Detector providers",
+    "active": "active",
+    "version": "Version",
+    "profile": "Deployment"
+  },
+  "availability": {
+    "available": "available",
+    "planned": "planned for {milestone}",
+    "stub": "stub (not configured)"
+  },
+  "placeholder": {
+    "comingIn": "This screen is built in {milestone}.",
+    "lots": "Register a delivery (challan), add rolls, print QR labels, and see the lot verdict.",
+    "inspect": "Scan a roll, watch the live inspection with defect boxes, confirm or reject each defect, and get the 4-point verdict.",
+    "verification": "Run the reference roll every morning and compare it with its answer key: green or red.",
+    "benchmark": "Measured pipeline quality: precision, recall, false alarms by type, predicted vs true score.",
+    "suppliers": "Quality history per mill: fail rate, points per 100 sq yd, defect mix, shortages, claims.",
+    "admin": "Users, machines, buyer rule profiles, detector settings."
+  },
+  "audit": {
+    "title": "Change ledger (audit log)",
+    "subtitle": "Append-only and hash-chained. Nobody can edit or delete an entry.",
+    "verify": "Verify chain",
+    "verifyOk": "Chain intact: {count} entries checked.",
+    "verifyBad": "Chain broken at entry #{id}: {reason}",
+    "when": "When",
+    "action": "Action",
+    "actor": "Actor",
+    "entity": "Entity",
+    "empty": "No entries.",
+    "forbidden": "You do not have permission to view the audit log."
+  },
+  "roles": {
+    "inspector": "Inspector",
+    "qc_supervisor": "QC Supervisor",
+    "store_incharge": "Store In-charge",
+    "cutting_master": "Cutting Master",
+    "merchandiser": "Merchandiser",
+    "management": "Management",
+    "admin": "Admin"
+  },
+  "common": {
+    "loading": "Loading…",
+    "retry": "Retry",
+    "error": "Something went wrong.",
+    "dash": "—"
+  }
+}
