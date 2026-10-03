@@ -81,8 +81,7 @@ flowchart LR
 
 ## Disclosure files
 
-[PROVENANCE.md](PROVENANCE.md) (data & AI) · [TOOLING.md](TOOLING.md) (tools, IDEs, memory files, MCP) ·
-[PROMPTS.md](PROMPTS.md) (prompt library) · [CLAUDE.md](CLAUDE.md) (AI assistant memory file)
+[PROVENANCE.md](PROVENANCE.md) (data & AI) · [TOOLING.md](TOOLING.md) (tools, IDEs, MCP) · [PROMPTS.md](PROMPTS.md) (prompt library)
 
 ## Licence
 
