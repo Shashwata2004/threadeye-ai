@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Run the app on this machine against the Supabase database (cloud_demo profile).
+#
+#   make cloud-run   →   http://localhost:3000
+#
+# The Docker stack cannot be used for this: its containers sit on an internal-only network with no
+# route to the internet, which is what proves the edge profile works offline. So the API and the
+# Next.js dev server run directly on the host instead, reading .env.cloud.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+ENV_FILE="${CLOUD_ENV:-.env.cloud}"
+API_PORT="${API_PORT:-8099}"
+WEB_PORT="${WEB_PORT:-3000}"
+
+[ -f "$ENV_FILE" ] || { echo "$ENV_FILE missing: run 'make cloud-env' first" >&2; exit 1; }
+
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+
+# Local overrides: the browser talks plain HTTP here, and Next.js proxies /api to the API,
+# so requests stay same-origin.
+export THREADEYE_COOKIE_SECURE=false
+export THREADEYE_ALLOWED_ORIGINS="http://localhost:${WEB_PORT}"
+
+VENV_BIN="$PWD/backend/.venv/bin"
+[ -x "$VENV_BIN/uvicorn" ] || { echo "backend venv missing: run 'uv sync' in backend/" >&2; exit 1; }
+
+api_pid=""
+web_pid=""
+cleanup() {
+  trap - EXIT INT TERM
+  [ -n "$api_pid" ] && kill "$api_pid" 2>/dev/null || true
+  [ -n "$web_pid" ] && kill "$web_pid" 2>/dev/null || true
+  wait 2>/dev/null || true
+  echo "stopped"
+}
+trap cleanup EXIT INT TERM
+
+echo "starting API on :${API_PORT} (database: Supabase)"
+(cd backend && exec "$VENV_BIN/uvicorn" threadeye.api.app:app \
+  --host 127.0.0.1 --port "$API_PORT" --log-level warning) &
+api_pid=$!
+
+for _ in $(seq 1 30); do
+  if curl -fsS "http://127.0.0.1:${API_PORT}/health" >/dev/null 2>&1; then break; fi
+  sleep 1
+done
+health=$(curl -fsS "http://127.0.0.1:${API_PORT}/health" 2>/dev/null || echo '{}')
+case "$health" in
+  *'"db":"ok"'*) echo "  $health" ;;
+  *) echo "API did not become healthy: ${health:-no response}" >&2; exit 1 ;;
+esac
+
+echo "starting the web app on :${WEB_PORT}"
+(cd frontend && API_ORIGIN="http://127.0.0.1:${API_PORT}" exec pnpm dev --port "$WEB_PORT") &
+web_pid=$!
+
+echo
+echo "ThreadEye is running against Supabase: http://localhost:${WEB_PORT}"
+echo "demo accounts: inspector, supervisor, store, cutting, merchandiser, management, admin"
+echo "password: THREADEYE_DEMO_PASSWORD in ${ENV_FILE}"
+echo "press Ctrl-C to stop"
+wait

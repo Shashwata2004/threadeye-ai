@@ -36,6 +36,28 @@ make spike-pdf        # Bangla PDF shaping check → backend/out/spike_bangla.pd
 make help             # all commands
 ```
 
+## Running against Supabase (cloud_demo profile)
+
+The two profiles use separate config files, on purpose:
+
+| File | Profile | Database |
+|---|---|---|
+| `.env` | `edge` | the Postgres container inside Docker Compose |
+| `.env.cloud` | `cloud_demo` | Supabase |
+
+`.env` cannot point at Supabase: the Compose containers sit on an internal-only network with no
+route to the internet, which is exactly what `make verify-offline` proves. To run the app against
+Supabase, the API and web server run on the host instead:
+
+```bash
+make cloud-env     # write .env.cloud from a pasted connection string (input stays hidden)
+make cloud-setup   # create the schema and demo accounts, then verify
+make cloud-run     # run the app against Supabase → http://localhost:3000
+```
+
+Tables live in the `threadeye` schema, not `public`, so Supabase's public Data API cannot reach
+them. In the dashboard's table editor, switch the schema selector from `public` to `threadeye`.
+
 ## Architecture
 
 ```mermaid
