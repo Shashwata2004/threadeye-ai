@@ -13,6 +13,9 @@ class Settings(BaseSettings):
 
     deploy_profile: Literal["edge", "cloud_demo"] = "edge"
     database_url: str = "postgresql+psycopg://threadeye:threadeye@localhost:5432/threadeye"
+    # Runtime uses the transaction pooler; DDL (migrations) needs a session/direct connection.
+    # Empty means "same as database_url" (the edge profile).
+    migration_database_url: str = ""
 
     session_ttl_hours: int = 12
     cookie_secure: bool = False
@@ -37,6 +40,11 @@ class Settings(BaseSettings):
     @property
     def is_cloud(self) -> bool:
         return self.deploy_profile == "cloud_demo"
+
+    @property
+    def ddl_database_url(self) -> str:
+        """Connection used for migrations. Supavisor transaction mode cannot run DDL safely."""
+        return self.migration_database_url or self.database_url
 
     @property
     def version(self) -> str:

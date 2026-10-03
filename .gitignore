@@ -36,3 +36,7 @@ data/sample_roll/*.mp4
 .idea/
 .vscode/*
 !.vscode/extensions.json
+CLAUDE.md
+
+# Cloud profile (Supabase + Vercel): see .env.cloud.example
+.env.cloud
