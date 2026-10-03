@@ -1,96 +1,114 @@
 #!/usr/bin/env python3
-"""Write .env.cloud from a Supabase connection string, without echoing the secret.
+"""Write .env.cloud from a Supabase connection string, without echoing the password.
 
   make cloud-env
 
-Paste the "Transaction pooler" connection string (Supabase dashboard → Connect →
-Connection string → Transaction pooler), with the real password filled in. The input is hidden,
-is never printed back, and never leaves this machine. Everything else is derived:
+Paste the "Transaction pooler" string exactly as the dashboard shows it, with the
+``[YOUR-PASSWORD]`` placeholder left alone. The password is asked for separately and stays hidden,
+so it is never pasted in a visible field and never ends up in shell history.
 
-- the session-pooler URL for migrations (same host, port 5432)
-- the SQLAlchemy driver prefix (postgresql+psycopg://)
-- a strong random password for the demo accounts
-
-The file is written with owner-only permissions and is gitignored.
+Everything else is derived: the session-pooler URL for migrations, the SQLAlchemy driver prefix,
+percent-encoding for passwords with punctuation, and a random password for the demo accounts.
+The file is written owner-only and is gitignored.
 """
 
 from __future__ import annotations
 
 import getpass
+import re
 import secrets
 import stat
 import sys
 from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote
 
 ENV_FILE = Path(__file__).resolve().parents[1] / ".env.cloud"
 RUNTIME_PORT = 6543  # Supavisor transaction mode: serverless-safe, no prepared statements
 DDL_PORT = 5432  # Supavisor session mode: needed for CREATE SCHEMA / TRIGGER / FUNCTION
 
+# Parsed with a regex, not urlsplit: the dashboard string contains [YOUR-PASSWORD], and urlsplit
+# reads a bracketed host as an IPv6 literal and raises before we can give a useful message.
+CONN = re.compile(
+    r"^postgres(?:ql)?://"
+    r"(?P<user>[^:@/\s]+):"
+    r"(?P<password>.*)@"  # greedy: the host cannot contain '@', so this stops at the last one
+    r"(?P<host>[^:@/\s]+):"
+    r"(?P<port>\d+)"
+    r"/(?P<database>[^?\s]+)",
+    re.IGNORECASE,
+)
+
 
 def fail(message: str) -> None:
-    print(f"error: {message}", file=sys.stderr)
+    print(f"\nerror: {message}", file=sys.stderr)
     raise SystemExit(1)
 
 
-def normalise(raw: str) -> tuple[str, str, str]:
-    """Return (runtime_url, ddl_url, masked_summary) from a pasted connection string."""
-    parts = urlsplit(raw.strip())
-    if parts.scheme not in {"postgres", "postgresql", "postgresql+psycopg"}:
-        fail(f"not a Postgres URL (scheme {parts.scheme!r})")
-    if not parts.hostname:
-        fail("no host in the connection string")
-    if "supabase" not in parts.hostname:
-        fail(f"host {parts.hostname!r} does not look like Supabase")
-    if not parts.password:
-        fail("no password in the string: replace [YOUR-PASSWORD] with the real password first")
-    if "[" in parts.password or "YOUR-PASSWORD" in parts.password:
-        fail("the password placeholder is still there: paste the string with the real password")
+def ask(prompt: str) -> str:
+    """input() with an explicit flush: under `make`, prompts can otherwise sit in the buffer."""
+    print(prompt, end="", flush=True)
+    return input().strip()
 
-    user = parts.username or "postgres"
-    host = parts.hostname
-    path = parts.path or "/postgres"
 
-    def build(port: int) -> str:
-        netloc = f"{user}:{parts.password}@{host}:{port}"
-        return urlunsplit(("postgresql+psycopg", netloc, path, "", ""))
-
+def parse(raw: str) -> tuple[str, str, str, str]:
+    """Return (user, host, port, database) from a pasted connection string."""
+    match = CONN.match(raw.strip())
+    if not match:
+        fail(
+            "could not read that connection string.\n"
+            "       Expected something like:\n"
+            "       postgresql://postgres.<ref>:[YOUR-PASSWORD]@aws-0-<region>"
+            ".pooler.supabase.com:6543/postgres"
+        )
+    assert match
+    host = match["host"]
+    if "supabase" not in host:
+        fail(f"host {host!r} does not look like Supabase")
     if "pooler.supabase.com" not in host:
         fail(
             f"host {host!r} is the direct connection, not the pooler.\n"
-            "       Use the 'Transaction pooler' string: the direct host is IPv6-only and\n"
-            "       holds long-lived connections, which serverless functions exhaust."
+            "       Pick 'Transaction pooler' in the dashboard: the direct host is IPv6-only\n"
+            "       and holds long-lived connections, which serverless functions exhaust."
         )
-    summary = f"{user}@{host} (runtime :{RUNTIME_PORT}, migrations :{DDL_PORT})"
-    return build(RUNTIME_PORT), build(DDL_PORT), summary
+    return match["user"], host, match["port"], match["database"]
 
 
 def main() -> int:
-    if ENV_FILE.exists():
-        answer = input(f"{ENV_FILE.name} already exists. Overwrite? [y/N] ").strip().lower()
-        if answer != "y":
-            print("kept the existing file")
-            return 0
+    if ENV_FILE.exists() and ask(f"{ENV_FILE.name} already exists. Overwrite? [y/N] ").lower() != "y":
+        print("kept the existing file")
+        return 0
 
-    print("Supabase dashboard → Connect → Connection string → Transaction pooler.")
-    print("Replace [YOUR-PASSWORD] with the real password, then paste it here.")
-    print("(the input stays hidden)\n")
-    raw = getpass.getpass("Connection string: ")
-    if not raw.strip():
-        fail("nothing pasted")
+    print("\nSupabase dashboard → Connect → Connection string → Transaction pooler.")
+    print("Paste it exactly as shown, leaving [YOUR-PASSWORD] alone.\n")
+    user, host, port, database = parse(ask("Connection string: "))
+    if port != str(RUNTIME_PORT):
+        print(f"note: port {port} is not the usual transaction-pooler port {RUNTIME_PORT}")
 
-    runtime_url, ddl_url, summary = normalise(raw)
+    print("\nDatabase password (hidden; Settings → Database → Reset database password if unknown)", flush=True)
+    password = getpass.getpass("Password: ")
+    if not password:
+        fail("no password entered")
+    if password.startswith("[") and password.endswith("]"):
+        password = password[1:-1]  # the placeholder brackets are easy to copy by accident
+    if "YOUR-PASSWORD" in password:
+        fail("that is the placeholder, not the password")
+
+    # Percent-encode: passwords often contain @ : / ? # which would otherwise break the URL.
+    safe = quote(password, safe="")
+
+    def url(target_port: int) -> str:
+        return f"postgresql+psycopg://{user}:{safe}@{host}:{target_port}/{database}"
+
+    frontend_origin = ask("\nVercel frontend URL (blank if not deployed yet): ")
     demo_password = secrets.token_urlsafe(18)
-
-    frontend_origin = input("\nVercel frontend URL (blank if not deployed yet): ").strip()
 
     ENV_FILE.write_text(
         "# Generated by scripts/setup_cloud_env.py. Secrets inside: never commit this file.\n"
         "THREADEYE_DEPLOY_PROFILE=cloud_demo\n\n"
         "# Runtime: Supavisor transaction mode (serverless-safe).\n"
-        f"THREADEYE_DATABASE_URL={runtime_url}\n\n"
+        f"THREADEYE_DATABASE_URL={url(RUNTIME_PORT)}\n\n"
         "# Migrations only: session mode, because transaction mode cannot run DDL safely.\n"
-        f"THREADEYE_MIGRATION_DATABASE_URL={ddl_url}\n\n"
+        f"THREADEYE_MIGRATION_DATABASE_URL={url(DDL_PORT)}\n\n"
         "THREADEYE_COOKIE_SECURE=true\n"
         f"THREADEYE_ALLOWED_ORIGINS={frontend_origin}\n\n"
         "# Demo accounts for the judges. Randomly generated, different from the local password.\n"
@@ -102,9 +120,9 @@ def main() -> int:
     ENV_FILE.chmod(stat.S_IRUSR | stat.S_IWUSR)
 
     print(f"\nwrote {ENV_FILE} (owner-only permissions)")
-    print(f"  database: {summary}")
-    print(f"  demo password: {demo_password}")
-    print("\nNext: make cloud-migrate")
+    print(f"  database: {user}@{host} (runtime :{RUNTIME_PORT}, migrations :{DDL_PORT})")
+    print(f"  demo account password: {demo_password}")
+    print("\nNext: make cloud-setup")
     return 0
 
 
