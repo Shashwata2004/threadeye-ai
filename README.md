@@ -1,6 +1,6 @@
 # ThreadEye AI
 
-**A smart assistant for fabric inspection.**
+**কাপড় পরীক্ষার স্মার্ট সহকারী: a smart assistant for fabric inspection.**
 
 ThreadEye retrofits a camera to the fabric inspection machines Bangladeshi garment factories already
 own. For each roll the chain runs: frames → detector → defects in roll coordinates → non-defects

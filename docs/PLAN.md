@@ -518,7 +518,7 @@ Total = 4 + 3 + 4 + 16 = **27**. Per-100 = 27 × 3600 / (120 × 60) = 97 200 / 7
 
 ## 8. Screens (Next.js App Router, role-aware navigation)
 
-Common chrome on every screen: language toggle (Bangla / English), user/role, **mode banner** ("SIMULATION MODE — simulated video and detections, not real AI") whenever the source or provider is simulated, a **provider badge** ("Detector: Simulated v1.0"), and a **"SAMPLE DATA"** badge on any sample entity or aggregate. The inspector screens use large touch targets and keyboard shortcuts.
+Common chrome on every screen: language toggle (বাংলা / English), user/role, **mode banner** ("সিমুলেশন মোড — ভিডিও ও শনাক্তকরণ সিমুলেটেড, বাস্তব AI নয়" / "SIMULATION MODE — simulated video and detections, not real AI") whenever the source or provider is simulated, a **provider badge** ("শনাক্তকারী: Simulated v1.0"), and a **"নমুনা তথ্য / SAMPLE DATA"** badge on any sample entity or aggregate. The inspector screens use large touch targets and keyboard shortcuts.
 
 | # | Screen (route) | Purpose | Main components |
 |---|---|---|---|
@@ -527,7 +527,7 @@ Common chrome on every screen: language toggle (Bangla / English), user/role, **
 | 3 | Lots `/lots`, Lot detail `/lots/[id]` | Register a delivery; see the lot verdict | challan form, bulk roll entry (paste/CSV), sampling suggestion (profile % plus the mill's recent fail rate as context; adaptive "smart sampling" is NEXT), lot verdict card + decision, roll table |
 | 4 | Roll labels `/lots/[id]/labels` | Print QR labels | label preview (100×50 mm + A4 sheet), PDF |
 | 5 | Load roll `/inspect` | Scan or enter the roll code; buyer profile applied automatically; choose machine/source | QR input (USB scanner as keyboard; camera scan optional), profile summary, start button |
-| 6 | **Live inspection** `/inspect/[id]` | The core screen | video shown uncropped, so its "SIMULATED FEED" bar stays visible (overlay offset by `view_region`) + canvas overlay (red = pending, green = confirmed, grey dashed = non-defect, amber = selvage-excluded); vertical **yard tape** + big counter; speed/state chip; **points meter** (points vs budget, per-100 gauge with BORDERLINE band); defect queue cards (crop, class, size, points, explanation, provider) with **✓ / ✗ / change type**; "add missed defect"; non-defect counter by category; pause/resume; demo speed (1×/2×/4×, labelled); resume-after-power-cut banner |
+| 6 | **Live inspection** `/inspect/[id]` | The core screen | video shown uncropped, so its "SIMULATED FEED" bar stays visible (overlay offset by `view_region`) + canvas overlay (red = pending, green = confirmed, grey dashed = non-defect, amber = selvage-excluded); vertical **yard tape** + big counter; speed/state chip; **points meter** (points vs budget, per-100 gauge with BORDERLINE band); defect queue cards (crop, class, size, points, explanation, provider) with **✓ / ✗ / ধরন বদলান**; "add missed defect"; non-defect counter by category; pause/resume; demo speed (1×/2×/4×, labelled); resume-after-power-cut banner |
 | 7 | Roll verdict `/inspections/[id]/verdict` | Totals and the decision | per-yard table with cap notes, breakdown by class, verdict badge, length/width check, ignored non-defects, pending list, supervisor decision panel |
 | 8 | Roll map & report `/inspections/[id]` | Evidence | full-roll SVG strip (yard axis, across position, status colours, cutting skip zones), defect drawer (best photo, sightings, clip player, points explanation), report PDF (bn/en) |
 | 9 | Claim pack `/claims/[id]` | Mill claim | roll picker (FAIL + shortage), letter preview (English), evidence list with hashes, export PDF + ZIP, status |
@@ -542,14 +542,44 @@ Common chrome on every screen: language toggle (Bangla / English), user/role, **
 ### 8.1 Bangla/English approach
 - **next-intl** without locale URL prefixes. The locale comes from the user's preference cookie. Catalogs live in `frontend/messages/{en,bn}.json`, namespaced by screen (`live.confirm`, `verdict.fail`, …). The API returns **codes only** (`FAIL`, `hole`); labels resolve in the UI from catalogs and `defect_classes`.
 - Fonts are **self-hosted via `next/font/local`** (Noto Sans Bengali + Hind Siliguri, OFL; no Google CDN, so they work offline). Bangla text gets a 1.15× line-height and layouts are built to handle longer strings.
-- CI fails if `bn.json` and `en.json` have different keys. `eslint-plugin-i18next` blocks literal UI strings. The textile member validates the terms.
+- CI fails if `bn.json` and `en.json` have different keys. `eslint-plugin-i18next` blocks literal UI strings. `docs/glossary-bn-en.md` is validated by the textile member.
 - PDFs: roll report in `en` or `bn`. Claim letter is English only (Chinese is NEXT).
 
-### 8.2 UI text
-All UI text lives in `frontend/messages/en.json` and `frontend/messages/bn.json` (identical keys,
-checked in CI). Class labels for both languages live in `backend/threadeye/data/taxonomy.yaml`.
-Crease marks (a defect) and handling wrinkles (not a defect) must use clearly different words in
-both languages; the textile member confirms the terms.
+### 8.2 Suggested Bangla UI text
+| Key | English | বাংলা |
+|---|---|---|
+| live.start | Start inspection | পরিদর্শন শুরু করুন |
+| live.running / stopped | Machine running / stopped | মেশিন চলছে / মেশিন থেমে আছে |
+| live.speed | Speed: {v} m/min | গতি: {v} মি/মিনিট |
+| live.yard | {yd} yd | {yd} গজ |
+| live.points | Points so far | এখন পর্যন্ত পয়েন্ট |
+| live.per100 | per 100 sq yd | প্রতি ১০০ বর্গগজে |
+| live.budget | Points budget | পয়েন্ট বাজেট |
+| live.confirm | ✓ Defect, correct | ✓ ঠিক আছে, ত্রুটি |
+| live.reject | ✗ Not a defect | ✗ ত্রুটি নয় |
+| live.reclass | Change type | ধরন বদলান |
+| live.addMissed | Add missed defect | বাদ পড়া ত্রুটি যোগ করুন |
+| live.pending | Awaiting confirmation | নিশ্চিত করা বাকি |
+| live.ignored | Ignored (not defects): {n} | বাদ দেওয়া (ত্রুটি নয়): {n} |
+| rule.selvage | Within 1 in of selvage, not counted (buyer rule) | কিনারার ১ ইঞ্চির মধ্যে — ক্রেতার নিয়মে গোনা হয়নি |
+| rule.continuous | Continuous defect: 4 points per yard | চলমান ত্রুটি — প্রতি গজে ৪ পয়েন্ট |
+| verdict.pass / fail / borderline | Pass / Fail / Borderline | পাস / বাতিল / সীমার কাছাকাছি |
+| verdict.needSup | Supervisor decision needed | সুপারভাইজারের সিদ্ধান্ত দরকার |
+| check.shortage | Length shortage: {yd} yd | দৈর্ঘ্যে ঘাটতি: {yd} গজ |
+| resume.banner | Inspection stopped by a power cut. No data was lost. | বিদ্যুৎ চলে যাওয়ায় পরিদর্শন থেমে গিয়েছিল। কোনো তথ্য হারায়নি। |
+| resume.button | Resume from {yd} yd | {yd} গজ থেকে আবার শুরু করুন |
+| lot.hold | Hold lot: inspect all rolls | চালান আটকে রাখুন — সব রোল পরীক্ষা করুন |
+| reg.newLot / labels | New delivery / Print QR labels | নতুন চালান / QR লেবেল প্রিন্ট করুন |
+| reg.sampling | Suggestion: inspect at least {n} rolls | পরামর্শ: অন্তত {n}টি রোল পরীক্ষা করুন |
+| claim.create | Create claim pack | ক্ষতিপূরণ দাবির প্যাক তৈরি করুন |
+| cut.skip / splice / usable | Skip / Splice / Usable length | বাদ দিন / জোড়া দিন / ব্যবহারযোগ্য দৈর্ঘ্য |
+| ver.ok / fail / none | Today's check passed / failed / not run yet | আজকের যাচাই সফল / ব্যর্থ — সুপারভাইজারকে জানান / আজ এখনো যাচাই হয়নি |
+| badge.sample | Sample data | নমুনা তথ্য |
+| nav.audit | Change ledger | পরিবর্তনের খাতা |
+
+**Classes:** hole ফুটো · stain দাগ · oil stain তেলের দাগ · slub মোটা সুতা (স্লাব) · broken yarn ছেঁড়া সুতা · knot গিঁট · crease mark ভাঁজের দাগ · shade bar রঙের ডোরা.
+**Non-defects:** sticker স্টিকার · loose thread আলগা সুতা · handling wrinkle নাড়াচাড়ার ভাঁজ · pin holes কিনারার পিনের ছিদ্র · hand হাত · board বোর্ড.
+The final class list follows the simulator's `ground_truth.csv` classes via `taxonomy.yaml`. "ভাঁজের দাগ" (defect) and "নাড়াচাড়ার ভাঁজ" (not a defect) are deliberately distinct; the domain member confirms.
 
 ---
 
@@ -571,7 +601,7 @@ AI_Buildfest/                         (git repo "threadeye", public, All rights 
 │   ├── PLAN.md                       this plan (first commit after approval)
 │   ├── architecture.md · four-point-engine.md · data-contracts.md · realtime.md
 │   ├── ETHICS.md                     documented safeguards (Workflow PDF §12 → concrete product features)
-│   ├── KPIS.md · demo-script.md · COLLABORATION.md (NRB mentor log)
+│   ├── KPIS.md · demo-script.md · glossary-bn-en.md · COLLABORATION.md (NRB mentor log)
 │   ├── decisions/                    ADRs (0001 two profiles, 0002 browser clock, 0003 fpdf2, …)
 │   ├── api/openapi.json              committed contract (CI drift check)
 │   └── submission/                   preliminary.md, final.md (8 sections), judge-access-note.md
@@ -630,7 +660,7 @@ API contract v0 (OpenAPI + event envelope) is **agreed Wed 7 Oct**. After that A
 
 | M | Dates | Demo at the end | A Backend | B Frontend | C AI/Integration | D Reports/QA/Demo | Acceptance criteria |
 |---|---|---|---|---|---|---|---|
-| **M0** Skeleton & contracts | 3–9 Oct | `docker compose up` (no internet) → bn/en login → empty dashboard with mode banner; `/health` ok | git init + GitHub repo; compose (proxy, web, api, worker, db); Alembic baseline; auth + sessions; RBAC deps; audit table + triggers; stub routers → OpenAPI v0 | Next.js scaffold, Tailwind/shadcn, next-intl, local fonts, role nav, banners/badges, openapi-typescript + MSW | Interfaces (§6.2); data-contract validators for the 5 files; synthetic micro-fixture; `taxonomy.yaml` draft; import-linter contract | 4-point test cases written first; PROVENANCE/TOOLING/PROMPTS (#001)/CLAUDE.md; CI (ruff, mypy, pytest, eslint, tsc, i18n keys, OpenAPI drift); **fpdf2 Bangla spike**; licence check (Q2) | CI green; offline compose boots; PDF spike renders Bangla text correctly shaped; contract v0 signed off by all four |
+| **M0** Skeleton & contracts | 3–9 Oct | `docker compose up` (no internet) → bn/en login → empty dashboard with mode banner; `/health` ok | git init + GitHub repo; compose (proxy, web, api, worker, db); Alembic baseline; auth + sessions; RBAC deps; audit table + triggers; stub routers → OpenAPI v0 | Next.js scaffold, Tailwind/shadcn, next-intl, local fonts, role nav, banners/badges, openapi-typescript + MSW | Interfaces (§6.2); data-contract validators for the 5 files; synthetic micro-fixture; `taxonomy.yaml` draft; import-linter contract | 4-point test cases written first; PROVENANCE/TOOLING/PROMPTS (#001)/CLAUDE.md; CI (ruff, mypy, pytest, eslint, tsc, i18n keys, OpenAPI drift); **fpdf2 Bangla spike**; licence check (Q2) | CI green; offline compose boots; PDF spike renders "রোলের রায়: বাতিল" correctly shaped; contract v0 signed off by all four |
 | **M1** Headless core | 10–17 Oct | `make run-sample` prints sampling stats, defects, per-yard table → **10 pts / 46.4 / FAIL** | Data model migrations; event store (seq, idempotency, one-txn projections); lots/rolls/registration API; QR label PDF (segno + fpdf2); roll-by-code | Login; lot + roll registration; label print; roll list; live-screen layout on mocks (video + overlay + tape + meter) | VideoFileSource; Sampler (+coverage); SimulatedDetector (perfect + realistic); RollMapper; Deduper; NonDefectFilter; `Runner.advance()`; CLI; `evaluation.py` port + **parity test vs `evaluate.py`** | Scoring engine + verdict + lot (full rule tests); profile schema; default + simulator-parity profiles | Headless test reproduces `expected_score` exactly with the perfect preset; GT per-defect points parity; register a 5-roll lot in the UI and print labels |
 | **M2** Live vertical slice | 18–25 Oct | Browser: scan roll → start → video plays, boxes stick to fabric, tape/speed/state/meter live → confirm/reject/reclass → finish → verdict → roll map → PDF | Inspection commands, `/advance` (txn, lease, idempotency), events + SSE, defect commands, finalize; review cloud DB settings (pooler, NullPool) | Live screen wired (rVFC capture, advance loop, overlay projection, defect cards, shortcuts); verdict screen; roll map | `/plan` + `/track`; CaptureFrameSource; evidence crops; API-level integration test | Roll PDF (en) with photos, strip, SIMULATED watermark, provider label; README + architecture diagram; demo script v1; **cloud smoke deploy** (Vercel ×2 + Supabase: login, registration, `/health`) + `keepalive.yml` | Playwright golden path passes on an offline network; API integration test asserts expected score/verdict; PDF shows "SIMULATED" + provider |
 | **★ M3 PRELIMINARY** | 26–30 Oct (freeze Wed 28) | Same flow, polished; repo public | Release tag `v0.1-prelim`; LICENSE; repo hygiene; cloud link if stable | Core screens polished; Bangla strings for the core flow | Honest pipeline-only metrics snapshot; data provenance | Submission text (Basics, Problem, Solution, Links, Provenance, Tooling, MCP, Prompts); mentor notes; optional short video labelled SIMULATED | **Submitted Fri 30 Oct.** Fresh clone → offline compose → full core flow on the sample roll in < 10 min; README with diagram; every simulated element labelled; repo link validates PASS |
@@ -639,7 +669,7 @@ API contract v0 (OpenAPI + event envelope) is **agreed Wed 7 Oct**. After that A
 | **M6** Measure & publish + **own model on edge** | 21–30 Nov | `LocalModelDetector` (CPU, ONNX Runtime) runs the live flow on the edge laptop; benchmark: own model vs simulated baseline on `split=test`; dashboard KPIs; **cloud demo link complete** | Cloud profile complete (Supabase storage, inline jobs, polling); demo accounts; nightly reset; judge access note | Benchmark page + funnel; dashboard; provider settings UI | **`LocalModelDetector`** (ONNX Runtime CPU, tiling + NMS, model-card thresholds); **provider conformance suite**; ApiDetector stub finalised; benchmark own model on `split=test` | Evaluation-runs service (multi-roll, per-class, FP-by-type, train/test guard); sample-data seeding (labelled); KPIS.md; ETHICS.md complete; labels export (COCO) | Core flow E2E green first with **both** Simulated and LocalModel providers; benchmark reproducible and refuses train-split data; conformance passes for Simulated + LocalModel; cloud link works for all demo roles (SimulatedDetector, labelled) |
 | **M7** Model improvement + polish | 1–12 Dec | Improved model integrated; edge demo with our own model end to end | Security review; perf on target laptop (CPU latency budget); clean-machine offline install (`docker save` tarball) | **Bangla UI pass** with domain member; usability fixes | **Improve the model** (more simulated rolls, hard-negative mining from inspector rejections, augmentation for lighting); integrate the new ONNX version; cloud demo keeps SimulatedDetector with clear labels | Usability test with 2–3 industry contacts (remote); benchmark report v2 | Core flow E2E green first; no P1 bugs; offline install on a clean laptop < 30 min; model v2 ≥ v1 on `split=test` (or v1 kept, documented honestly) |
 | **M8** Submission | 13–22 Dec (freeze Sun 20) | Final demo video (3–5 min; real inference where shown; simulated parts labelled) | Final deploy + link checks | UI freeze | Benchmark of real provider vs simulated baseline (honest) | Final 8-section docs; prompt library; tooling + MCP disclosure; provenance | **Submitted by Tue 22 Dec** (confirm deadline); all links PASS |
-| M9 Congress Day | 23–26 Dec | 3-min live pitch "the journey of one roll" | Offline demo laptop image | — | Backup recorded run | Pitch rehearsals ×10; printed one-pager | Demo runs with Wi-Fi off |
+| M9 Congress Day | 23–26 Dec | 3-min live pitch "একটা রোলের যাত্রা" | Offline demo laptop image | — | Backup recorded run | Pitch rehearsals ×10; printed one-pager | Demo runs with Wi-Fi off |
 
 **Dependencies:**
 - M1 needs the simulator files by ~10 Oct; the micro-fixture is the fallback.

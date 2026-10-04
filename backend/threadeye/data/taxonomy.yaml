@@ -1,8 +1,8 @@
 # ThreadEye defect taxonomy. DRAFT v0 (M0).
 # Canonical ids are used by the API, events, reports and the 4-point engine. The UI shows en/bn labels.
-# The bn labels must be confirmed by the textile domain member.
-# The crease-mark (a DEFECT) and handling-wrinkle (NOT a defect) labels are deliberately
-# different words in both languages.
+# Bangla labels must be confirmed by the textile domain member (docs/glossary-bn-en.md).
+# "ভাঁজের দাগ" (crease mark, a DEFECT) and "নাড়াচাড়ার ভাঁজ" (handling wrinkle, NOT a defect) are
+# deliberately different words.
 version: "0.1-draft"
 
 defects:
