@@ -6,7 +6,8 @@ Every report carries the provider label and, when simulated, a SIMULATED waterma
 
 RULE (found in the M0 spike): always select the LATIN family via ``use_font``, including for Bangla
 text. The Bengali fallback picks up Bangla runs and shapes them correctly. Selecting NotoSansBengali
-as the primary font drops Latin glyphs and breaks shaping in mixed lines ("পরিদর্শন" → "পরদির্শন").
+as the primary font drops Latin glyphs and breaks shaping in mixed lines (pre-base vowel signs
+are placed after the consonant instead of before it).
 """
 
 from __future__ import annotations

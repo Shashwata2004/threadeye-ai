@@ -22,7 +22,7 @@ marked "sample data"; no fabricated metrics.
 | Data | Status |
 |---|---|
 | Demo user accounts (one per role) | Created only when `THREADEYE_SEED_DEMO_USERS=true`. The password comes from the environment, not from code. |
-| Mills, buyers, lots (from M1) | Will be fictional, flagged `is_sample_data`, and shown with a "SAMPLE DATA / নমুনা তথ্য" badge |
+| Mills, buyers, lots (from M1) | Will be fictional, flagged `is_sample_data`, and shown with a "SAMPLE DATA" badge |
 
 ## Fonts
 | Font | Licence | Where |
