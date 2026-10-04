@@ -78,6 +78,7 @@ class LotOut(ApiModel):
     sampling_pct: float
     status: str
     lot_verdict: LotVerdict | None
+    rolls_registered: int
     is_sample_data: bool
     created_at: datetime
 
@@ -111,6 +112,7 @@ class RollOut(ApiModel):
 
 class SamplingSuggestionOut(ApiModel):
     total_rolls: int
+    registered_rolls: int
     suggested_count: int
     sampling_pct: float
     basis: Literal["profile"]

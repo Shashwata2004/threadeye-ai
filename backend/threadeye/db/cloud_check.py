@@ -16,8 +16,23 @@ from threadeye.db.base import SCHEMA
 from threadeye.db.session import get_engine, get_sessionmaker
 from threadeye.settings import get_settings
 
-EXPECTED_TABLES = {"users", "sessions", "audit_log", "settings", "component_heartbeats"}
-APPEND_ONLY_TABLES = {"audit_log"}
+EXPECTED_TABLES = {
+    "users",
+    "sessions",
+    "audit_log",
+    "settings",
+    "component_heartbeats",
+    "suppliers",
+    "buyers",
+    "rule_profiles",
+    "machines",
+    "lots",
+    "rolls",
+    "inspections",
+    "inspection_events",
+    "defects",
+}
+APPEND_ONLY_TABLES = {"audit_log", "inspection_events"}
 # The roles behind Supabase's public Data API (PostgREST/GraphQL).
 PUBLIC_API_ROLES = ("anon", "authenticated")
 

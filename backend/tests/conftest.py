@@ -62,15 +62,16 @@ def clean_db(migrated_db: str) -> Iterator[None]:
 
     from threadeye.db.session import get_engine
 
+    append_only = ("audit_log", "inspection_events")
     with get_engine().begin() as conn:
-        conn.execute(text("ALTER TABLE threadeye.audit_log DISABLE TRIGGER USER"))
-        conn.execute(
-            text(
-                "TRUNCATE threadeye.audit_log, threadeye.sessions, threadeye.users, "
-                "threadeye.settings, threadeye.component_heartbeats RESTART IDENTITY CASCADE"
-            )
-        )
-        conn.execute(text("ALTER TABLE threadeye.audit_log ENABLE TRIGGER USER"))
+        tables = conn.scalars(
+            text("SELECT tablename FROM pg_tables WHERE schemaname = 'threadeye' AND tablename <> 'alembic_version'")
+        ).all()
+        for t in append_only:
+            conn.execute(text(f"ALTER TABLE threadeye.{t} DISABLE TRIGGER USER"))
+        conn.execute(text("TRUNCATE " + ", ".join(f"threadeye.{t}" for t in tables) + " RESTART IDENTITY CASCADE"))
+        for t in append_only:
+            conn.execute(text(f"ALTER TABLE threadeye.{t} ENABLE TRIGGER USER"))
     yield
 
 
@@ -78,9 +79,11 @@ def clean_db(migrated_db: str) -> Iterator[None]:
 def seeded(clean_db: None) -> None:
     from threadeye.db.session import get_sessionmaker
     from threadeye.security.seed import seed_demo_users
+    from threadeye.services.receiving import seed_sample_data
 
     with get_sessionmaker()() as db:
         seed_demo_users(db, TEST_PASSWORD)
+        seed_sample_data(db)
 
 
 @pytest.fixture

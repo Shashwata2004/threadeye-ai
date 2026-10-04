@@ -13,7 +13,13 @@ International AI Builders Congress 2026 · *Idea to Unicorn* · IndustrySphere A
 > It is **not AI**, and every screen and report says so. No metric is shown unless it is measured.
 > From M4 the team trains its own model (see [docs/PLAN.md](docs/PLAN.md) §10).
 
-**Status: M0 (skeleton & contracts) complete.** See [docs/PLAN.md](docs/PLAN.md) for the full plan.
+**Status: M1 (headless core + receiving) complete.** See [docs/PLAN.md](docs/PLAN.md) for the full plan.
+
+- 4-point engine with buyer rule profiles (continuous defects, selvage exclusion, BORDERLINE, lot verdict)
+- Detection pipeline: travel-based sampling, roll coordinates, de-duplication, non-defect filter,
+  SIMULATED detector, evaluation metrics: `threadeye run-sample <roll dir>`
+- Deliveries and rolls: register a challan, add rolls (paste from Excel), print scannable QR labels
+- Append-only inspection event store with one-transaction projections
 
 ## Quick start (edge box, works offline)
 

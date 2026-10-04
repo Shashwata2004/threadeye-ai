@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     datasets_dir: str = "/data/datasets"
 
     seed_demo_users: bool = False
+    seed_sample_data: bool = False
     demo_password: str | None = None
 
     login_max_failures: int = 10

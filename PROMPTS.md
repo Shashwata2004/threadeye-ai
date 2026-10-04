@@ -9,6 +9,8 @@ the prompt (verbatim), attachments, and what it produced.
 | 001 | 2026-10-03 | Claude Code (desktop app, Code tab) · Claude Opus 5.5 (`claude-opus-5-5`) · plan mode | Full build plan from the team brief + two planning PDFs | `docs/PLAN.md` |
 | 001a | 2026-10-03 | same session | Clarifying questions asked by the assistant, answered by the team | decisions recorded in `docs/PLAN.md` §2 |
 | 002 | 2026-10-03 | same session | Plan updates (simulator conventions, training track, core-flow rule) + "implement M0 only" | updated `docs/PLAN.md`; M0 scaffold |
+| 003 | 2026-10-03/04 | same session (models switched mid-session; see TOOLING.md) | Supabase connection, MIT licence, repo on GitHub | cloud_demo profile, `make cloud-*` |
+| 004 | 2026-10-04 | same session | "implement M1 now" | M1: engine, pipeline, receiving, labels |
 
 ---
 
@@ -250,6 +252,26 @@ D. Now implement milestone M0 only. When done, run the M0 acceptance criteria yo
 ```
 
 **Output:** `docs/PLAN.md` (v2) and the M0 scaffold (see the git history).
+
+## #003: Cloud database and repository (summary of the conversation turns)
+
+- "create a new git repo on this account and commit the m0 work" (commits authored by the team member)
+- "give the repo a mit license"
+- "i want u to connect this db https://supabase.com/dashboard/project/<ref>"; follow-ups chose the
+  hidden-input `.env.cloud` route and the `threadeye` schema (not `public`)
+
+**Output:** `scripts/setup_cloud_env.py`, `make cloud-env/cloud-setup/cloud-check/cloud-run`,
+migration 0002 (row-level security), MIT `LICENSE`.
+
+## #004: Implement M1 (verbatim)
+
+```text
+implement M1 now
+```
+
+**Output:** the M1 commits (4-point engine, detection pipeline, receiving API and screens, QR labels,
+inspection event store). The simulator files were not in the repo yet, so the sample-roll and
+`evaluate.py` parity tests are written but skip until they arrive.
 
 ---
 

@@ -26,6 +26,9 @@ case "${1:-api}" in
     if [ "${THREADEYE_SEED_DEMO_USERS:-false}" = "true" ]; then
       threadeye seed-demo-users || echo "demo users not seeded"
     fi
+    if [ "${THREADEYE_SEED_SAMPLE_DATA:-false}" = "true" ]; then
+      threadeye seed-sample-data || echo "sample data not seeded"
+    fi
     exec uvicorn threadeye.api.app:app --host 0.0.0.0 --port 8000 \
       --proxy-headers --forwarded-allow-ips="*" --no-server-header
     ;;

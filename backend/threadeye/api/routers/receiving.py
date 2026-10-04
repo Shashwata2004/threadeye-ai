@@ -1,24 +1,23 @@
-"""Contract v0 stubs: master data, lots, rolls, QR labels. Implemented in M1 (owner A).
-
-Each endpoint already has its final path, schema and permission check, so the frontend can build
-against the OpenAPI contract (with MSW mocks) while the backend fills in the logic.
-"""
+"""Receiving: master data, deliveries (lots), rolls and QR labels (M1)."""
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import Response
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
-from threadeye.api.deps import require
-from threadeye.api.errors import NOT_IMPLEMENTED_RESPONSE, not_implemented
+from threadeye.api.deps import client_ip, require
 from threadeye.api.schemas.receiving import (
     BuyerOut,
     LotCreate,
     LotOut,
     MachineOut,
+    NamedRef,
     RollOut,
     RollsBulkCreate,
     RuleProfileSummary,
@@ -26,73 +25,193 @@ from threadeye.api.schemas.receiving import (
     SupplierIn,
     SupplierOut,
 )
+from threadeye.db import audit
+from threadeye.db.models import Buyer, Lot, Machine, Roll, RuleProfileRow, Supplier, User
+from threadeye.db.session import get_db
+from threadeye.reports.labels import LabelData, build_labels_pdf
 from threadeye.security.rbac import Perm
+from threadeye.services import receiving as svc
 
-router = APIRouter(tags=["receiving"], responses=NOT_IMPLEMENTED_RESPONSE)
-M = "M1"
+router = APIRouter(tags=["receiving"])
 PDF: dict[int | str, dict[str, Any]] = {200: {"content": {"application/pdf": {}}, "description": "PDF document"}}
 
 
+def _fail(exc: svc.ReceivingError) -> HTTPException:
+    return HTTPException(exc.status, str(exc))
+
+
+def _profile_summary(row: RuleProfileRow) -> RuleProfileSummary:
+    return RuleProfileSummary(
+        id=row.id,
+        buyer_id=row.buyer_id,
+        name=row.name,
+        version=row.version,
+        status=row.status,
+        threshold_per_100=float(row.rules.get("threshold_per_100", 40.0)),
+    )
+
+
+def _lot_out(db: Session, lot: Lot) -> LotOut:
+    supplier = db.get(Supplier, lot.supplier_id)
+    buyer = db.get(Buyer, lot.buyer_id)
+    profile = db.get(RuleProfileRow, lot.rule_profile_id)
+    assert supplier and buyer
+    return LotOut(
+        id=lot.id,
+        challan_no=lot.challan_no,
+        supplier=NamedRef(id=supplier.id, name=supplier.name, is_sample_data=supplier.is_sample_data),
+        buyer=NamedRef(id=buyer.id, name=buyer.name, is_sample_data=buyer.is_sample_data),
+        order_ref=lot.order_ref,
+        fabric_type=lot.fabric_type,
+        colour=lot.colour,
+        received_at=lot.received_at,
+        declared_rolls=lot.declared_rolls,
+        declared_total_yd=lot.declared_total_yd,
+        rule_profile=_profile_summary(profile) if profile else None,
+        sampling_pct=lot.sampling_pct,
+        status=lot.status,
+        lot_verdict=lot.lot_verdict,
+        rolls_registered=svc.roll_count(db, lot.id),
+        is_sample_data=lot.is_sample_data,
+        created_at=lot.created_at,
+    )
+
+
+def _get_lot(db: Session, lot_id: uuid.UUID) -> Lot:
+    lot = db.get(Lot, lot_id)
+    if lot is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "lot not found")
+    return lot
+
+
+def _labels(db: Session, rolls: Sequence[Roll]) -> list[LabelData]:
+    out = []
+    for r in rolls:
+        lot = db.get(Lot, r.lot_id)
+        assert lot
+        supplier, buyer = db.get(Supplier, lot.supplier_id), db.get(Buyer, lot.buyer_id)
+        out.append(
+            LabelData(
+                roll_code=r.roll_code,
+                mill_roll_no=r.mill_roll_no,
+                challan_no=lot.challan_no,
+                supplier=supplier.name if supplier else "",
+                buyer=buyer.name if buyer else "",
+                fabric_type=lot.fabric_type,
+                declared_length_yd=r.declared_length_yd,
+                declared_width_in=r.declared_width_in,
+                dye_lot=r.dye_lot,
+                is_sample_data=r.is_sample_data,
+            )
+        )
+    return out
+
+
+def _pdf(content: bytes, filename: str) -> Response:
+    return Response(
+        content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"', "Cache-Control": "no-store"},
+    )
+
+
+# ------------------------------------------------------------------------------------------- master data
 @router.get("/suppliers", response_model=list[SupplierOut], dependencies=[Depends(require(Perm.MASTER_DATA_READ))])
-def list_suppliers() -> list[SupplierOut]:
-    not_implemented(M)
+def list_suppliers(db: Session = Depends(get_db)) -> list[Supplier]:
+    return list(db.scalars(select(Supplier).order_by(Supplier.name)))
 
 
-@router.post(
-    "/suppliers",
-    response_model=SupplierOut,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require(Perm.MASTER_DATA_WRITE))],
-)
-def create_supplier(body: SupplierIn) -> SupplierOut:
-    not_implemented(M)
+@router.post("/suppliers", response_model=SupplierOut, status_code=status.HTTP_201_CREATED)
+def create_supplier(
+    body: SupplierIn,
+    request: Request,
+    actor: User = Depends(require(Perm.MASTER_DATA_WRITE)),
+    db: Session = Depends(get_db),
+) -> Supplier:
+    name = body.name.strip()
+    if db.scalar(select(Supplier.id).where(func.lower(Supplier.name) == name.lower())):
+        raise HTTPException(status.HTTP_409_CONFLICT, "a mill with this name exists")
+    supplier = Supplier(name=name, country=body.country)
+    db.add(supplier)
+    db.flush()
+    audit.record(
+        db,
+        action="supplier.create",
+        actor_user_id=actor.id,
+        actor_role=actor.role,
+        entity_type="supplier",
+        entity_id=str(supplier.id),
+        after={"name": name, "country": body.country},
+        ip=client_ip(request),
+    )
+    db.commit()
+    return supplier
 
 
 @router.get("/buyers", response_model=list[BuyerOut], dependencies=[Depends(require(Perm.MASTER_DATA_READ))])
-def list_buyers() -> list[BuyerOut]:
-    not_implemented(M)
+def list_buyers(db: Session = Depends(get_db)) -> list[Buyer]:
+    return list(db.scalars(select(Buyer).order_by(Buyer.name)))
 
 
 @router.get("/machines", response_model=list[MachineOut], dependencies=[Depends(require(Perm.MASTER_DATA_READ))])
-def list_machines() -> list[MachineOut]:
-    not_implemented(M)
+def list_machines(db: Session = Depends(get_db)) -> list[Machine]:
+    return list(db.scalars(select(Machine).order_by(Machine.code)))
 
 
 @router.get(
     "/rule-profiles", response_model=list[RuleProfileSummary], dependencies=[Depends(require(Perm.PROFILES_READ))]
 )
-def list_rule_profiles(buyer_id: uuid.UUID | None = None) -> list[RuleProfileSummary]:
-    not_implemented(M)
+def list_rule_profiles(buyer_id: uuid.UUID | None = None, db: Session = Depends(get_db)) -> list[RuleProfileSummary]:
+    q = select(RuleProfileRow).where(RuleProfileRow.status == "active").order_by(RuleProfileRow.name)
+    if buyer_id:
+        q = q.where((RuleProfileRow.buyer_id == buyer_id) | RuleProfileRow.buyer_id.is_(None))
+    return [_profile_summary(r) for r in db.scalars(q)]
 
 
+# ------------------------------------------------------------------------------------------- lots
 @router.get("/lots", response_model=list[LotOut], dependencies=[Depends(require(Perm.LOTS_READ))])
-def list_lots() -> list[LotOut]:
-    not_implemented(M)
+def list_lots(db: Session = Depends(get_db)) -> list[LotOut]:
+    lots = db.scalars(select(Lot).order_by(Lot.created_at.desc()).limit(200))
+    return [_lot_out(db, lot) for lot in lots]
 
 
-@router.post(
-    "/lots",
-    response_model=LotOut,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require(Perm.LOTS_WRITE))],
-)
-def create_lot(body: LotCreate) -> LotOut:
-    not_implemented(M)
+@router.post("/lots", response_model=LotOut, status_code=status.HTTP_201_CREATED)
+def create_lot(
+    body: LotCreate,
+    request: Request,
+    actor: User = Depends(require(Perm.LOTS_WRITE)),
+    db: Session = Depends(get_db),
+) -> LotOut:
+    try:
+        lot = svc.create_lot(db, svc.NewLot(**body.model_dump()), actor, ip=client_ip(request))
+    except svc.ReceivingError as exc:
+        raise _fail(exc) from exc
+    db.commit()
+    return _lot_out(db, lot)
 
 
 @router.get("/lots/{lot_id}", response_model=LotOut, dependencies=[Depends(require(Perm.LOTS_READ))])
-def get_lot(lot_id: uuid.UUID) -> LotOut:
-    not_implemented(M)
+def get_lot(lot_id: uuid.UUID, db: Session = Depends(get_db)) -> LotOut:
+    return _lot_out(db, _get_lot(db, lot_id))
 
 
-@router.post(
-    "/lots/{lot_id}/rolls",
-    response_model=list[RollOut],
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require(Perm.ROLLS_WRITE))],
-)
-def add_rolls(lot_id: uuid.UUID, body: RollsBulkCreate) -> list[RollOut]:
-    not_implemented(M)
+@router.post("/lots/{lot_id}/rolls", response_model=list[RollOut], status_code=status.HTTP_201_CREATED)
+def add_rolls(
+    lot_id: uuid.UUID,
+    body: RollsBulkCreate,
+    request: Request,
+    actor: User = Depends(require(Perm.ROLLS_WRITE)),
+    db: Session = Depends(get_db),
+) -> list[Roll]:
+    lot = _get_lot(db, lot_id)
+    try:
+        rolls = svc.add_rolls(
+            db, lot, [svc.NewRoll(**r.model_dump()) for r in body.rolls], actor, ip=client_ip(request)
+        )
+    except svc.ReceivingError as exc:
+        raise _fail(exc) from exc
+    db.commit()
+    return rolls
 
 
 @router.get(
@@ -100,40 +219,74 @@ def add_rolls(lot_id: uuid.UUID, body: RollsBulkCreate) -> list[RollOut]:
     response_model=SamplingSuggestionOut,
     dependencies=[Depends(require(Perm.LOTS_READ))],
 )
-def sampling_suggestion(lot_id: uuid.UUID) -> SamplingSuggestionOut:
-    not_implemented(M)
+def sampling_suggestion(lot_id: uuid.UUID, db: Session = Depends(get_db)) -> SamplingSuggestionOut:
+    s = svc.sampling_suggestion(db, _get_lot(db, lot_id))
+    return SamplingSuggestionOut(
+        total_rolls=s.total_rolls,
+        registered_rolls=s.registered_rolls,
+        suggested_count=s.suggested_count,
+        sampling_pct=s.sampling_pct,
+        basis="profile",
+        mill_recent_fail_rate=s.mill_recent_fail_rate,
+        mill_recent_rolls=s.mill_recent_rolls,
+    )
 
 
-@router.get(
-    "/lots/{lot_id}/labels.pdf",
-    response_class=Response,
-    responses=PDF,
-    dependencies=[Depends(require(Perm.LABELS_PRINT))],
-)
-def lot_labels_pdf(lot_id: uuid.UUID) -> Response:
-    not_implemented(M)
+@router.get("/lots/{lot_id}/labels.pdf", response_class=Response, responses=PDF)
+def lot_labels_pdf(
+    lot_id: uuid.UUID,
+    request: Request,
+    actor: User = Depends(require(Perm.LABELS_PRINT)),
+    db: Session = Depends(get_db),
+) -> Response:
+    lot = _get_lot(db, lot_id)
+    rolls = list(db.scalars(select(Roll).where(Roll.lot_id == lot.id).order_by(Roll.roll_code)))
+    if not rolls:
+        raise HTTPException(status.HTTP_409_CONFLICT, "this lot has no rolls yet")
+    content = build_labels_pdf(_labels(db, rolls))
+    svc.mark_labels_printed(db, rolls, actor, ip=client_ip(request))
+    db.commit()
+    return _pdf(content, f"labels-{lot.challan_no}.pdf")
 
 
+# ------------------------------------------------------------------------------------------- rolls
 @router.get("/rolls", response_model=list[RollOut], dependencies=[Depends(require(Perm.ROLLS_READ))])
-def list_rolls(lot_id: uuid.UUID | None = None, status_filter: str | None = None) -> list[RollOut]:
-    not_implemented(M)
+def list_rolls(
+    lot_id: uuid.UUID | None = None, status_filter: str | None = None, db: Session = Depends(get_db)
+) -> list[Roll]:
+    q = select(Roll).order_by(Roll.roll_code).limit(1000)
+    if lot_id:
+        q = q.where(Roll.lot_id == lot_id)
+    if status_filter:
+        q = q.where(Roll.status == status_filter)
+    return list(db.scalars(q))
 
 
 @router.get("/rolls/by-code/{roll_code}", response_model=RollOut, dependencies=[Depends(require(Perm.ROLLS_READ))])
-def roll_by_code(roll_code: str) -> RollOut:
-    not_implemented(M)
+def roll_by_code(roll_code: str, db: Session = Depends(get_db)) -> Roll:
+    roll = db.scalar(select(Roll).where(Roll.roll_code == roll_code.strip().upper()))
+    if roll is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no roll with this code")
+    return roll
 
 
 @router.get("/rolls/{roll_id}", response_model=RollOut, dependencies=[Depends(require(Perm.ROLLS_READ))])
-def get_roll(roll_id: uuid.UUID) -> RollOut:
-    not_implemented(M)
+def get_roll(roll_id: uuid.UUID, db: Session = Depends(get_db)) -> Roll:
+    roll = db.get(Roll, roll_id)
+    if roll is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "roll not found")
+    return roll
 
 
-@router.get(
-    "/rolls/{roll_id}/label.pdf",
-    response_class=Response,
-    responses=PDF,
-    dependencies=[Depends(require(Perm.LABELS_PRINT))],
-)
-def roll_label_pdf(roll_id: uuid.UUID) -> Response:
-    not_implemented(M)
+@router.get("/rolls/{roll_id}/label.pdf", response_class=Response, responses=PDF)
+def roll_label_pdf(
+    roll_id: uuid.UUID,
+    request: Request,
+    actor: User = Depends(require(Perm.LABELS_PRINT)),
+    db: Session = Depends(get_db),
+) -> Response:
+    roll = get_roll(roll_id, db)
+    content = build_labels_pdf(_labels(db, [roll]))
+    svc.mark_labels_printed(db, [roll], actor, ip=client_ip(request))
+    db.commit()
+    return _pdf(content, f"label-{roll.roll_code}.pdf")

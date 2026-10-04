@@ -1227,6 +1227,8 @@ export interface components {
             status: string;
             /** Lot Verdict */
             lot_verdict: ("PENDING_SAMPLE" | "ACCEPT" | "HOLD_INSPECT_ALL" | "ACCEPT_WITH_REJECTS" | "REJECT") | null;
+            /** Rolls Registered */
+            rolls_registered: number;
             /** Is Sample Data */
             is_sample_data: boolean;
             /**
@@ -1505,6 +1507,8 @@ export interface components {
         SamplingSuggestionOut: {
             /** Total Rolls */
             total_rolls: number;
+            /** Registered Rolls */
+            registered_rolls: number;
             /** Suggested Count */
             suggested_count: number;
             /** Sampling Pct */
@@ -2063,15 +2067,6 @@ export interface operations {
                     "application/json": components["schemas"]["SupplierOut"][];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     create_supplier_api_v1_suppliers_post: {
@@ -2105,15 +2100,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     list_buyers_api_v1_buyers_get: {
@@ -2134,15 +2120,6 @@ export interface operations {
                     "application/json": components["schemas"]["BuyerOut"][];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     list_machines_api_v1_machines_get: {
@@ -2161,15 +2138,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MachineOut"][];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2203,15 +2171,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     list_lots_api_v1_lots_get: {
@@ -2230,15 +2189,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LotOut"][];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2274,15 +2224,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     get_lot_api_v1_lots__lot_id__get: {
@@ -2312,15 +2253,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2358,15 +2290,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     sampling_suggestion_api_v1_lots__lot_id__sampling_suggestion_get: {
@@ -2398,15 +2321,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     lot_labels_pdf_api_v1_lots__lot_id__labels_pdf_get: {
@@ -2436,15 +2350,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2479,15 +2384,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     roll_by_code_api_v1_rolls_by_code__roll_code__get: {
@@ -2517,15 +2413,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2559,15 +2446,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     roll_label_pdf_api_v1_rolls__roll_id__label_pdf_get: {
@@ -2597,15 +2475,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };

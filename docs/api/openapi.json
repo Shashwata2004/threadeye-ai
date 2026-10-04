@@ -465,16 +465,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
           }
         }
       },
@@ -501,16 +491,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SupplierOut"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -549,16 +529,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
           }
         }
       }
@@ -581,16 +551,6 @@
                   },
                   "type": "array",
                   "title": "Response List Machines Api V1 Machines Get"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -639,16 +599,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -683,16 +633,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
           }
         }
       },
@@ -719,16 +659,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LotOut"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -772,16 +702,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LotOut"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -843,16 +763,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -896,16 +806,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -943,16 +843,6 @@
             "description": "PDF document",
             "content": {
               "application/pdf": {}
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
             }
           },
           "422": {
@@ -1025,16 +915,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1073,16 +953,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RollOut"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1130,16 +1000,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1177,16 +1037,6 @@
             "description": "PDF document",
             "content": {
               "application/pdf": {}
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
             }
           },
           "422": {
@@ -3750,6 +3600,10 @@
             ],
             "title": "Lot Verdict"
           },
+          "rolls_registered": {
+            "type": "integer",
+            "title": "Rolls Registered"
+          },
           "is_sample_data": {
             "type": "boolean",
             "title": "Is Sample Data"
@@ -3776,6 +3630,7 @@
           "sampling_pct",
           "status",
           "lot_verdict",
+          "rolls_registered",
           "is_sample_data",
           "created_at"
         ],
@@ -4505,6 +4360,10 @@
             "type": "integer",
             "title": "Total Rolls"
           },
+          "registered_rolls": {
+            "type": "integer",
+            "title": "Registered Rolls"
+          },
           "suggested_count": {
             "type": "integer",
             "title": "Suggested Count"
@@ -4537,6 +4396,7 @@
         "type": "object",
         "required": [
           "total_rolls",
+          "registered_rolls",
           "suggested_count",
           "sampling_pct",
           "basis",

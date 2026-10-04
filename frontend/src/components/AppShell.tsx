@@ -34,6 +34,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!isLoading && me === null) router.replace("/login");
   }, [isLoading, me, router]);
 
+  // Roles without a dashboard (e.g. Store In-charge) land on their first screen instead.
+  const items = me
+    ? NAV.filter((n) => (Array.isArray(n.perm) ? n.perm : [n.perm]).some((p) => hasPerm(me, p)))
+    : [];
+  const landing = items[0]?.href;
+  useEffect(() => {
+    if (pathname === "/" && landing && landing !== "/") router.replace(landing);
+  }, [pathname, landing, router]);
+
   async function logout() {
     await api.POST("/api/v1/auth/logout");
     queryClient.clear();
@@ -43,8 +52,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (isLoading || !me) {
     return <div className="p-8 text-slate-500">{t("common.loading")}</div>;
   }
-
-  const items = NAV.filter((n) => (Array.isArray(n.perm) ? n.perm : [n.perm]).some((p) => hasPerm(me, p)));
 
   return (
     <div className="min-h-screen bg-slate-50">

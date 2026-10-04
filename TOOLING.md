@@ -6,7 +6,7 @@ AI-assisted coding is allowed and is disclosed in full. Update this file wheneve
 ## AI coding assistants
 | Tool | Model | Used for | Since |
 |---|---|---|---|
-| Claude Code, desktop app (Code tab) | Claude Opus 5.5 (`claude-opus-5-5`) | Plan mode for the build plan (`docs/PLAN.md`); M0 scaffolding (backend, frontend, Docker, CI, docs) | 2026-10-03 |
+| Claude Code, desktop app (Code tab) | Claude Opus 5.5 (`claude-opus-5-5`); the session also ran on Opus 4.7 and Opus 5 when the model was switched | Plan mode for the build plan (`docs/PLAN.md`); M0 and M1 implementation; Supabase setup | 2026-10-03 |
 
 Every prompt is recorded in [PROMPTS.md](PROMPTS.md). Code produced with AI help is reviewed by a team member before merge (PR review rule, PLAN.md §10).
 

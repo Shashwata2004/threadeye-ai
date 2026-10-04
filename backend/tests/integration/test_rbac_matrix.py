@@ -63,7 +63,7 @@ def test_anonymous_gets_401_everywhere(client: TestClient) -> None:
 
 
 def test_stub_returns_501_with_planned_milestone(client: TestClient) -> None:
-    login(client, "store")
-    r = client.get("/api/v1/lots")
+    login(client, "inspector")
+    r = client.get(f"/api/v1/inspections/{uuid.uuid4()}/track")
     assert r.status_code == 501
-    assert r.json()["planned_milestone"] == "M1"
+    assert r.json()["planned_milestone"] == "M2"

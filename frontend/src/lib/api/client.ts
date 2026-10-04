@@ -25,3 +25,6 @@ export class ApiError extends Error {
 export function hasPerm(me: Me | null | undefined, perm: string): boolean {
   return !!me && me.permissions.includes(perm);
 }
+export type Lot = components["schemas"]["LotOut"];
+export type Roll = components["schemas"]["RollOut"];
+export type RollCreate = components["schemas"]["RollCreate"];

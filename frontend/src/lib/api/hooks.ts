@@ -65,3 +65,61 @@ export function useAudit(enabled = true) {
     },
   });
 }
+
+// ------------------------------------------------------------------------------------ receiving (M1)
+async function must<T>(p: Promise<{ data?: T; response: Response }>, what: string): Promise<T> {
+  const { data, response } = await p;
+  if (data === undefined) throw new ApiError(response.status, `${what} unavailable`);
+  return data;
+}
+
+export function useLots() {
+  return useQuery({ queryKey: ["lots"], queryFn: () => must(api.GET("/api/v1/lots"), "lots") });
+}
+
+export function useLot(id: string) {
+  return useQuery({
+    queryKey: ["lot", id],
+    queryFn: () => must(api.GET("/api/v1/lots/{lot_id}", { params: { path: { lot_id: id } } }), "lot"),
+  });
+}
+
+export function useLotRolls(id: string) {
+  return useQuery({
+    queryKey: ["lot-rolls", id],
+    queryFn: () => must(api.GET("/api/v1/rolls", { params: { query: { lot_id: id } } }), "rolls"),
+  });
+}
+
+export function useSampling(id: string) {
+  return useQuery({
+    queryKey: ["lot-sampling", id],
+    queryFn: () =>
+      must(api.GET("/api/v1/lots/{lot_id}/sampling-suggestion", { params: { path: { lot_id: id } } }), "sampling"),
+  });
+}
+
+export function useMasterData(enabled = true) {
+  const suppliers = useQuery({
+    queryKey: ["suppliers"],
+    enabled,
+    queryFn: () => must(api.GET("/api/v1/suppliers"), "suppliers"),
+  });
+  const buyers = useQuery({ queryKey: ["buyers"], enabled, queryFn: () => must(api.GET("/api/v1/buyers"), "buyers") });
+  const profiles = useQuery({
+    queryKey: ["rule-profiles"],
+    enabled,
+    queryFn: () => must(api.GET("/api/v1/rule-profiles"), "profiles"),
+  });
+  return { suppliers, buyers, profiles };
+}
+
+/** FastAPI error bodies: {"detail": "..."} or a validation list. */
+export function errorDetail(error: unknown): string {
+  if (error && typeof error === "object" && "detail" in error) {
+    const d = (error as { detail: unknown }).detail;
+    if (typeof d === "string") return d;
+    if (Array.isArray(d) && d[0] && typeof d[0] === "object" && "msg" in d[0]) return String(d[0].msg);
+  }
+  return "unknown error";
+}

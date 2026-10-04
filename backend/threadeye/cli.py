@@ -61,6 +61,16 @@ def _seed_demo_users(args: argparse.Namespace) -> int:
     return 0
 
 
+def _seed_sample_data(_: argparse.Namespace) -> int:
+    from threadeye.db.session import get_sessionmaker
+    from threadeye.services.receiving import seed_sample_data
+
+    with get_sessionmaker()() as db:
+        created = seed_sample_data(db)
+    print(f"sample data created: {', '.join(created) if created else 'none (already present)'}")
+    return 0
+
+
 def _run_sample(args: argparse.Namespace) -> int:
     import json as _json
 
@@ -160,6 +170,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("seed-demo-users", help="create one demo account per role (password from env)")
     p.add_argument("--sql", action="store_true", help="print the SQL instead of connecting")
     p.set_defaults(fn=_seed_demo_users)
+
+    p = sub.add_parser("seed-sample-data", help="rule profiles, a machine, fictional mills and a buyer (SAMPLE DATA)")
+    p.set_defaults(fn=_seed_sample_data)
 
     p = sub.add_parser("run-sample", help="run a simulated roll headless and score it (SIMULATED, not AI)")
     p.add_argument("directory")
