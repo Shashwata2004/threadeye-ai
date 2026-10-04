@@ -68,7 +68,7 @@ test-frontend: ## frontend checks (i18n parity, lint, typecheck)
 test: test-backend test-frontend ## all tests
 
 lint: ## static checks (ruff, mypy strict, import contracts, eslint, tsc, i18n)
-	cd backend && $(RUFF) check . && $(RUFF) format --check . && $(MYPY) threadeye && $(LINT_IMPORTS)
+	cd backend && $(RUFF) check --no-cache . && $(RUFF) format --no-cache --check . && $(MYPY) threadeye && $(LINT_IMPORTS) --no-cache
 	cd frontend && $(PNPM) check
 
 openapi: ## regenerate docs/api/openapi.json and the frontend TS types from the backend

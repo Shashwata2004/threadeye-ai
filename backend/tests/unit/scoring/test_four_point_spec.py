@@ -27,14 +27,13 @@ from __future__ import annotations
 import pytest
 
 four_point = pytest.importorskip("threadeye.core.scoring.four_point", reason="4-point engine lands in M1 (owner D)")
+from tests.conftest import MICRO_ROLL, SAMPLE_ROLL  # noqa: E402
+from threadeye.core.scoring import verdict  # noqa: E402
 from threadeye.core.scoring.profile import (  # noqa: E402
     RuleProfile,
     default_profile,
     simulator_parity_profile,
 )
-
-from tests.conftest import MICRO_ROLL, SAMPLE_ROLL  # noqa: E402
-from threadeye.core.scoring import verdict  # noqa: E402
 
 D = four_point.ScorableDefect
 G = four_point.RollGeometry
