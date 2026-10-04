@@ -31,7 +31,7 @@
     "invalid": "Wrong username or password.",
     "locked": "Too many failed attempts. Try again in a few minutes.",
     "error": "Could not reach the server.",
-    "demoHint": "Demo accounts: inspector, supervisor, store, cutting, merchandiser, management, admin (password in .env)."
+    "demoHint": "Demo accounts: inspector, supervisor, store, cutting, merchandiser, management, admin. Password: THREADEYE_DEMO_PASSWORD in .env (local) or .env.cloud (Supabase)."
   },
   "dashboard": {
     "title": "Today at a glance",

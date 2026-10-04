@@ -31,7 +31,7 @@
     "invalid": "ইউজারনেম বা পাসওয়ার্ড ভুল।",
     "locked": "অনেকবার ভুল হয়েছে। কয়েক মিনিট পরে আবার চেষ্টা করুন।",
     "error": "সার্ভারে পৌঁছানো যাচ্ছে না।",
-    "demoHint": "ডেমো অ্যাকাউন্ট: inspector, supervisor, store, cutting, merchandiser, management, admin (পাসওয়ার্ড .env ফাইলে)।"
+    "demoHint": "ডেমো অ্যাকাউন্ট: inspector, supervisor, store, cutting, merchandiser, management, admin। পাসওয়ার্ড: THREADEYE_DEMO_PASSWORD — লোকালে .env ফাইলে, Supabase-এ .env.cloud ফাইলে।"
   },
   "dashboard": {
     "title": "আজ এক নজরে",
