@@ -61,6 +61,67 @@ def _seed_demo_users(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_sample(args: argparse.Namespace) -> int:
+    import json as _json
+
+    from threadeye.core.scoring.profile import default_profile, simulator_parity_profile
+    from threadeye.services.benchmark import run_roll
+
+    profile = simulator_parity_profile() if args.profile == "parity" else default_profile()
+    run = run_roll(args.directory, preset=args.preset, profile=profile, use_video=args.video)
+    s, e, ev = run.score, run.expected, run.evaluation
+    if args.json:
+        print(
+            _json.dumps(
+                {
+                    "dataset": run.dataset,
+                    "provider": run.provider_label,
+                    "simulated": True,
+                    "preset": dict(run.preset),
+                    "profile": run.profile_name,
+                    "frames": run.frames,
+                    "frames_sampled": run.frames_sampled,
+                    "coverage_pct": run.coverage_pct,
+                    "score": {"points": s.total_points, "per_100": round(s.per_100, 2), "verdict": s.verdict},
+                    "expected": e,
+                    "matches_expected": run.matches_expected,
+                    "evaluation": ev.as_dict(),
+                    "defects": run.defects,
+                },
+                indent=2,
+            )
+        )
+    else:
+        print(
+            f"SIMULATED DETECTIONS ({run.provider_label}, not AI) · dataset {run.dataset} · profile {run.profile_name}"
+        )
+        print(
+            f"frames {run.frames}, sampled {run.frames_sampled} "
+            f"({run.frames_sampled / max(run.frames, 1):.1%}), roll coverage {run.coverage_pct}%"
+        )
+        print(f"\n{'defect':<7}{'kind':<14}{'class':<14}{'yd':>8}{'len in':>8}{'pts':>5}  explanation")
+        for d in run.defects:
+            kind = d["nondefect_category"] or "defect"
+            print(
+                f"{d['defect_no']:<7}{kind:<14}{d['current_cls']:<14}{d['center_yd']:>8.3f}"
+                f"{d['length_in']:>8.2f}{d['points'] or 0:>5}  {d['explanation']}"
+            )
+        print("\nper yard: " + ", ".join(f"yd{c}={p}" for c, p in s.cells.items()))
+        for line in s.explanation[-1:]:
+            print(line)
+        print(
+            f"expected (roll_meta): {e['total_points']} points, {e['points_per_100_sq_yd']} → {e['verdict']}"
+            f"   {'MATCH' if run.matches_expected else 'MISMATCH'}"
+        )
+        print(
+            f"detection vs answer key: precision {ev.precision:.2f}, recall {ev.recall:.2f}, F1 {ev.f1:.2f}, "
+            f"FP {ev.fp} {ev.fp_by_type or ''}, missed {ev.missed or 'none'}"
+        )
+        if ev.nondefects_ignored:
+            print(f"non-defects shown but not scored: {ev.nondefects_ignored}")
+    return 1 if args.expect and not run.matches_expected else 0
+
+
 def _cloud_check(_: argparse.Namespace) -> int:
     from threadeye.db.cloud_check import run_cloud_check
 
@@ -99,6 +160,15 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("seed-demo-users", help="create one demo account per role (password from env)")
     p.add_argument("--sql", action="store_true", help="print the SQL instead of connecting")
     p.set_defaults(fn=_seed_demo_users)
+
+    p = sub.add_parser("run-sample", help="run a simulated roll headless and score it (SIMULATED, not AI)")
+    p.add_argument("directory")
+    p.add_argument("--preset", choices=["perfect", "realistic"], default="perfect")
+    p.add_argument("--profile", choices=["parity", "default"], default="parity")
+    p.add_argument("--video", action="store_true", help="decode roll_video.mp4 (needs the vision extra)")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--expect", action="store_true", help="exit 1 unless the score equals roll_meta.expected_score")
+    p.set_defaults(fn=_run_sample)
 
     p = sub.add_parser("cloud-check", help="verify a cloud database: schema, guards, audit chain")
     p.set_defaults(fn=_cloud_check)

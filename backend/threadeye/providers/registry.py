@@ -32,9 +32,9 @@ REGISTRY: Mapping[str, ProviderSpec] = {
         "Simulated detector (answer key, not AI)",
         "simulated",
         True,
-        "planned",
+        "available",
         "M1",
-        "Interface in place; detection logic lands in M1.",
+        "Reads the simulator's answer key; imperfections are configurable. Not AI.",
         SimulatedDetector,
     ),
     "local_model": ProviderSpec(

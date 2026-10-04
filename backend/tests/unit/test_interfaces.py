@@ -45,7 +45,7 @@ def test_simulated_provider_is_labelled_and_honest() -> None:
     assert "not AI" in info.display_name
     assert info.label.startswith("simulated@")
     assert p.config["miss_rate"] == 0.2 and p.config["jitter_px"] == 0.0
-    with pytest.raises(NotImplementedError):  # M1
+    with pytest.raises(ProviderNotConfigured):  # needs prepare() and the answer key
         p.detect(FramePacket(pos()))
 
 
