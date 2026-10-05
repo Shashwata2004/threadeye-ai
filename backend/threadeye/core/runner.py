@@ -7,23 +7,30 @@ the events it produced. The same call serves all three clocks:
 - headless runs (tests, verification, benchmark): ``run_to_end()``
 - server-clocked webcams (later): the worker calls it as frames arrive
 
+Inspector decisions (confirm, reject, change type, promote a non-defect, edit length, add a missed
+defect) go through ``decide()`` and also return events.
+
 Pure: no database, no web framework. The caller persists the events (with their idempotency keys)
 and the defect projections in one transaction, which is what makes a resume after a power cut safe.
+``restore()`` rebuilds a runner from its stored events: detections are replayed (the detector is not
+called again, so this also works for image-based detectors), then the inspector's decisions.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
 from threadeye.core.dedupe import DedupeConfig, Deduper, DefectTrack, Sighting
 from threadeye.core.frames import FramePosition, FrameSource, SourceInfo
-from threadeye.core.geometry import INCH_CM, view_to_roll
+from threadeye.core.geometry import INCH_CM, YARD_CM, RollBox, view_to_roll
 from threadeye.core.geometry import truncation as truncation_of
 from threadeye.core.nondefect import NonDefectFilter, NonDefectVerdict
 from threadeye.core.providers import DetectorProvider
 from threadeye.core.sampling import SamplingConfig, SamplingPlan, coverage, plan
 from threadeye.core.scoring.four_point import (
+    DefectScore,
     RollGeometry,
     ScorableDefect,
     ScoreResult,
@@ -32,6 +39,12 @@ from threadeye.core.scoring.four_point import (
 )
 from threadeye.core.scoring.profile import RuleProfile
 from threadeye.core.taxonomy import Taxonomy, load_default_taxonomy
+
+DECISION_ACTIONS = ("confirm", "reject", "reclassify", "promote", "length", "manual", "reopen")
+
+
+class DecisionError(ValueError):
+    """The decision does not apply to this defect (e.g. confirming a non-defect)."""
 
 
 @dataclass(frozen=True)
@@ -53,6 +66,28 @@ class RunnerEvent:
 class DefectState:
     status: str = "pending"
     reclassified_to: str | None = None
+    length_override_in: float | None = None
+    promoted: bool = False
+    reject_reason: str | None = None
+
+
+@dataclass(frozen=True)
+class ManualDefect:
+    """A defect the detector missed, added by the inspector at the current yard."""
+
+    defect_no: str
+    cls: str
+    center_yd: float
+    across_cm: float
+    length_in: float
+    frame: int
+    note: str | None = None
+
+    @property
+    def box(self) -> RollBox:
+        half = self.length_in * INCH_CM / 2
+        along = self.center_yd * YARD_CM
+        return RollBox(max(0.0, along - half), along + half, max(0.0, self.across_cm - half), self.across_cm + half)
 
 
 @dataclass
@@ -63,6 +98,10 @@ class _Progress:
     yards_inspected: float = 0.0
     last_state: str | None = None
     sampled_positions: list[FramePosition] = field(default_factory=list)
+
+
+KeyFn = Callable[[str, str], str]
+"""(event type, defect number or "") → idempotency key."""
 
 
 class Runner:
@@ -98,8 +137,12 @@ class Runner:
         band_cm = (calib.selvage_band_px or 0.0) / calib.px_per_cm
         self.filter = NonDefectFilter(self.taxonomy, calib.fabric_width_cm, band_cm)
         self.states: dict[int, DefectState] = {}
+        self.manual: list[ManualDefect] = []
+        self.manual_states: dict[str, DefectState] = {}
         self.checkpoint = -1
         self._progress = _Progress()
+        self._emitted: dict[str, dict[str, Any]] = {}
+        """Last defect view sent per defect: only changes are emitted as events."""
 
     # ------------------------------------------------------------------------------------ helpers
     def _key(self, frame: int, kind: str, suffix: str = "") -> str:
@@ -111,6 +154,15 @@ class Runner:
     def _verdict(self, track: DefectTrack) -> NonDefectVerdict:
         return self.filter.classify(track)
 
+    def _track(self, defect_no: str) -> DefectTrack | None:
+        return next((t for t in self.deduper.tracks if t.defect_no == defect_no), None)
+
+    def _manual(self, defect_no: str) -> ManualDefect | None:
+        return next((m for m in self.manual if m.defect_no == defect_no), None)
+
+    def defect_numbers(self) -> list[str]:
+        return [t.defect_no for t in self.deduper.tracks] + [m.defect_no for m in self.manual]
+
     def defect_view(self, track: DefectTrack, points: int | None = None) -> dict[str, Any]:
         """The defect projection: what the UI, reports and the database store."""
         verdict = self._verdict(track)
@@ -118,36 +170,95 @@ class Runner:
         box = track.box
         predicted = self.taxonomy.resolve(track.sightings[0].cls)
         current = state.reclassified_to or self.taxonomy.resolve(track.cls)
+        is_nondefect = bool(verdict.category) and not state.promoted
         best = track.best_sighting
+        length = state.length_override_in or box.length_in
         return {
             "defect_no": track.defect_no,
             "origin": "detector",
             "predicted_cls": predicted,
             "current_cls": current,
-            "kind": "nondefect" if verdict.category else "defect",
-            "nondefect_category": verdict.category,
+            "kind": "nondefect" if is_nondefect else "defect",
+            "nondefect_category": verdict.category if is_nondefect else None,
             "uncertain": verdict.uncertain,
             "status": state.status,
+            "reject_reason": state.reject_reason,
             "start_yd": round(box.start_yd, 4),
             "end_yd": round(box.end_yd, 4),
             "center_yd": round(box.center_yd, 4),
             "across_start_cm": round(box.across_start_cm, 2),
             "across_end_cm": round(box.across_end_cm, 2),
-            "length_in": round(box.length_in, 3),
-            "length_source": "pixels",
+            "length_in": round(length, 3),
+            "length_source": "inspector" if state.length_override_in else "pixels",
             "is_running": track.is_running,
             "sightings": len(track.sightings),
             "first_frame": track.first_frame,
             "last_frame": track.last_frame,
             "best_frame": best.frame,
-            "explanation": verdict.explanation if verdict.category else track.explanation,
+            "best_bbox_px": [round(v, 1) for v in best.view_box] if best.view_box else None,
+            "explanation": verdict.explanation if is_nondefect else track.explanation,
             "points": points,
             "provider": self.provider.info.label,
         }
 
+    def manual_view(self, m: ManualDefect, points: int | None = None) -> dict[str, Any]:
+        state = self.manual_states.get(m.defect_no, DefectState(status="confirmed"))
+        box = m.box
+        note = f": {m.note}" if m.note else ""
+        return {
+            "defect_no": m.defect_no,
+            "origin": "manual",
+            "predicted_cls": m.cls,
+            "current_cls": state.reclassified_to or m.cls,
+            "kind": "defect",
+            "nondefect_category": None,
+            "uncertain": None,
+            "status": state.status,
+            "reject_reason": state.reject_reason,
+            "start_yd": round(box.start_yd, 4),
+            "end_yd": round(box.end_yd, 4),
+            "center_yd": round(m.center_yd, 4),
+            "across_start_cm": round(box.across_start_cm, 2),
+            "across_end_cm": round(box.across_end_cm, 2),
+            "length_in": round(state.length_override_in or m.length_in, 3),
+            "length_source": "inspector",
+            "is_running": False,
+            "sightings": 0,
+            "first_frame": m.frame,
+            "last_frame": m.frame,
+            "best_frame": m.frame,
+            "best_bbox_px": None,
+            "explanation": f"Added by the inspector (missed by the detector){note}",
+            "points": points,
+            "provider": "inspector",
+        }
+
     # ------------------------------------------------------------------------------------ main loop
+    def _ingest(self, pos: FramePosition, det: Mapping[str, Any], scale: float) -> tuple[DefectTrack, bool]:
+        """Map one detection (view pixels of frame ``pos``) into the roll and de-duplicate it."""
+        calib = self.calibration
+        bbox = tuple(float(v) for v in det["bbox_px"])
+        roll_box = view_to_roll(bbox, pos, calib, scale)  # type: ignore[arg-type]
+        view_box = tuple(v / scale for v in bbox)
+        trunc = truncation_of(view_box, calib)  # type: ignore[arg-type]
+        cy = (view_box[1] + view_box[3]) / 2
+        return self.deduper.add(
+            Sighting(
+                frame=pos.frame,
+                box=roll_box,
+                cls=str(det["cls"]),
+                confidence=det.get("confidence"),
+                explanation=str(det["explanation"]),
+                truncated=trunc,
+                hand_visible=bool(pos.hand_visible),
+                centrality_px=abs(cy - calib.view_height_px / 2),
+                view_box=view_box,  # type: ignore[arg-type]
+            )
+        )
+
     def advance(self, until_frame: int) -> list[RunnerEvent]:
         """Process frames (checkpoint, until_frame]. Idempotent: re-processing returns no events."""
+        until_frame = min(until_frame, len(self.track) - 1)
         if until_frame <= self.checkpoint:
             return []
         events: list[RunnerEvent] = []
@@ -155,8 +266,7 @@ class Runner:
         def needs_image(p: FramePosition) -> bool:
             return self.provider.info.requires_image and p.frame in self._sample_frames
 
-        changed: dict[int, DefectTrack] = {}
-        calib = self.calibration
+        created: set[str] = set()
         progress = self._progress
 
         for packet in self.source.read(self.checkpoint + 1, until_frame + 1, needs_image):
@@ -190,33 +300,18 @@ class Runner:
                 scale = packet.image.scale if packet.image else 1.0
                 mapped = []
                 for det in result.detections:
-                    roll_box = view_to_roll(det.bbox_px, pos, calib, scale)
-                    view_box = tuple(v / scale for v in det.bbox_px)
-                    trunc = truncation_of(view_box, calib)  # type: ignore[arg-type]
-                    cy = (view_box[1] + view_box[3]) / 2
-                    track, _created = self.deduper.add(
-                        Sighting(
-                            frame=pos.frame,
-                            box=roll_box,
-                            cls=det.cls,
-                            confidence=det.confidence,
-                            explanation=det.explanation,
-                            truncated=trunc,
-                            hand_visible=bool(pos.hand_visible),
-                            centrality_px=abs(cy - calib.view_height_px / 2),
-                        )
-                    )
-                    changed[track.track_no] = track
-                    mapped.append(
-                        {
-                            "cls": det.cls,
-                            "confidence": det.confidence,
-                            "explanation": det.explanation,
-                            "bbox_px": [round(v, 1) for v in det.bbox_px],
-                            "truncated": trunc,
-                            "defect_no": track.defect_no,
-                        }
-                    )
+                    raw = {
+                        "cls": det.cls,
+                        "confidence": det.confidence,
+                        "explanation": det.explanation,
+                        "bbox_px": [round(v, 1) for v in det.bbox_px],
+                    }
+                    track, is_new = self._ingest(pos, raw, scale)
+                    if is_new:
+                        created.add(track.defect_no)
+                    raw["truncated"] = track.sightings[-1].truncated
+                    raw["defect_no"] = track.defect_no
+                    mapped.append(raw)
                 progress.detections += len(mapped)
                 events.append(
                     self._event(
@@ -227,24 +322,18 @@ class Runner:
                             "provider": result.provider.label,
                             "latency_ms": round(result.latency_ms, 2),
                             "error": result.error,
+                            "image_scale": scale,
                             "detections": mapped,
                         },
                     )
                 )
             self.checkpoint = pos.frame
 
-        if changed:
-            score = self.score(final=False)
-            for track in sorted(changed.values(), key=lambda t: t.track_no):
-                pts = score.defects[track.defect_no].points if score else None
-                events.append(
-                    self._event(
-                        self.checkpoint,
-                        "defect.upserted",
-                        {"defect": self.defect_view(track, pts), "change": "detected"},
-                        suffix=track.defect_no,
-                    )
-                )
+        frame = self.checkpoint
+        events += self._sync(
+            lambda type_, no: self._key(frame, type_, no),
+            lambda no: "detected" if no in created else "updated",
+        )
         if self.checkpoint >= 0:
             events.append(self._event(self.checkpoint, "score.updated", self.score_payload()))
         return events
@@ -252,43 +341,209 @@ class Runner:
     def run_to_end(self) -> list[RunnerEvent]:
         return self.advance(len(self.track) - 1)
 
-    # ------------------------------------------------------------------------------------ status
+    @property
+    def finished(self) -> bool:
+        return self.checkpoint >= len(self.track) - 1
+
+    # ------------------------------------------------------------------------------------ decisions
+    def decide(self, defect_no: str | None, decision: Mapping[str, Any], key: KeyFn) -> list[RunnerEvent]:
+        """Apply one inspector decision and return the events it causes.
+
+        ``decision["action"]`` is one of ``DECISION_ACTIONS``. The target defect's event carries the
+        decision, which is how ``restore()`` replays it.
+        """
+        if decision["action"] == "manual" and "frame" not in decision:
+            # Pin the frame in the stored decision so a replay rebuilds the same defect.
+            decision = {**decision, "frame": max(self.checkpoint, 0)}
+        target = self.apply_decision(defect_no, decision)
+        events = self._sync(
+            key,
+            lambda no: decision["action"] if no == target else "rescored",
+            decision_for=(target, dict(decision)),
+            always=(target,),
+        )
+        return [*events, RunnerEvent("score.updated", self.score_payload(), key("score.updated", ""))]
+
+    def apply_decision(self, defect_no: str | None, decision: Mapping[str, Any], *, strict: bool = True) -> str:
+        """Change the state of a defect. Returns the defect number it applied to."""
+        action = decision["action"]
+        if action not in DECISION_ACTIONS:
+            raise DecisionError(f"unknown action {action!r}")
+        if action == "manual":
+            cls = self._defect_class(decision["cls"])
+            number = defect_no or f"M-{len(self.manual) + 1:02d}"
+            self.manual.append(
+                ManualDefect(
+                    defect_no=number,
+                    cls=cls,
+                    center_yd=float(decision["center_yd"]),
+                    across_cm=float(
+                        decision["across_cm"] if decision.get("across_cm") is not None else self._mid_across()
+                    ),
+                    length_in=float(decision["length_in"]),
+                    frame=int(decision.get("frame", max(self.checkpoint, 0))),
+                    note=decision.get("note"),
+                )
+            )
+            self.manual_states[number] = DefectState(status="confirmed")
+            return number
+
+        if defect_no is None:
+            raise DecisionError("a defect number is required")
+        track = self._track(defect_no)
+        manual = self._manual(defect_no)
+        if track is None and manual is None:
+            raise KeyError(defect_no)
+        if track is not None:
+            state = self.states.setdefault(track.track_no, DefectState())
+            is_nondefect = bool(self._verdict(track).category) and not state.promoted
+        else:
+            state = self.manual_states.setdefault(defect_no, DefectState(status="confirmed"))
+            is_nondefect = False
+
+        if strict and is_nondefect and action not in {"promote", "reopen"}:
+            raise DecisionError("this is a non-defect: promote it to a defect first")
+        if action == "confirm":
+            state.status, state.reject_reason = "confirmed", None
+        elif action == "reject":
+            state.status, state.reject_reason = "rejected", decision.get("reason_category") or "other"
+        elif action == "reclassify":
+            state.reclassified_to = self._defect_class(decision["to_cls"])
+            state.status, state.reject_reason = "confirmed", None
+        elif action == "promote":
+            if strict and not is_nondefect:
+                raise DecisionError("only non-defects can be promoted")
+            state.promoted = True
+            to_cls = decision.get("to_cls")
+            current = state.reclassified_to or (self.taxonomy.resolve(track.cls) if track else "other_defect")
+            if to_cls:
+                state.reclassified_to = self._defect_class(to_cls)
+            elif self.taxonomy.is_nondefect(current):
+                state.reclassified_to = "other_defect"
+            state.status, state.reject_reason = "confirmed", None
+        elif action == "length":
+            state.length_override_in = float(decision["length_in"])
+        elif action == "reopen":
+            state.status, state.reject_reason = "pending", None
+        return defect_no
+
+    def _defect_class(self, cls: str) -> str:
+        resolved = self.taxonomy.resolve(str(cls))
+        dc = self.taxonomy.classes.get(resolved)
+        if dc is None or dc.kind != "defect":
+            raise DecisionError(f"{cls!r} is not a defect class")
+        return resolved
+
+    def _mid_across(self) -> float:
+        return self.calibration.fabric_width_cm / 2
+
     def set_status(self, defect_no: str, status: str, reclassify_to: str | None = None) -> None:
         if status not in {"pending", "confirmed", "rejected"}:
             raise ValueError(f"bad status {status!r}")
-        for t in self.deduper.tracks:
-            if t.defect_no == defect_no:
-                self.states[t.track_no] = DefectState(status, reclassify_to)
-                return
-        raise KeyError(defect_no)
+        action = {"pending": "reopen", "confirmed": "confirm", "rejected": "reject"}[status]
+        if reclassify_to:
+            action = "reclassify"
+        self.apply_decision(defect_no, {"action": action, "to_cls": reclassify_to}, strict=False)
 
     def confirm_all(self) -> None:
         """Headless helper: accept every detector defect (tests, verification with a perfect preset)."""
         for t in self.deduper.tracks:
-            self.states.setdefault(t.track_no, DefectState()).status = "confirmed"
+            state = self.states.setdefault(t.track_no, DefectState())
+            if state.status == "pending":
+                state.status = "confirmed"
+
+    # ------------------------------------------------------------------------------------ events
+    def views(self) -> dict[str, dict[str, Any]]:
+        """Current view of every defect and non-defect, with points from the provisional score."""
+        score = self.score(final=False)
+        out: dict[str, dict[str, Any]] = {}
+        for t in self.deduper.tracks:
+            out[t.defect_no] = self._with_score(self.defect_view(t), score)
+        for m in self.manual:
+            out[m.defect_no] = self._with_score(self.manual_view(m), score)
+        return out
+
+    @staticmethod
+    def _with_score(view: dict[str, Any], score: ScoreResult | None) -> dict[str, Any]:
+        ds: DefectScore | None = score.defects.get(view["defect_no"]) if score else None
+        view["points"] = ds.points if ds and not ds.excluded_reason else None
+        view["is_continuous"] = bool(ds and ds.continuous)
+        view["excluded_reason"] = ds.excluded_reason if ds else None
+        view["points_reason"] = ds.reason if ds else None
+        return view
+
+    def _sync(
+        self,
+        key: KeyFn,
+        change: Callable[[str], str],
+        *,
+        decision_for: tuple[str, dict[str, Any]] | None = None,
+        always: tuple[str, ...] = (),
+    ) -> list[RunnerEvent]:
+        """One ``defect.upserted`` event for every defect whose view changed since it was last sent."""
+        events = []
+        for no, view in self.views().items():
+            if self._emitted.get(no) == view and no not in always:
+                continue
+            payload: dict[str, Any] = {"defect": view, "change": change(no)}
+            if decision_for and decision_for[0] == no:
+                payload["decision"] = decision_for[1]
+            events.append(RunnerEvent("defect.upserted", payload, key("defect.upserted", no)))
+            self._emitted[no] = view
+        return events
+
+    def restore(self, events: Iterable[tuple[str, Mapping[str, Any]]], checkpoint_frame: int) -> None:
+        """Rebuild state from stored events (in ``seq`` order) without calling the detector again."""
+        progress = self._progress
+        for type_, payload in events:
+            if type_ == "detection.batch":
+                pos = self.track[int(payload["frame"])]
+                scale = float(payload.get("image_scale") or 1.0)
+                for det in payload["detections"]:
+                    self._ingest(pos, det, scale)
+                    progress.detections += 1
+            elif type_ == "frame.sampled":
+                progress.frames_sampled += 1
+                progress.sampled_positions.append(self.track[int(payload["frame"])])
+            elif type_ == "defect.upserted":
+                decision = payload.get("decision")
+                if decision:
+                    self.apply_decision(payload["defect"]["defect_no"], decision, strict=False)
+                self._emitted[payload["defect"]["defect_no"]] = dict(payload["defect"])
+        self.checkpoint = min(checkpoint_frame, len(self.track) - 1)
+        if self.checkpoint >= 0:
+            seen = self.track[: self.checkpoint + 1]
+            progress.frames_processed = len(seen)
+            progress.yards_inspected = max(p.bottom_yd for p in seen)
+            progress.last_state = seen[-1].state
 
     # ------------------------------------------------------------------------------------ scoring
     @property
     def yards_inspected(self) -> float:
         return self._progress.yards_inspected
 
+    def position(self, frame: int | None = None) -> FramePosition | None:
+        f = self.checkpoint if frame is None else frame
+        return self.track[f] if 0 <= f < len(self.track) else None
+
     def scorable(self) -> list[ScorableDefect]:
         out = []
-        for t in self.deduper.tracks:
-            view = self.defect_view(t)
+        views = [self.defect_view(t) for t in self.deduper.tracks] + [self.manual_view(m) for m in self.manual]
+        boxes = [t.box for t in self.deduper.tracks] + [m.box for m in self.manual]
+        for view, box in zip(views, boxes, strict=True):
             cls = view["current_cls"]
             dc = self.taxonomy.classes.get(cls)
             out.append(
                 ScorableDefect(
-                    defect_id=t.defect_no,
+                    defect_id=view["defect_no"],
                     cls=cls,
                     is_hole=bool(dc and dc.is_hole),
-                    length_in=t.box.length_in,
-                    start_yd=t.box.start_yd,
-                    end_yd=t.box.end_yd,
-                    center_yd=t.box.center_yd,
-                    across_start_cm=t.box.across_start_cm,
-                    across_end_cm=t.box.across_end_cm,
+                    length_in=view["length_in"] if view["length_source"] == "inspector" else box.length_in,
+                    start_yd=box.start_yd,
+                    end_yd=box.end_yd,
+                    center_yd=box.center_yd,
+                    across_start_cm=box.across_start_cm,
+                    across_end_cm=box.across_end_cm,
                     status=view["status"],
                     kind=view["kind"],
                 )
@@ -321,18 +576,33 @@ class Runner:
         seen = [p for p in self.track if p.frame <= self.checkpoint]
         return coverage(sampled, seen)
 
+    def counts(self) -> dict[str, int]:
+        views = self.views().values()
+        defects = [v for v in views if v["kind"] == "defect"]
+        return {
+            "defects": len(defects),
+            "pending": sum(1 for v in defects if v["status"] == "pending"),
+            "confirmed": sum(1 for v in defects if v["status"] == "confirmed"),
+            "rejected": sum(1 for v in defects if v["status"] == "rejected"),
+        }
+
     def score_payload(self) -> dict[str, Any]:
         s = self.score(final=False)
+        final = self.score(final=True)
         p = self.profile
-        tracks = [self.defect_view(t) for t in self.deduper.tracks]
+        views = [self.defect_view(t) for t in self.deduper.tracks]
         nondefects: dict[str, int] = {}
-        for v in tracks:
+        for v in views:
             if v["nondefect_category"]:
                 nondefects[v["nondefect_category"]] = nondefects.get(v["nondefect_category"], 0) + 1
+        counts = self.counts()
         return {
             "provisional_points": s.total_points if s else 0,
             "per_100_provisional": round(s.per_100, p.per100_rounding) if s else None,
             "provisional_verdict": s.verdict if s else None,
+            "confirmed_points": final.total_points if final else 0,
+            "per_100_confirmed": round(final.per_100, p.per100_rounding) if final else None,
+            "confirmed_verdict": final.verdict if final else None,
             "cells": {str(k): v for k, v in s.cells.items()} if s else {},
             "threshold": p.threshold_per_100,
             "borderline_below": p.borderline.below,
@@ -342,7 +612,10 @@ class Runner:
             else None,
             "yards_inspected": round(self.yards_inspected, 3),
             "coverage_pct": round(self.coverage() * 100, 1),
-            "defects": sum(1 for v in tracks if v["kind"] == "defect"),
+            "defects": counts["defects"],
+            "pending": counts["pending"],
+            "confirmed": counts["confirmed"],
+            "rejected": counts["rejected"],
             "nondefects_ignored": nondefects,
         }
 

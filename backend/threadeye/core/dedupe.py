@@ -28,6 +28,8 @@ class Sighting:
     hand_visible: bool = False
     centrality_px: float = 0.0
     """Distance of the box centre from the view centre; smaller = better evidence photo."""
+    view_box: tuple[float, float, float, float] | None = None
+    """The box in view pixels of its frame (for the evidence crop)."""
 
 
 @dataclass
