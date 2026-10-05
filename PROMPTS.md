@@ -11,6 +11,7 @@ the prompt (verbatim), attachments, and what it produced.
 | 002 | 2026-10-03 | same session | Plan updates (simulator conventions, training track, core-flow rule) + "implement M0 only" | updated `docs/PLAN.md`; M0 scaffold |
 | 003 | 2026-10-03/04 | same session (models switched mid-session; see TOOLING.md) | Supabase connection, MIT licence, repo on GitHub | cloud_demo profile, `make cloud-*` |
 | 004 | 2026-10-04 | same session | "implement M1 now" | M1: engine, pipeline, receiving, labels |
+| 005 | 2026-10-05 | same session | "implement M2 now" + the M2 continuation instructions (#005) | M2: live inspection API and screen, verdict, report, golden path |
 
 ---
 
@@ -286,3 +287,25 @@ inspection event store). The simulator files were not in the repo yet, so the sa
 - Prompt (verbatim): <text>
 - Output: <files/commits/PRs>
 ```
+
+---
+
+## #005: M2 (verbatim)
+
+> implement M2 now
+
+After the sample roll and simulator arrived, the team sent:
+
+> I added the files:
+> - tools/simulator/: make_roll_video.py, sample_frames.py, evaluate.py, README.md (vendor as-is).
+> - data/sample_roll/: roll_video.mp4 (the realistic one, 1920x1044), frames.csv, ground_truth.csv, nuisance.csv, roll_meta.json, roll_preview.png, SHA256SUMS. All six come from the same simulator run; verify with `sha256sum -c SHA256SUMS` inside data/sample_roll.
+>
+> Ignore sample_aitex_roll.mp4 (old version). Keep roll_video.mp4 out of git as planned until the AITEX licence is confirmed; the CSV/JSON files and the simulator scripts can be committed.
+>
+> Now:
+> 1. Run the blocked parity test on the real sample roll and confirm 10 points / 46.45 / FAIL with the perfect preset and simulator-parity profile. If anything differs, report the exact mismatch before changing code.
+> 2. Commit the M2 backend work so far in logical commits (no push yet).
+> 3. Continue M2: live inspection screen, verdict page, Playwright golden path on the offline network, docs. Then run the M2 acceptance criteria, stop and report. Do not start M3.
+
+**Decisions taken on the way (asked and answered):** an empty `appears_frame` in `nuisance.csv` means
+"on the fabric from the start" (the simulator's own convention); `roll_preview.png` may be committed.

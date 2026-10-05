@@ -13,13 +13,19 @@ International AI Builders Congress 2026 · *Idea to Unicorn* · IndustrySphere A
 > It is **not AI**, and every screen and report says so. No metric is shown unless it is measured.
 > From M4 the team trains its own model (see [docs/PLAN.md](docs/PLAN.md) §10).
 
-**Status: M1 (headless core + receiving) complete.** See [docs/PLAN.md](docs/PLAN.md) for the full plan.
+**Status: M2 (live inspection, end to end) complete.** See [docs/PLAN.md](docs/PLAN.md) for the full plan.
 
+- **Live inspection:** scan a roll, the simulated camera plays, defect boxes move with the fabric, a yard
+  tape, speed and running/stopped state, a live points meter; the inspector confirms, rejects (with a
+  reason) or changes the type of each defect in one click or key, and can add a missed defect
+- **Verdict:** 4-point roll verdict (PASS / BORDERLINE / FAIL), supervisor decision with a reason, roll
+  map, evidence photos, report PDF in English or Bangla, labelled SIMULATED with the detector's name
+- **Power-cut safe:** every step is an append-only event; a closed browser or restarted server resumes
+  from the same yard with the same result
 - 4-point engine with buyer rule profiles (continuous defects, selvage exclusion, BORDERLINE, lot verdict)
 - Detection pipeline: travel-based sampling, roll coordinates, de-duplication, non-defect filter,
   SIMULATED detector, evaluation metrics: `threadeye run-sample <roll dir>`
 - Deliveries and rolls: register a challan, add rolls (paste from Excel), print scannable QR labels
-- Append-only inspection event store with one-transaction projections
 
 ## Quick start (edge box, works offline)
 
@@ -40,6 +46,25 @@ make test             # backend unit + integration tests (throwaway Postgres) + 
 make lint             # ruff, mypy --strict, import contracts, eslint, tsc, i18n parity
 make spike-pdf        # Bangla PDF shaping check → backend/out/spike_bangla.pdf
 make help             # all commands
+```
+
+### Inspect a roll
+
+The live screen plays the simulated sample roll as the camera. Its video is not in git (AITEX licence
+check, PLAN.md Q2): get `roll_video.mp4` from the team and put it in `data/sample_roll/`
+(`sha256sum -c SHA256SUMS` there checks it). Then:
+
+1. `store` registers a delivery and its rolls (**Deliveries & rolls**) and prints the QR labels.
+2. `inspector` opens **Inspect a roll**, scans or types the roll code, picks the simulated roll and the
+   detector preset (*realistic* makes mistakes to correct; *perfect* reproduces the answer key), and
+   presses **Start**. Keys: Space play/pause · J/K next/previous · C confirm · X not a defect · T change type.
+3. At the end of the roll: **Finish roll**, decide every pending defect, **Compute verdict**.
+4. `supervisor` records the decision on the verdict page (required for BORDERLINE). Report PDF: en/bn.
+
+Browser test of this whole flow (needs the stack running and Google Chrome):
+
+```bash
+cd frontend && E2E_BASE_URL=http://localhost:8080 E2E_DATASET=sample_roll pnpm e2e
 ```
 
 ## Running against Supabase (cloud_demo profile)
@@ -100,10 +125,10 @@ flowchart LR
 | Path | What |
 |---|---|
 | `backend/` | FastAPI API, worker, pure core (`threadeye/core`), migrations, tests |
-| `frontend/` | Next.js 16 + TypeScript, next-intl (bn/en), TanStack Query, MSW mocks |
+| `frontend/` | Next.js 16 + TypeScript, next-intl (bn/en), TanStack Query, MSW mocks, Playwright golden path (`e2e/`) |
 | `docs/` | Plan, API contract (`docs/api/openapi.json`), ADRs, ethics, realtime, data contracts |
-| `tools/simulator/` | Roll simulator (arrives from the team; vendored as-is) |
-| `data/sample_roll/` | Simulated sample roll (video committed only after the licence check) |
+| `tools/simulator/` | The team's roll simulator, vendored as-is |
+| `data/sample_roll/` | Simulated sample roll (CSV/JSON in git; the video only after the licence check) |
 | `infra/` | Caddy proxy config |
 | `scripts/` | Offline check, micro-fixture generator |
 
