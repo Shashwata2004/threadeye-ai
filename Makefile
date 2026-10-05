@@ -101,15 +101,15 @@ cloud-env: ## write .env.cloud from a pasted Supabase connection string (input s
 	python3 scripts/setup_cloud_env.py
 
 cloud-migrate: ## create the threadeye schema and tables in Supabase (session pooler)
-	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
+	@python3 scripts/check_cloud_env.py $(CLOUD_ENV)
 	$(cloud_run) $(THREADEYE) migrate
 
 cloud-seed: ## create the demo accounts in Supabase
-	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
+	@python3 scripts/check_cloud_env.py $(CLOUD_ENV)
 	$(cloud_run) $(THREADEYE) seed-demo-users
 
 cloud-check: ## verify the Supabase connection, schema isolation and audit chain
-	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
+	@python3 scripts/check_cloud_env.py $(CLOUD_ENV)
 	$(cloud_run) $(THREADEYE) cloud-check
 
 cloud-setup: cloud-migrate cloud-seed cloud-check ## migrate + seed + verify in one go
@@ -118,5 +118,5 @@ cloud-run: ## run the app on this machine against Supabase → http://localhost:
 	./scripts/run_cloud.sh
 
 cloud-sql: ## print the setup SQL to paste into the Supabase SQL editor (no password needed)
-	@test -f $(CLOUD_ENV) || { echo "$(CLOUD_ENV) missing: run 'make cloud-env' first"; exit 1; }
+	@python3 scripts/check_cloud_env.py $(CLOUD_ENV)
 	@$(cloud_run) $(THREADEYE) migrate --sql && $(cloud_run) $(THREADEYE) seed-demo-users --sql
