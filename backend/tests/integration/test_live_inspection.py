@@ -20,18 +20,18 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy import func, select
 
-from tests.conftest import MICRO_ROLL, TEST_PASSWORD, login
+from tests.conftest import MICRO_ROLL, SAMPLE_ROLL, TEST_PASSWORD, login
 from threadeye.api.app import create_app
 from threadeye.db.models import AuditLog, InspectionEvent
 from threadeye.db.session import get_sessionmaker
-from threadeye.services import live
+from threadeye.services import datasets, live
 
 pytestmark = pytest.mark.integration
 
 META = json.loads((MICRO_ROLL / "roll_meta.json").read_text())
 
 
-def _lot_with_roll(client: TestClient, *, profile: str = "Simulator parity") -> str:
+def _lot_with_roll(client: TestClient, *, profile: str = "Simulator parity", width_in: float | None = None) -> str:
     login(client, "store")
     supplier = client.get("/api/v1/suppliers").json()[0]["id"]
     buyer = client.get("/api/v1/buyers").json()[0]["id"]
@@ -51,7 +51,13 @@ def _lot_with_roll(client: TestClient, *, profile: str = "Simulator parity") -> 
     rolls = client.post(
         f"/api/v1/lots/{lot['id']}/rolls",
         json={
-            "rolls": [{"mill_roll_no": "R01", "declared_length_yd": 100, "declared_width_in": META["fabric_width_in"]}]
+            "rolls": [
+                {
+                    "mill_roll_no": "R01",
+                    "declared_length_yd": 100,
+                    "declared_width_in": width_in or META["fabric_width_in"],
+                }
+            ]
         },
     ).json()
     return str(rolls[0]["roll_code"])
@@ -261,3 +267,39 @@ def test_bad_captures_are_refused(client: TestClient, tmp_path: Path) -> None:
         assert r.status_code == 422, r.text
     snap = client.get(f"/api/v1/inspections/{insp_id}").json()
     assert snap["checkpoint_frame"] == -1  # nothing was processed by the refused calls
+
+
+@pytest.mark.skipif(not (SAMPLE_ROLL / "frames.csv").exists(), reason="sample roll not in repo")
+def test_sample_roll_through_the_api_matches_roll_meta(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """PLAN.md §11 test_sample_roll_e2e_api: perfect preset + simulator-parity profile → 10 / 46.45 / FAIL."""
+    monkeypatch.setattr(datasets, "root", lambda: SAMPLE_ROLL.parent)
+    meta = json.loads((SAMPLE_ROLL / "roll_meta.json").read_text())
+    roll_code = _lot_with_roll(client, width_in=meta["fabric_width_in"])
+    login(client, "inspector")
+    machine = client.get("/api/v1/machines").json()[0]["id"]
+    insp = client.post(
+        "/api/v1/inspections",
+        json={
+            "roll_code": roll_code,
+            "machine_id": machine,
+            "source": {"dataset_id": "sample_roll"},
+            "preset": "perfect",
+        },
+    ).json()
+    assert client.post(f"/api/v1/inspections/{insp['id']}/start").status_code == 200
+    after, last = 0, meta["frames"] - 1
+    for until in (*range(150, last, 150), last):  # ~5 s of video per call, like the browser
+        r = client.post(f"/api/v1/inspections/{insp['id']}/advance", json={"until_frame": until, "after_seq": after})
+        assert r.status_code == 200, r.text
+        after = r.json()["last_seq"]
+    assert client.post(f"/api/v1/inspections/{insp['id']}/complete").status_code == 200
+    for d in client.get(f"/api/v1/inspections/{insp['id']}/defects").json():
+        if d["kind"] == "defect":
+            assert client.post(f"/api/v1/defects/{d['id']}/confirm", json={}).status_code == 200
+    v = client.post(f"/api/v1/inspections/{insp['id']}/finalize").json()
+    es = meta["expected_score"]
+    assert (v["points_total"], v["points_per_100"], v["system_verdict"]) == (
+        es["total_points"],
+        es["points_per_100_sq_yd"],
+        es["verdict"],
+    )
