@@ -8,7 +8,7 @@ import { useState, type ClipboardEvent } from "react";
 import { SampleBadge } from "@/components/badges";
 import { Button, inputClass } from "@/components/form";
 import { api, hasPerm } from "@/lib/api/client";
-import { errorDetail, useLot, useLotRolls, useMe, useSampling } from "@/lib/api/hooks";
+import { errorDetail, useInspections, useLot, useLotRolls, useMe, useSampling } from "@/lib/api/hooks";
 
 type Row = { mill_roll_no: string; declared_length_yd: string; declared_width_in: string; dye_lot: string };
 const blank = (): Row => ({ mill_roll_no: "", declared_length_yd: "", declared_width_in: "", dye_lot: "" });
@@ -160,6 +160,10 @@ export default function LotDetailPage() {
   const { data: lot, isLoading } = useLot(id);
   const { data: rolls } = useLotRolls(id);
   const { data: sampling } = useSampling(id);
+  const { data: inspections } = useInspections({ limit: 500 });
+  // Latest inspection per roll (the list is newest first).
+  const latest = new Map<string, NonNullable<typeof inspections>[number]>();
+  for (const i of inspections ?? []) if (!latest.has(i.roll_id)) latest.set(i.roll_id, i);
 
   const refresh = () =>
     Promise.all(
@@ -233,6 +237,7 @@ export default function LotDetailPage() {
                 <th className="px-3 py-2">{t("lots.dyeLot")}</th>
                 <th className="px-3 py-2">{t("lots.status")}</th>
                 <th className="px-3 py-2">{t("lots.label")}</th>
+                <th className="px-3 py-2">{t("lots.inspection")}</th>
               </tr>
             </thead>
             <tbody>
@@ -255,6 +260,22 @@ export default function LotDetailPage() {
                       </button>
                     ) : null}
                     {r.label_printed_at && <span className="ml-2 text-xs text-teal-700">✓ {t("lots.labelPrinted")}</span>}
+                  </td>
+                  <td className="px-3 py-2">
+                    {(() => {
+                      const i = latest.get(r.id);
+                      if (!i) return t("common.dash");
+                      const open = ["created", "running", "paused", "interrupted"].includes(i.status);
+                      return (
+                        <Link
+                          href={open ? `/inspect/${i.id}` : `/inspections/${i.id}`}
+                          className="text-brand-blue hover:underline"
+                        >
+                          {i.system_verdict ? t(`verdicts.${i.system_verdict}`) : t(`istatus.${i.status}`)}
+                          {i.points_per_100 !== null && i.points_per_100 !== undefined && ` · ${i.points_per_100.toFixed(2)}`}
+                        </Link>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

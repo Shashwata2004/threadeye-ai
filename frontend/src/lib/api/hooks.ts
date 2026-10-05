@@ -114,12 +114,66 @@ export function useMasterData(enabled = true) {
   return { suppliers, buyers, profiles };
 }
 
-/** FastAPI error bodies: {"detail": "..."} or a validation list. */
+/** FastAPI error bodies: {"detail": "..."}, {"detail": {"message": ...}} or a validation list. */
 export function errorDetail(error: unknown): string {
   if (error && typeof error === "object" && "detail" in error) {
     const d = (error as { detail: unknown }).detail;
     if (typeof d === "string") return d;
+    if (d && typeof d === "object" && "message" in d) return String((d as { message: unknown }).message);
     if (Array.isArray(d) && d[0] && typeof d[0] === "object" && "msg" in d[0]) return String(d[0].msg);
   }
   return "unknown error";
+}
+
+// ------------------------------------------------------------------------------------ inspection (M2)
+export function useDatasets(enabled = true) {
+  return useQuery({ queryKey: ["datasets"], enabled, queryFn: () => must(api.GET("/api/v1/datasets"), "datasets") });
+}
+
+export function useMachines(enabled = true) {
+  return useQuery({ queryKey: ["machines"], enabled, queryFn: () => must(api.GET("/api/v1/machines"), "machines") });
+}
+
+export function useInspections(params: { open_only?: boolean; roll_id?: string; limit?: number } = {}) {
+  return useQuery({
+    queryKey: ["inspections", params],
+    queryFn: () => must(api.GET("/api/v1/inspections", { params: { query: params } }), "inspections"),
+  });
+}
+
+export function useInspection(id: string) {
+  return useQuery({
+    queryKey: ["inspection", id],
+    queryFn: () =>
+      must(api.GET("/api/v1/inspections/{inspection_id}", { params: { path: { inspection_id: id } } }), "inspection"),
+  });
+}
+
+export function useTrack(id: string, enabled = true) {
+  return useQuery({
+    queryKey: ["track", id],
+    enabled,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: () =>
+      must(api.GET("/api/v1/inspections/{inspection_id}/track", { params: { path: { inspection_id: id } } }), "track"),
+  });
+}
+
+export function usePlan(id: string, enabled = true) {
+  return useQuery({
+    queryKey: ["plan", id],
+    enabled,
+    staleTime: Infinity,
+    queryFn: () =>
+      must(api.GET("/api/v1/inspections/{inspection_id}/plan", { params: { path: { inspection_id: id } } }), "plan"),
+  });
+}
+
+export function useDefects(id: string) {
+  return useQuery({
+    queryKey: ["defects", id],
+    queryFn: () =>
+      must(api.GET("/api/v1/inspections/{inspection_id}/defects", { params: { path: { inspection_id: id } } }), "defects"),
+  });
 }

@@ -15,7 +15,7 @@ import { useMe } from "@/lib/api/hooks";
 const NAV: { href: string; key: string; perm: string | string[] }[] = [
   { href: "/", key: "dashboard", perm: ["dashboard.read", "dashboard.own_shift"] },
   { href: "/lots", key: "lots", perm: "lots.read" },
-  { href: "/inspect", key: "inspect", perm: "inspections.run" },
+  { href: "/inspect", key: "inspect", perm: "inspections.read" },
   { href: "/verification", key: "verification", perm: "verification.read" },
   { href: "/benchmark", key: "benchmark", perm: "benchmark.read" },
   { href: "/suppliers", key: "suppliers", perm: "suppliers.scorecard" },

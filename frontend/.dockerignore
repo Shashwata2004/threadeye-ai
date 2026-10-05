@@ -3,3 +3,6 @@ node_modules
 out
 *.tsbuildinfo
 .env*
+e2e
+test-results
+playwright-report

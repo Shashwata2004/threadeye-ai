@@ -28,3 +28,45 @@ export function hasPerm(me: Me | null | undefined, perm: string): boolean {
 export type Lot = components["schemas"]["LotOut"];
 export type Roll = components["schemas"]["RollOut"];
 export type RollCreate = components["schemas"]["RollCreate"];
+export type Inspection = components["schemas"]["InspectionSnapshot"];
+export type InspectionListItem = components["schemas"]["InspectionListItem"];
+export type Defect = components["schemas"]["DefectOut"];
+// view_region is a 4-tuple in the schema; the generated response type widens it to number[].
+export type Track = Omit<components["schemas"]["TrackOut"], "view_region"> & { view_region: number[] };
+export type SamplingPlan = components["schemas"]["SamplingPlanOut"];
+export type ScoreSummary = components["schemas"]["ScoreSummary"];
+export type EventEnvelope = components["schemas"]["EventEnvelope"];
+export type Dataset = components["schemas"]["DatasetOut"];
+export type Machine = components["schemas"]["MachineOut"];
+
+/** Defect classes the inspector can choose (taxonomy.yaml, kind "defect"). */
+export const DEFECT_CLASSES = [
+  "hole",
+  "stain",
+  "oil_stain",
+  "slub",
+  "broken_yarn",
+  "missing_yarn",
+  "knot",
+  "crease_mark",
+  "contamination",
+  "shade_bar",
+  "selvage_defect",
+  "other_defect",
+] as const;
+
+export const REJECT_REASONS = [
+  "sticker",
+  "loose_thread",
+  "wrinkle",
+  "pin_hole",
+  "hand",
+  "board",
+  "not_visible",
+  "other",
+] as const;
+
+/** A fresh key per user action: a retried request with the same key is applied once. */
+export function idempotencyKey(): string {
+  return crypto.randomUUID();
+}
