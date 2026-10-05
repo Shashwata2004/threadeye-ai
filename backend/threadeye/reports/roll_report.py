@@ -56,6 +56,12 @@ TEXT = {
         "status_confirmed": "confirmed",
         "status_rejected": "rejected",
         "status_pending": "pending",
+        "PASS": "PASS",
+        "BORDERLINE": "BORDERLINE",
+        "FAIL": "FAIL",
+        "ACCEPT": "Accept",
+        "ACCEPT_WITH_CLAIM": "Accept with a claim",
+        "REJECT": "Reject (return to mill)",
     },
     "bn": {
         "title": "রোল পরিদর্শন রিপোর্ট (৪-পয়েন্ট)",
@@ -92,12 +98,38 @@ TEXT = {
         "status_confirmed": "নিশ্চিত",
         "status_rejected": "বাতিল",
         "status_pending": "বাকি",
+        "PASS": "পাস",
+        "BORDERLINE": "সীমার কাছাকাছি",
+        "FAIL": "বাতিল",
+        "ACCEPT": "গ্রহণ",
+        "ACCEPT_WITH_CLAIM": "দাবি সহ গ্রহণ",
+        "REJECT": "ফেরত (মিলে পাঠানো)",
     },
 }
 
 
 def _fmt_time(value: datetime | None) -> str:
     return value.astimezone(DHAKA).strftime("%d %b %Y %H:%M") if value else "-"
+
+
+def _wrapped(pdf: ThreadEyePDF, text: str, h: float) -> None:
+    """Word-wrap with one cell per line (multi_cell loses the Bangla fallback shaping on wrapped lines).
+
+    Lines are broken by an estimated character width: measuring Bangla with the Latin primary font
+    only logs missing-glyph warnings, and shaped Bangla clusters are narrower than the estimate.
+    """
+    width_mm = pdf.w - pdf.l_margin - pdf.r_margin
+    per_line = max(20, int(width_mm / (pdf.font_size * 0.52)))
+    line = ""
+    for word in text.split():
+        candidate = f"{line} {word}".strip()
+        if line and len(candidate) > per_line:
+            pdf.cell(0, h, line, new_x="LMARGIN", new_y="NEXT")
+            line = word
+        else:
+            line = candidate
+    if line:
+        pdf.cell(0, h, line, new_x="LMARGIN", new_y="NEXT")
 
 
 def build_roll_report(
@@ -135,7 +167,7 @@ def build_roll_report(
         (t["declared"], f"{r.declared_length_yd:g} yd × {r.declared_width_in:g} in"),
         (t["rules"], f"{r.rule_profile} ({t['threshold']} {r.threshold_per_100:g})"),
         (t["inspector"], snap.inspector or "-"),
-        (t["inspected"], f"{_fmt_time(snap.started_at)} → {_fmt_time(snap.completed_at)} (Asia/Dhaka)"),
+        (t["inspected"], f"{_fmt_time(snap.started_at)} - {_fmt_time(snap.completed_at)} (Asia/Dhaka)"),
     ]
     for k, v in rows:
         pdf.use_font(9, bold=True)
@@ -152,26 +184,22 @@ def build_roll_report(
         pdf.set_fill_color(*colour)
         pdf.set_text_color(255, 255, 255)
         pdf.use_font(16, bold=True)
-        pdf.cell(60, 12, f"  {t['verdict']}: {verdict}", fill=True)
+        badge = f"  {t['verdict']}: {t.get(verdict, verdict)}  "
+        pdf.cell(pdf.get_string_width(badge) + 2, 12, badge, fill=True)
         pdf.set_text_color(0, 0, 0)
         pdf.use_font(11)
         pdf.cell(
             0,
             12,
-            f"   {snap.points_total} {t['points']} · {snap.points_per_100} {t['per100']} "
+            f"  {snap.points_total} {t['points']} · {snap.points_per_100} {t['per100']} "
             f"({t['threshold']} {r.threshold_per_100:g}) · {t['yards']}: {snap.yards_inspected}",
             new_x="LMARGIN",
             new_y="NEXT",
         )
         if snap.final_verdict:
             pdf.use_font(10, bold=True)
-            pdf.cell(
-                0,
-                7,
-                f"{t['decision']}: {snap.final_verdict} ({snap.decision_by}): {snap.decision_reason}",
-                new_x="LMARGIN",
-                new_y="NEXT",
-            )
+            decision = t.get(snap.final_verdict, snap.final_verdict)
+            _wrapped(pdf, f"{t['decision']}: {decision} ({snap.decision_by}): {snap.decision_reason}", 5.5)
     else:
         pdf.set_text_color(190, 30, 30)
         pdf.use_font(11, bold=True)
@@ -259,7 +287,7 @@ def build_roll_report(
                 f"{d.length_in:.2f}",
                 t.get(f"status_{d.status}", d.status),
                 "-" if d.points is None or d.status == "rejected" else str(d.points),
-                why[:60],
+                why.replace("→", "=")[:60],  # the PDF font has no arrow glyph
             )
             for wd, val in zip(widths, values, strict=True):
                 pdf.cell(wd, 5.5, val, border=1)
@@ -273,7 +301,7 @@ def build_roll_report(
         for d in ignored:
             key = label(d.nondefect_category or d.current_cls)
             counts[key] = counts.get(key, 0) + 1
-        pdf.multi_cell(0, 5, ", ".join(f"{k}: {n}" for k, n in sorted(counts.items())))
+        _wrapped(pdf, ", ".join(f"{k}: {n}" for k, n in sorted(counts.items())), 5)
 
     # ---------------------------------------------------------------------------------- photos
     with_photo = [d for d in real if d.defect_no in crops]
@@ -303,10 +331,11 @@ def build_roll_report(
         pdf.ln(2)
         pdf.set_text_color(160, 90, 0)
         pdf.use_font(8, bold=True)
-        pdf.multi_cell(0, 4.5, t["simNote"])
+        _wrapped(pdf, t["simNote"], 4.5)
         pdf.set_text_color(0, 0, 0)
     pdf.use_font(7)
     pdf.set_text_color(110, 110, 110)
+    pdf.set_x(pdf.l_margin)
     pdf.cell(
         0,
         5,

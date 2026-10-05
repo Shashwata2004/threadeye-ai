@@ -55,7 +55,10 @@ def crop(image: bytes, view_box: tuple[float, float, float, float], scale: float
         side = max(x1 - x0, y1 - y0) * 2.2
         side = max(side, 120 * scale)
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-        left, top = cx - side / 2, cy - side / 2
+        side = min(side, img.width, img.height)
+        # Keep the window inside the image (a defect near the edge is then off-centre, not cut off).
+        left = min(max(cx - side / 2, 0), img.width - side)
+        top = min(max(cy - side / 2, 0), img.height - side)
         region = img.convert("RGB").crop((round(left), round(top), round(left + side), round(top + side)))
         draw = ImageDraw.Draw(region)
         draw.rectangle(

@@ -32,6 +32,7 @@ nondefects:
 # data/sample_roll/ground_truth.csv when it lands (owner C). Unknown names map to other_defect
 # and are reported by `threadeye validate-dataset`.
 aliases:
+  yarn_defect: broken_yarn  # simulator's synthetic mode
   broken_end: broken_yarn
   broken_pick: broken_yarn
   weft_crack: missing_yarn
