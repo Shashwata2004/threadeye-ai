@@ -26,6 +26,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -234,6 +235,13 @@ class Inspection(Base):
             "status IN ('created', 'running', 'paused', 'interrupted', 'completed', 'aborted')",
             name="status_valid",
         ),
+        # One open inspection per roll (a finished or aborted one does not block a re-inspection).
+        Index(
+            "uq_inspections_open_roll",
+            "roll_id",
+            unique=True,
+            postgresql_where=text("status IN ('created', 'running', 'paused', 'interrupted')"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid7)
@@ -252,6 +260,19 @@ class Inspection(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # M2: live run, driver lease and verdict
+    dataset_id: Mapped[str | None] = mapped_column(String(128))
+    driver_session_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    driver_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    system_verdict: Mapped[str | None] = mapped_column(String(16))
+    points_total: Mapped[int | None] = mapped_column(Integer)
+    points_per_100: Mapped[float | None] = mapped_column(Float)
+    yards_inspected: Mapped[float | None] = mapped_column(Float)
+    final_verdict: Mapped[str | None] = mapped_column(String(24))
+    decision_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    decision_reason: Mapped[str | None] = mapped_column(Text)
+    decision_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class InspectionEvent(Base):
@@ -300,6 +321,38 @@ class DefectRow(Base):
     points: Mapped[int | None] = mapped_column(Integer)
     explanation: Mapped[str | None] = mapped_column(Text)
     provider: Mapped[str | None] = mapped_column(String(64))
+    # M2
+    reject_reason: Mapped[str | None] = mapped_column(String(32))
+    uncertain: Mapped[str | None] = mapped_column(String(32))
+    is_continuous: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    excluded_reason: Mapped[str | None] = mapped_column(Text)
+    points_reason: Mapped[str | None] = mapped_column(Text)
+    first_frame: Mapped[int | None] = mapped_column(Integer)
+    last_frame: Mapped[int | None] = mapped_column(Integer)
+    best_bbox_px: Mapped[list[float] | None] = mapped_column(JSONB)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class InspectionFrame(Base):
+    """Projection of sampled frames, plus the evidence images the browser captured (M2)."""
+
+    __tablename__ = "inspection_frames"
+    __table_args__ = (UniqueConstraint("inspection_id", "frame", name="uq_inspection_frames_inspection_id_frame"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid7)
+    inspection_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("inspections.id"), index=True)
+    frame: Mapped[int] = mapped_column(Integer)
+    top_yd: Mapped[float | None] = mapped_column(Float)
+    bottom_yd: Mapped[float | None] = mapped_column(Float)
+    hand_visible: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    sample_reason: Mapped[str | None] = mapped_column(String(32))
+    image_key: Mapped[str | None] = mapped_column(String(256))
+    image_sha256: Mapped[str | None] = mapped_column(String(64))
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    image_scale: Mapped[float | None] = mapped_column(Float)
+    captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -14,12 +14,12 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from threadeye.core.runner import RunnerEvent
-from threadeye.db.models import DefectRow, Inspection, InspectionEvent
+from threadeye.db.models import DefectRow, Inspection, InspectionEvent, InspectionFrame
 
 DEFECT_FIELDS = (
     "origin",
@@ -41,6 +41,14 @@ DEFECT_FIELDS = (
     "points",
     "explanation",
     "provider",
+    "reject_reason",
+    "uncertain",
+    "is_continuous",
+    "excluded_reason",
+    "points_reason",
+    "first_frame",
+    "last_frame",
+    "best_bbox_px",
 )
 
 
@@ -90,7 +98,10 @@ def append_events(
         )
         written += 1
         if event.type == "defect.upserted":
-            _upsert_defect(db, inspection_id, event.payload["defect"])
+            decided_by = actor_user_id if event.payload.get("decision") else None
+            _upsert_defect(db, inspection_id, event.payload["defect"], decided_by)
+        elif event.type == "frame.sampled":
+            _upsert_frame(db, inspection_id, event.payload)
     inspection.last_seq = seq
     if checkpoint_frame is not None and checkpoint_frame > inspection.checkpoint_frame:
         inspection.checkpoint_frame = checkpoint_frame
@@ -98,10 +109,27 @@ def append_events(
     return AppendResult(written=written, skipped=len(batch) - written, last_seq=seq)
 
 
-def _upsert_defect(db: Session, inspection_id: uuid.UUID, defect: Mapping[str, Any]) -> None:
-    values = {k: defect[k] for k in DEFECT_FIELDS}
+def _upsert_defect(
+    db: Session, inspection_id: uuid.UUID, defect: Mapping[str, Any], decided_by: uuid.UUID | None = None
+) -> None:
+    values: dict[str, Any] = {k: defect.get(k) for k in DEFECT_FIELDS}
+    values["is_continuous"] = bool(values["is_continuous"])
+    if decided_by is not None:
+        values |= {"decided_by": decided_by, "decided_at": func.now()}
     stmt = insert(DefectRow).values(inspection_id=inspection_id, defect_no=defect["defect_no"], **values)
     stmt = stmt.on_conflict_do_update(constraint="uq_defects_inspection_id_defect_no", set_=values)
+    db.execute(stmt)
+
+
+def _upsert_frame(db: Session, inspection_id: uuid.UUID, frame: Mapping[str, Any]) -> None:
+    values = {
+        "top_yd": frame.get("top_yd"),
+        "bottom_yd": frame.get("bottom_yd"),
+        "hand_visible": bool(frame.get("hand_visible")),
+        "sample_reason": frame.get("sample_reason"),
+    }
+    stmt = insert(InspectionFrame).values(inspection_id=inspection_id, frame=frame["frame"], **values)
+    stmt = stmt.on_conflict_do_update(constraint="uq_inspection_frames_inspection_id_frame", set_=values)
     db.execute(stmt)
 
 
