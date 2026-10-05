@@ -21,6 +21,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     Sequence,
     String,
     Text,
@@ -356,3 +357,17 @@ class InspectionFrame(Base):
     height: Mapped[int | None] = mapped_column(Integer)
     image_scale: Mapped[float | None] = mapped_column(Float)
     captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Blob(Base):
+    """Binary files (evidence photos) kept in the database itself on the cloud profile, so every
+    teammate sharing the Supabase database sees them. The edge box keeps them on its local volume."""
+
+    __tablename__ = "blobs"
+
+    key: Mapped[str] = mapped_column(String(256), primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    sha256: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(Integer)
+    content_type: Mapped[str] = mapped_column(String(64), default="image/jpeg", server_default="image/jpeg")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

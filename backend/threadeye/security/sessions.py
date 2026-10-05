@@ -34,10 +34,16 @@ def create_session(db: Session, user: User, *, ttl_hours: int, ip: str | None, u
 
 
 def resolve(db: Session, token: str | None) -> User | None:
+    found = resolve_with_session(db, token)
+    return found[0] if found else None
+
+
+def resolve_with_session(db: Session, token: str | None) -> tuple[User, uuid.UUID] | None:
+    """The logged-in user and the id of their session, in one query."""
     if not token:
         return None
     row = db.execute(
-        select(User, AuthSession)
+        select(User, AuthSession.id)
         .join(AuthSession, AuthSession.user_id == User.id)
         .where(
             AuthSession.token_hash == _hash(token),
@@ -46,20 +52,7 @@ def resolve(db: Session, token: str | None) -> User | None:
             User.active.is_(True),
         )
     ).first()
-    return row[0] if row else None
-
-
-def session_id(db: Session, token: str | None) -> uuid.UUID | None:
-    """Id of the caller's live session (the live screen's driver lease is held per session)."""
-    if not token:
-        return None
-    return db.scalar(
-        select(AuthSession.id).where(
-            AuthSession.token_hash == _hash(token),
-            AuthSession.revoked_at.is_(None),
-            AuthSession.expires_at > datetime.now(UTC),
-        )
-    )
+    return (row[0], row[1]) if row else None
 
 
 def revoke(db: Session, token: str | None) -> None:

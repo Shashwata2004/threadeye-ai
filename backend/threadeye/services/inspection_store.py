@@ -80,6 +80,9 @@ def append_events(
     existing = set(db.scalars(select(InspectionEvent.idempotency_key).where(InspectionEvent.idempotency_key.in_(keys))))
     seq = inspection.last_seq
     written = 0
+    defects: dict[str, dict[str, Any]] = {}
+    decided: dict[str, dict[str, Any]] = {}
+    frames: dict[int, dict[str, Any]] = {}
     for event in batch:
         if event.idempotency_key in existing:
             continue
@@ -98,39 +101,60 @@ def append_events(
         )
         written += 1
         if event.type == "defect.upserted":
-            decided_by = actor_user_id if event.payload.get("decision") else None
-            _upsert_defect(db, inspection_id, event.payload["defect"], decided_by)
+            row = _defect_values(inspection_id, event.payload["defect"])
+            # The last version of a defect in the batch wins; decisions also record who decided.
+            defects[row["defect_no"]] = row
+            if event.payload.get("decision"):
+                decided[row["defect_no"]] = row
         elif event.type == "frame.sampled":
-            _upsert_frame(db, inspection_id, event.payload)
+            f = _frame_values(inspection_id, event.payload)
+            frames[f["frame"]] = f
     inspection.last_seq = seq
     if checkpoint_frame is not None and checkpoint_frame > inspection.checkpoint_frame:
         inspection.checkpoint_frame = checkpoint_frame
     db.flush()
+    # One statement per projection, not one per row: each round trip to a remote database costs.
+    _upsert_defects(db, [r for no, r in defects.items() if no not in decided], None)
+    _upsert_defects(db, list(decided.values()), actor_user_id)
+    _upsert_frames(db, list(frames.values()))
     return AppendResult(written=written, skipped=len(batch) - written, last_seq=seq)
 
 
-def _upsert_defect(
-    db: Session, inspection_id: uuid.UUID, defect: Mapping[str, Any], decided_by: uuid.UUID | None = None
-) -> None:
+def _defect_values(inspection_id: uuid.UUID, defect: Mapping[str, Any]) -> dict[str, Any]:
     values: dict[str, Any] = {k: defect.get(k) for k in DEFECT_FIELDS}
     values["is_continuous"] = bool(values["is_continuous"])
+    return {"inspection_id": inspection_id, "defect_no": defect["defect_no"], **values}
+
+
+def _upsert_defects(db: Session, rows: list[dict[str, Any]], decided_by: uuid.UUID | None) -> None:
+    if not rows:
+        return
     if decided_by is not None:
-        values |= {"decided_by": decided_by, "decided_at": func.now()}
-    stmt = insert(DefectRow).values(inspection_id=inspection_id, defect_no=defect["defect_no"], **values)
-    stmt = stmt.on_conflict_do_update(constraint="uq_defects_inspection_id_defect_no", set_=values)
-    db.execute(stmt)
+        rows = [{**r, "decided_by": decided_by} for r in rows]
+    stmt = insert(DefectRow).values(rows)
+    update: dict[str, Any] = {k: stmt.excluded[k] for k in DEFECT_FIELDS}
+    if decided_by is not None:
+        update |= {"decided_by": stmt.excluded.decided_by, "decided_at": func.now()}
+    db.execute(stmt.on_conflict_do_update(constraint="uq_defects_inspection_id_defect_no", set_=update))
 
 
-def _upsert_frame(db: Session, inspection_id: uuid.UUID, frame: Mapping[str, Any]) -> None:
-    values = {
+def _frame_values(inspection_id: uuid.UUID, frame: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "inspection_id": inspection_id,
+        "frame": frame["frame"],
         "top_yd": frame.get("top_yd"),
         "bottom_yd": frame.get("bottom_yd"),
         "hand_visible": bool(frame.get("hand_visible")),
         "sample_reason": frame.get("sample_reason"),
     }
-    stmt = insert(InspectionFrame).values(inspection_id=inspection_id, frame=frame["frame"], **values)
-    stmt = stmt.on_conflict_do_update(constraint="uq_inspection_frames_inspection_id_frame", set_=values)
-    db.execute(stmt)
+
+
+def _upsert_frames(db: Session, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        return
+    stmt = insert(InspectionFrame).values(rows)
+    update = {k: stmt.excluded[k] for k in ("top_yd", "bottom_yd", "hand_visible", "sample_reason")}
+    db.execute(stmt.on_conflict_do_update(constraint="uq_inspection_frames_inspection_id_frame", set_=update))
 
 
 def events_after(db: Session, inspection_id: uuid.UUID, after_seq: int, limit: int = 500) -> list[InspectionEvent]:

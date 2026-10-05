@@ -32,6 +32,7 @@ EXPECTED_TABLES = {
     "inspection_events",
     "defects",
     "inspection_frames",
+    "blobs",
 }
 APPEND_ONLY_TABLES = {"audit_log", "inspection_events"}
 # The roles behind Supabase's public Data API (PostgREST/GraphQL).

@@ -86,6 +86,10 @@ make cloud-setup   # create the schema and demo accounts, then verify
 make cloud-run     # run the app against Supabase → http://localhost:3000
 ```
 
+Everything the app records lives in Supabase, including the evidence photos (table
+`threadeye.blobs`), so every teammate sharing the database sees the same data. Only the simulated
+roll's video is read from `data/` on each machine.
+
 Tables live in the `threadeye` schema, not `public`, so Supabase's public Data API cannot reach
 them. In the dashboard's table editor, switch the schema selector from `public` to `threadeye`.
 

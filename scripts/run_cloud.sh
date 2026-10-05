@@ -13,7 +13,7 @@ ENV_FILE="${CLOUD_ENV:-.env.cloud}"
 API_PORT="${API_PORT:-8099}"
 WEB_PORT="${WEB_PORT:-3000}"
 
-[ -f "$ENV_FILE" ] || { echo "$ENV_FILE missing: run 'make cloud-env' first" >&2; exit 1; }
+python3 scripts/check_cloud_env.py "$ENV_FILE" || exit 1
 
 set -a
 # shellcheck disable=SC1090
@@ -24,9 +24,9 @@ set +a
 # so requests stay same-origin.
 export THREADEYE_COOKIE_SECURE=false
 export THREADEYE_ALLOWED_ORIGINS="http://localhost:${WEB_PORT}"
-# Simulated rolls come from data/ (the live screen's video too); evidence photos go to .storage/.
+# Simulated rolls (and the live screen's video) come from data/. Evidence photos are stored in the
+# Supabase database itself (table threadeye.blobs), like every other record.
 export THREADEYE_DATASETS_DIR="$PWD/data"
-export THREADEYE_STORAGE_DIR="$PWD/.storage"
 
 VENV_BIN="$PWD/backend/.venv/bin"
 [ -x "$VENV_BIN/uvicorn" ] || { echo "backend venv missing: run 'uv sync' in backend/" >&2; exit 1; }

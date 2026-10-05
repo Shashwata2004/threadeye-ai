@@ -1,8 +1,10 @@
 """Engine and session factory.
 
 edge:       normal connection pool against the local Postgres.
-cloud_demo: Supabase transaction pooler → NullPool and no server-side prepared statements
-            (PLAN.md §12: Supavisor transaction mode does not support them).
+cloud_demo: Supabase transaction pooler → no server-side prepared statements (PLAN.md §12:
+            Supavisor transaction mode does not support them). A long-running API (`make cloud-run`)
+            keeps a few connections open: a new TLS connection to Supabase costs over a second from
+            Bangladesh. Serverless functions (Vercel) use NullPool, as a frozen function cannot keep one.
 """
 
 from __future__ import annotations
@@ -18,10 +20,15 @@ from sqlalchemy.pool import NullPool
 from threadeye.settings import get_settings
 
 
-def make_engine(url: str, *, cloud: bool) -> Engine:
+def make_engine(url: str, *, cloud: bool, serverless: bool = False) -> Engine:
     kwargs: dict[str, Any] = {}
     if cloud:
-        kwargs |= {"poolclass": NullPool, "connect_args": {"prepare_threshold": None}}
+        kwargs |= {"connect_args": {"prepare_threshold": None}}
+        if serverless:
+            kwargs |= {"poolclass": NullPool}
+        else:
+            # No pre-ping: it would cost a round trip per request. Connections are renewed every 2 min.
+            kwargs |= {"pool_size": 3, "max_overflow": 3, "pool_recycle": 120}
     else:
         kwargs |= {"pool_pre_ping": True, "pool_size": 5, "max_overflow": 5}
     return create_engine(url, **kwargs)
@@ -30,7 +37,7 @@ def make_engine(url: str, *, cloud: bool) -> Engine:
 @lru_cache
 def get_engine() -> Engine:
     s = get_settings()
-    return make_engine(s.database_url, cloud=s.is_cloud)
+    return make_engine(s.database_url, cloud=s.is_cloud, serverless=s.is_serverless)
 
 
 @lru_cache

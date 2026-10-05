@@ -1,5 +1,6 @@
 """Runtime settings. Every value comes from environment variables (prefix ``THREADEYE_``)."""
 
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     # Runtime uses the transaction pooler; DDL (migrations) needs a session/direct connection.
     # Empty means "same as database_url" (the edge profile).
     migration_database_url: str = ""
+    serverless: bool = False
 
     session_ttl_hours: int = 12
     cookie_secure: bool = False
@@ -44,6 +46,11 @@ class Settings(BaseSettings):
     @property
     def is_cloud(self) -> bool:
         return self.deploy_profile == "cloud_demo"
+
+    @property
+    def is_serverless(self) -> bool:
+        """Running as a serverless function (Vercel sets VERCEL=1): no connection pool."""
+        return self.serverless or bool(os.environ.get("VERCEL"))
 
     @property
     def ddl_database_url(self) -> str:

@@ -365,7 +365,7 @@ def store_captures(db: Session, insp: Inspection, runner: Runner, captures: Sequ
         except (binascii.Error, storage.StorageError) as exc:
             raise InspectionError(422, f"capture of frame {c.frame}: {exc}") from exc
         key = f"inspections/{insp.id}/frames/{c.frame:06d}.jpg"
-        sha = storage.put(key, jpeg)
+        sha = storage.put(db, key, jpeg)
         row = db.scalar(
             select(InspectionFrame).where(InspectionFrame.inspection_id == insp.id, InspectionFrame.frame == c.frame)
         )

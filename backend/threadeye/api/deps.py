@@ -25,11 +25,14 @@ def request_id(request: Request) -> str | None:
 
 
 def current_user_optional(request: Request, db: Session = Depends(get_db)) -> User | None:
-    return sessions.resolve(db, request.cookies.get(sessions.COOKIE_NAME))
+    found = sessions.resolve_with_session(db, request.cookies.get(sessions.COOKIE_NAME))
+    request.state.session_id = found[1] if found else None
+    return found[0] if found else None
 
 
-def current_session_id(request: Request, db: Session = Depends(get_db)) -> uuid.UUID | None:
-    return sessions.session_id(db, request.cookies.get(sessions.COOKIE_NAME))
+def current_session_id(request: Request, _: User | None = Depends(current_user_optional)) -> uuid.UUID | None:
+    """Read together with the user (FastAPI runs current_user_optional once per request)."""
+    return getattr(request.state, "session_id", None)
 
 
 def idempotency_key(request: Request) -> str:
