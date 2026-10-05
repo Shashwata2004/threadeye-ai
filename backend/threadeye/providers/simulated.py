@@ -112,8 +112,17 @@ class SimulatedDetector(DetectorProvider):
         return random.Random(int.from_bytes(digest[:8], "big"))  # noqa: S311  (simulation, not crypto)
 
     def prepare(self, source: SourceInfo) -> None:
+        dataset_dir = self.ctx.extras.get("dataset_dir")
+        if self._key is None and dataset_dir:
+            # The only runtime path from the API to ground truth, and it stays inside this provider
+            # (import-linter allows exactly this one import; see pyproject.toml).
+            from threadeye.datasets.answer_key import load_answer_key
+
+            self._key = load_answer_key(dataset_dir, require_media=False)
         if self._key is None:
-            raise ProviderNotConfigured("SimulatedDetector needs the dataset's answer key (ProviderContext.answer_key)")
+            raise ProviderNotConfigured(
+                "SimulatedDetector needs the dataset's answer key (ProviderContext.answer_key or extras['dataset_dir'])"
+            )
         self._calib = source.calibration
 
     def _jitter(self, box: BBox, rng: random.Random) -> BBox:

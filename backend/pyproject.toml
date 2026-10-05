@@ -96,6 +96,9 @@ source_modules = [
   "threadeye.sources",
 ]
 forbidden_modules = ["threadeye.datasets.answer_key"]
+# The live API runs the simulated detector, which loads its own answer key. That single import is the
+# allowed path; nothing else between the API and ground truth may exist.
+ignore_imports = ["threadeye.providers.simulated -> threadeye.datasets.answer_key"]
 
 [[tool.importlinter.contracts]]
 name = "Core pipeline is pure (no web, DB or vision imports)"

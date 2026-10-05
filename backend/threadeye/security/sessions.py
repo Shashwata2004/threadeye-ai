@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
@@ -46,6 +47,19 @@ def resolve(db: Session, token: str | None) -> User | None:
         )
     ).first()
     return row[0] if row else None
+
+
+def session_id(db: Session, token: str | None) -> uuid.UUID | None:
+    """Id of the caller's live session (the live screen's driver lease is held per session)."""
+    if not token:
+        return None
+    return db.scalar(
+        select(AuthSession.id).where(
+            AuthSession.token_hash == _hash(token),
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > datetime.now(UTC),
+        )
+    )
 
 
 def revoke(db: Session, token: str | None) -> None:

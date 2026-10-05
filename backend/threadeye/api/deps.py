@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, Request, status
@@ -25,6 +26,18 @@ def request_id(request: Request) -> str | None:
 
 def current_user_optional(request: Request, db: Session = Depends(get_db)) -> User | None:
     return sessions.resolve(db, request.cookies.get(sessions.COOKIE_NAME))
+
+
+def current_session_id(request: Request, db: Session = Depends(get_db)) -> uuid.UUID | None:
+    return sessions.session_id(db, request.cookies.get(sessions.COOKIE_NAME))
+
+
+def idempotency_key(request: Request) -> str:
+    """The client's ``Idempotency-Key`` header, or a fresh one (then a retry is not deduplicated)."""
+    key = (request.headers.get("Idempotency-Key") or "").strip()
+    if key and len(key) <= 80 and all(c.isalnum() or c in "-_" for c in key):
+        return key
+    return uuid.uuid4().hex
 
 
 def current_user(user: User | None = Depends(current_user_optional)) -> User:
