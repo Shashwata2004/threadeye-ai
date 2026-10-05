@@ -139,10 +139,10 @@ export default function LiveInspectionPage() {
         setError(null);
       } else if (response.status === 409) {
         stopDriving();
-        setError(errorDetail(err));
+        setError(errorDetail(err, response.status));
         void refetchInsp();
       } else if (response.status === 422) {
-        setError(errorDetail(err)); // a bad capture is dropped, the run goes on
+        setError(errorDetail(err, response.status)); // a bad capture is dropped, the run goes on
       } else {
         capturesRef.current.unshift(...captures); // try again on the next tick
       }

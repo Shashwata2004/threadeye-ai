@@ -84,7 +84,7 @@ export default function InspectPage() {
       router.push(`/inspect/${detail.inspection_id}`);
       return;
     }
-    setError(t("inspect.error", { detail: errorDetail(err) }));
+    setError(t("inspect.error", { detail: errorDetail(err, response.status) }));
   }
 
   return (

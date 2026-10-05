@@ -114,15 +114,17 @@ export function useMasterData(enabled = true) {
   return { suppliers, buyers, profiles };
 }
 
-/** FastAPI error bodies: {"detail": "..."}, {"detail": {"message": ...}} or a validation list. */
-export function errorDetail(error: unknown): string {
+/** FastAPI error bodies: {"detail": "..."}, {"detail": {"message": ...}} or a validation list.
+ *  Without a readable body (e.g. a server error), the HTTP status is shown instead. */
+export function errorDetail(error: unknown, status?: number): string {
   if (error && typeof error === "object" && "detail" in error) {
     const d = (error as { detail: unknown }).detail;
     if (typeof d === "string") return d;
     if (d && typeof d === "object" && "message" in d) return String((d as { message: unknown }).message);
     if (Array.isArray(d) && d[0] && typeof d[0] === "object" && "msg" in d[0]) return String(d[0].msg);
   }
-  return "unknown error";
+  if (status && status >= 500) return `server error (HTTP ${status}); check the API log`;
+  return status ? `HTTP ${status}` : "unknown error";
 }
 
 // ------------------------------------------------------------------------------------ inspection (M2)
