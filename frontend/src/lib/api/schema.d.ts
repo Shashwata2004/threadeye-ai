@@ -399,6 +399,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Datasets */
+        get: operations["list_datasets_api_v1_datasets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/video": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dataset Video */
+        get: operations["dataset_video_api_v1_datasets__dataset_id__video_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inspections": {
         parameters: {
             query?: never;
@@ -406,11 +440,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Inspections */
+        get: operations["list_inspections_api_v1_inspections_get"];
         put?: never;
         /**
          * Create Inspection
-         * @description Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         * @description Load a roll on a machine. 409 (with `inspection_id`) if the roll already has an open inspection.
          */
         post: operations["create_inspection_api_v1_inspections_post"];
         delete?: never;
@@ -581,7 +616,7 @@ export interface paths {
         put?: never;
         /**
          * Advance
-         * @description Browser-clocked processing of frames (checkpoint, until_frame] in one transaction. Only the driver-lease holder may call it. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         * @description Browser-clocked processing of frames (checkpoint, until_frame] in one transaction. Only the driver-lease holder may call it. Captures are evidence images of sampled frames. The response carries every event after `after_seq`.
          */
         post: operations["advance_api_v1_inspections__inspection_id__advance_post"];
         delete?: never;
@@ -616,7 +651,7 @@ export interface paths {
         };
         /**
          * Stream Events
-         * @description Server-Sent Events. Resume with `Last-Event-ID` (= seq) or `?after_seq=`.
+         * @description Server-Sent Events. Resume with `Last-Event-ID` (= seq) or `?after_seq=`. The stream closes after 300 s; EventSource reconnects by itself.
          */
         get: operations["stream_events_api_v1_inspections__inspection_id__stream_get"];
         put?: never;
@@ -670,7 +705,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Finalize */
+        /**
+         * Finalize
+         * @description Compute the roll verdict from confirmed defects. 409 while any defect is pending.
+         */
         post: operations["finalize_api_v1_inspections__inspection_id__finalize_post"];
         delete?: never;
         options?: never;
@@ -687,8 +725,31 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Decide */
+        /**
+         * Decide
+         * @description Supervisor decision on the roll (required for BORDERLINE; any override needs a reason).
+         */
         post: operations["decide_api_v1_inspections__inspection_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/report.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Roll Report
+         * @description Roll inspection report (PDF). Marked SIMULATED with the provider label when applicable.
+         */
+        get: operations["roll_report_api_v1_inspections__inspection_id__report_pdf_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -733,6 +794,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/defects/{defect_id}/crop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Defect Crop */
+        get: operations["defect_crop_api_v1_defects__defect_id__crop_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/defects/{defect_id}/confirm": {
         parameters: {
             query?: never;
@@ -742,7 +820,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Confirm Defect */
+        /**
+         * Confirm Defect
+         * @description Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         */
         post: operations["confirm_defect_api_v1_defects__defect_id__confirm_post"];
         delete?: never;
         options?: never;
@@ -759,7 +840,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reject Defect */
+        /**
+         * Reject Defect
+         * @description Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         */
         post: operations["reject_defect_api_v1_defects__defect_id__reject_post"];
         delete?: never;
         options?: never;
@@ -776,7 +860,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reclassify Defect */
+        /**
+         * Reclassify Defect
+         * @description Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         */
         post: operations["reclassify_defect_api_v1_defects__defect_id__reclassify_post"];
         delete?: never;
         options?: never;
@@ -793,7 +880,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Promote Nondefect */
+        /**
+         * Promote Nondefect
+         * @description Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         */
         post: operations["promote_nondefect_api_v1_defects__defect_id__promote_post"];
         delete?: never;
         options?: never;
@@ -810,8 +900,31 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Edit Length */
+        /**
+         * Edit Length
+         * @description Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         */
         post: operations["edit_length_api_v1_defects__defect_id__length_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/defects/{defect_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen Defect
+         * @description Undo a confirm/reject: the defect is pending again. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         */
+        post: operations["reopen_defect_api_v1_defects__defect_id__reopen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -926,6 +1039,32 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /**
+         * DatasetOut
+         * @description A simulated roll that can be inspected (its answer key is never exposed).
+         */
+        DatasetOut: {
+            /** Id */
+            id: string;
+            /** Roll Length Yd */
+            roll_length_yd: number;
+            /** Fabric Width In */
+            fabric_width_in: number;
+            /** Frames */
+            frames: number;
+            /** Fps */
+            fps: number;
+            /** Mode */
+            mode: string;
+            /** Note */
+            note: string | null;
+            /** Has Video */
+            has_video: boolean;
+            /** Video Url */
+            video_url: string | null;
+            /** Is Simulated */
+            is_simulated: boolean;
+        };
         /** DecisionIn */
         DecisionIn: {
             /**
@@ -943,6 +1082,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Inspection Id
+             * Format: uuid
+             */
+            inspection_id: string;
             /** Defect No */
             defect_no: string;
             /**
@@ -966,6 +1110,10 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "confirmed" | "rejected";
+            /** Reject Reason */
+            reject_reason: string | null;
+            /** Uncertain */
+            uncertain: string | null;
             /** Start Yd */
             start_yd: number;
             /** End Yd */
@@ -985,10 +1133,20 @@ export interface components {
             length_source: "pixels" | "inspector";
             /** Is Continuous */
             is_continuous: boolean;
+            /** Is Running */
+            is_running: boolean;
             /** Sightings */
             sightings: number;
+            /** First Frame */
+            first_frame: number | null;
+            /** Last Frame */
+            last_frame: number | null;
+            /** Best Frame */
+            best_frame: number;
             /** Points */
             points: number | null;
+            /** Points Reason */
+            points_reason: string | null;
             /** Excluded Reason */
             excluded_reason: string | null;
             /** Explanation */
@@ -997,6 +1155,8 @@ export interface components {
             provider_label: string | null;
             /** Crop Url */
             crop_url: string | null;
+            /** Decided At */
+            decided_at: string | null;
         };
         /** EventEnvelope */
         EventEnvelope: {
@@ -1087,6 +1247,49 @@ export interface components {
             source: components["schemas"]["SourceSpec"];
             /** Provider Config Id */
             provider_config_id?: string | null;
+            /** Preset */
+            preset?: ("perfect" | "realistic") | null;
+        };
+        /** InspectionListItem */
+        InspectionListItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Roll Id
+             * Format: uuid
+             */
+            roll_id: string;
+            /** Roll Code */
+            roll_code: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "created" | "running" | "paused" | "interrupted" | "completed" | "aborted";
+            /** System Verdict */
+            system_verdict: ("PASS" | "BORDERLINE" | "FAIL") | null;
+            /** Final Verdict */
+            final_verdict: ("ACCEPT" | "ACCEPT_WITH_CLAIM" | "REJECT") | null;
+            /** Points Per 100 */
+            points_per_100: number | null;
+            /** Checkpoint Frame */
+            checkpoint_frame: number;
+            /** Started At */
+            started_at: string | null;
+            /** Finalized At */
+            finalized_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Inspector */
+            inspector: string | null;
+            /** Is Simulated */
+            is_simulated: boolean;
         };
         /** InspectionSnapshot */
         InspectionSnapshot: {
@@ -1138,6 +1341,8 @@ export interface components {
             last_seq: number;
             /** Driver Session */
             driver_session: boolean;
+            /** Lease Held Elsewhere */
+            lease_held_elsewhere: boolean;
             score: components["schemas"]["ScoreSummary"] | null;
             /** System Verdict */
             system_verdict: ("PASS" | "BORDERLINE" | "FAIL") | null;
@@ -1147,6 +1352,27 @@ export interface components {
             started_at: string | null;
             /** Completed At */
             completed_at: string | null;
+            /** Finalized At */
+            finalized_at: string | null;
+            /** Points Total */
+            points_total: number | null;
+            /** Points Per 100 */
+            points_per_100: number | null;
+            /** Yards Inspected */
+            yards_inspected: number | null;
+            /** Decision Reason */
+            decision_reason: string | null;
+            /** Decision By */
+            decision_by: string | null;
+            /** Decision At */
+            decision_at: string | null;
+            /** Inspector */
+            inspector: string | null;
+            /** Dataset Id */
+            dataset_id: string | null;
+            /** Frame Count */
+            frame_count: number;
+            roll: components["schemas"]["RollContext"];
         };
         /** LengthIn */
         LengthIn: {
@@ -1340,6 +1566,11 @@ export interface components {
             /** Planned Milestone */
             planned_milestone: string;
         };
+        /** PromoteIn */
+        PromoteIn: {
+            /** To Cls */
+            to_cls?: string | null;
+        };
         /** ProviderAvailabilityOut */
         ProviderAvailabilityOut: {
             /** Provider Id */
@@ -1391,6 +1622,8 @@ export interface components {
             bbox_quality: "precise" | "approximate";
             /** Config Hash */
             config_hash: string;
+            /** Preset */
+            preset?: string | null;
         };
         /** ReclassifyIn */
         ReclassifyIn: {
@@ -1412,6 +1645,37 @@ export interface components {
          * @enum {string}
          */
         Role: "inspector" | "qc_supervisor" | "store_incharge" | "cutting_master" | "merchandiser" | "management" | "admin";
+        /**
+         * RollContext
+         * @description The roll, its delivery and the rules it is scored by (shown on the live and verdict screens).
+         */
+        RollContext: {
+            /** Roll Code */
+            roll_code: string;
+            /** Mill Roll No */
+            mill_roll_no: string;
+            /** Declared Length Yd */
+            declared_length_yd: number;
+            /** Declared Width In */
+            declared_width_in: number;
+            /**
+             * Lot Id
+             * Format: uuid
+             */
+            lot_id: string;
+            /** Challan No */
+            challan_no: string;
+            /** Supplier */
+            supplier: string;
+            /** Buyer */
+            buyer: string;
+            /** Fabric Type */
+            fabric_type: string;
+            /** Rule Profile */
+            rule_profile: string;
+            /** Threshold Per 100 */
+            threshold_per_100: number;
+        };
         /** RollCreate */
         RollCreate: {
             /** Mill Roll No */
@@ -1543,10 +1807,40 @@ export interface components {
             points_budget: number | null;
             /** Provisional Verdict */
             provisional_verdict: ("PASS" | "BORDERLINE" | "FAIL") | null;
+            /** Confirmed Verdict */
+            confirmed_verdict?: ("PASS" | "BORDERLINE" | "FAIL") | null;
             /** Yards Inspected */
             yards_inspected: number;
             /** Coverage Pct */
             coverage_pct: number;
+            /**
+             * Defects
+             * @default 0
+             */
+            defects: number;
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /**
+             * Confirmed
+             * @default 0
+             */
+            confirmed: number;
+            /**
+             * Rejected
+             * @default 0
+             */
+            rejected: number;
+            /** Nondefects Ignored */
+            nondefects_ignored?: {
+                [key: string]: number;
+            };
+            /** Cells */
+            cells?: {
+                [key: string]: number;
+            };
         };
         /** SourceSpec */
         SourceSpec: {
@@ -1609,6 +1903,8 @@ export interface components {
          * @description Per-frame positions (columnar) so the browser can draw boxes that move with the fabric.
          */
         TrackOut: {
+            /** Dataset Id */
+            dataset_id: string;
             /** Fps */
             fps: number;
             /** Frame Count */
@@ -1622,6 +1918,16 @@ export interface components {
                 number,
                 number
             ];
+            /** Fabric Width Cm */
+            fabric_width_cm: number;
+            /** Selvage Band Px */
+            selvage_band_px: number | null;
+            /** Roll Length Yd */
+            roll_length_yd: number;
+            /** Video Url */
+            video_url: string | null;
+            /** Video Type */
+            video_type: string | null;
             /** Roll Y Top Px */
             roll_y_top_px: number[];
             /** Top Yd */
@@ -1631,7 +1937,7 @@ export interface components {
             /** Speed M Min */
             speed_m_min: number[];
             /** State */
-            state: ("running" | "stopped")[];
+            state: ("running" | "stopped" | "unknown")[];
             /** Fabric X0 Px */
             fabric_x0_px: number[];
             /** Hand Visible */
@@ -2479,6 +2785,91 @@ export interface operations {
             };
         };
     };
+    list_datasets_api_v1_datasets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetOut"][];
+                };
+            };
+        };
+    };
+    dataset_video_api_v1_datasets__dataset_id__video_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Roll video (Range supported) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/webm": unknown;
+                    "video/mp4": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_inspections_api_v1_inspections_get: {
+        parameters: {
+            query?: {
+                roll_id?: string | null;
+                open_only?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_inspection_api_v1_inspections_post: {
         parameters: {
             query?: never;
@@ -2508,15 +2899,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2550,20 +2932,14 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     inspection_start: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description start/resume: take the lease from another device */
+                takeover?: boolean;
+            };
             header?: never;
             path: {
                 inspection_id: string;
@@ -2588,22 +2964,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
     };
     inspection_pause: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description start/resume: take the lease from another device */
+                takeover?: boolean;
+            };
             header?: never;
             path: {
                 inspection_id: string;
@@ -2628,22 +2998,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
     };
     inspection_resume: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description start/resume: take the lease from another device */
+                takeover?: boolean;
+            };
             header?: never;
             path: {
                 inspection_id: string;
@@ -2668,22 +3032,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
     };
     inspection_complete: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description start/resume: take the lease from another device */
+                takeover?: boolean;
+            };
             header?: never;
             path: {
                 inspection_id: string;
@@ -2708,22 +3066,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
     };
     inspection_abort: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description start/resume: take the lease from another device */
+                takeover?: boolean;
+            };
             header?: never;
             path: {
                 inspection_id: string;
@@ -2748,15 +3100,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2790,15 +3133,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     frame_track_api_v1_inspections__inspection_id__track_get: {
@@ -2828,15 +3162,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2874,15 +3199,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     list_events_api_v1_inspections__inspection_id__events_get: {
@@ -2917,15 +3233,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     stream_events_api_v1_inspections__inspection_id__stream_get: {
@@ -2933,7 +3240,9 @@ export interface operations {
             query?: {
                 after_seq?: number;
             };
-            header?: never;
+            header?: {
+                "last-event-id"?: string | null;
+            };
             path: {
                 inspection_id: string;
             };
@@ -2957,15 +3266,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -2997,15 +3297,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -3083,15 +3374,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     decide_api_v1_inspections__inspection_id__decision_post: {
@@ -3127,13 +3409,37 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
+        };
+    };
+    roll_report_api_v1_inspections__inspection_id__report_pdf_get: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF document */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
+                    "application/pdf": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3165,15 +3471,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -3211,15 +3508,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     get_defect_api_v1_defects__defect_id__get: {
@@ -3251,13 +3539,35 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
+        };
+    };
+    defect_crop_api_v1_defects__defect_id__crop_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defect_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JPEG image */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
+                    "image/jpeg": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3295,15 +3605,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     reject_defect_api_v1_defects__defect_id__reject_post: {
@@ -3337,15 +3638,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -3383,15 +3675,6 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
-                };
-            };
         };
     };
     promote_nondefect_api_v1_defects__defect_id__promote_post: {
@@ -3403,7 +3686,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoteIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3421,15 +3708,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };
@@ -3467,13 +3745,35 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Contract v0: not implemented yet */
-            501: {
+        };
+    };
+    reopen_defect_api_v1_defects__defect_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                defect_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
+                    "application/json": components["schemas"]["DefectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

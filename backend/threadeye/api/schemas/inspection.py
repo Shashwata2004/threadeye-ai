@@ -1,4 +1,4 @@
-"""Contract v0: inspection lifecycle, browser-clocked advance loop, defects, verdict (M1/M2)."""
+"""Contract: inspection lifecycle, browser-clocked advance loop, defects, verdict (M2)."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ Verdict = Literal["PASS", "BORDERLINE", "FAIL"]
 FinalDecision = Literal["ACCEPT", "ACCEPT_WITH_CLAIM", "REJECT"]
 DefectStatus = Literal["pending", "confirmed", "rejected"]
 RejectReason = Literal["sticker", "loose_thread", "wrinkle", "pin_hole", "hand", "board", "not_visible", "other"]
+Preset = Literal["perfect", "realistic"]
 
 
 class SourceSpec(ApiModel):
@@ -28,6 +29,8 @@ class InspectionCreate(ApiModel):
     machine_id: uuid.UUID
     source: SourceSpec
     provider_config_id: uuid.UUID | None = None
+    preset: Preset | None = None
+    """Simulated detector only: ``realistic`` (false alarms and misses) or ``perfect`` (answer key)."""
 
 
 class ProviderInfoOut(ApiModel):
@@ -40,6 +43,7 @@ class ProviderInfoOut(ApiModel):
     calibrated_confidence: bool
     bbox_quality: Literal["precise", "approximate"]
     config_hash: str
+    preset: str | None = None
 
 
 class ScoreSummary(ApiModel):
@@ -52,8 +56,32 @@ class ScoreSummary(ApiModel):
     borderline_above: float
     points_budget: float | None
     provisional_verdict: Verdict | None
+    confirmed_verdict: Verdict | None = None
     yards_inspected: float
     coverage_pct: float
+    defects: int = 0
+    pending: int = 0
+    confirmed: int = 0
+    rejected: int = 0
+    nondefects_ignored: dict[str, int] = Field(default_factory=dict)
+    cells: dict[str, int] = Field(default_factory=dict)
+    """Yard index → points after the per-yard cap (provisional)."""
+
+
+class RollContext(ApiModel):
+    """The roll, its delivery and the rules it is scored by (shown on the live and verdict screens)."""
+
+    roll_code: str
+    mill_roll_no: str
+    declared_length_yd: float
+    declared_width_in: float
+    lot_id: uuid.UUID
+    challan_no: str
+    supplier: str
+    buyer: str
+    fabric_type: str
+    rule_profile: str
+    threshold_per_100: float
 
 
 class InspectionSnapshot(ApiModel):
@@ -72,11 +100,40 @@ class InspectionSnapshot(ApiModel):
     last_seq: int
     driver_session: bool
     """True if the caller holds the driver lease (may call /advance)."""
+    lease_held_elsewhere: bool
+    """Another browser session is driving this inspection right now."""
     score: ScoreSummary | None
     system_verdict: Verdict | None
     final_verdict: FinalDecision | None
     started_at: datetime | None
     completed_at: datetime | None
+    finalized_at: datetime | None
+    points_total: int | None
+    points_per_100: float | None
+    yards_inspected: float | None
+    decision_reason: str | None
+    decision_by: str | None
+    decision_at: datetime | None
+    inspector: str | None
+    dataset_id: str | None
+    frame_count: int
+    roll: RollContext
+
+
+class InspectionListItem(ApiModel):
+    id: uuid.UUID
+    roll_id: uuid.UUID
+    roll_code: str
+    status: InspectionStatus
+    system_verdict: Verdict | None
+    final_verdict: FinalDecision | None
+    points_per_100: float | None
+    checkpoint_frame: int
+    started_at: datetime | None
+    finalized_at: datetime | None
+    created_at: datetime
+    inspector: str | None
+    is_simulated: bool
 
 
 class Capture(ApiModel):
@@ -111,21 +168,28 @@ class SamplingPlanOut(ApiModel):
 class TrackOut(ApiModel):
     """Per-frame positions (columnar) so the browser can draw boxes that move with the fabric."""
 
+    dataset_id: str
     fps: float
     frame_count: int
     px_per_cm: float
     view_region: tuple[int, int, int, int]
+    fabric_width_cm: float
+    selvage_band_px: float | None
+    roll_length_yd: float
+    video_url: str | None
+    video_type: str | None
     roll_y_top_px: list[float]
     top_yd: list[float]
     bottom_yd: list[float]
     speed_m_min: list[float]
-    state: list[Literal["running", "stopped"]]
+    state: list[Literal["running", "stopped", "unknown"]]
     fabric_x0_px: list[float]
     hand_visible: list[bool]
 
 
 class DefectOut(ApiModel):
     id: uuid.UUID
+    inspection_id: uuid.UUID
     defect_no: str
     origin: Literal["detector", "manual"]
     predicted_cls: str
@@ -133,6 +197,8 @@ class DefectOut(ApiModel):
     kind: Literal["defect", "nondefect"]
     nondefect_category: str | None
     status: DefectStatus
+    reject_reason: str | None
+    uncertain: str | None
     start_yd: float
     end_yd: float
     center_yd: float
@@ -141,12 +207,18 @@ class DefectOut(ApiModel):
     length_in: float
     length_source: Literal["pixels", "inspector"]
     is_continuous: bool
+    is_running: bool
     sightings: int
+    first_frame: int | None
+    last_frame: int | None
+    best_frame: int
     points: int | None
+    points_reason: str | None
     excluded_reason: str | None
     explanation: str | None
     provider_label: str | None
     crop_url: str | None
+    decided_at: datetime | None
 
 
 class ConfirmIn(ApiModel):
@@ -160,6 +232,10 @@ class RejectIn(ApiModel):
 
 class ReclassifyIn(ApiModel):
     to_cls: str = Field(min_length=1, max_length=64)
+
+
+class PromoteIn(ApiModel):
+    to_cls: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class LengthIn(ApiModel):
@@ -184,3 +260,18 @@ class MeasurementIn(ApiModel):
 class DecisionIn(ApiModel):
     final_verdict: FinalDecision
     reason: str = Field(min_length=3, max_length=1000)
+
+
+class DatasetOut(ApiModel):
+    """A simulated roll that can be inspected (its answer key is never exposed)."""
+
+    id: str
+    roll_length_yd: float
+    fabric_width_in: float
+    frames: int
+    fps: float
+    mode: str
+    note: str | None
+    has_video: bool
+    video_url: str | None
+    is_simulated: bool

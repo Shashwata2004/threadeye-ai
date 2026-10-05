@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ThreadEye AI API",
-    "description": "\nThreadEye AI: fabric inspection assistant. **API contract v0 (M0).**\n\nEndpoints that return **501** are part of the agreed contract and are implemented in the milestone\nnamed in the response (`planned_milestone`). Every mutating endpoint is permission-checked\nserver-side and writes an append-only audit row.\n\n**SIMULATED MODE:** only the simulated detector exists in this phase. It is not AI, and every\nscreen and report says so.\n",
+    "description": "\nThreadEye AI: fabric inspection assistant. **API contract v0, implemented through M2.**\n\nEndpoints that return **501** are part of the agreed contract and are implemented in the milestone\nnamed in the response (`planned_milestone`). Every mutating endpoint is permission-checked\nserver-side and writes an append-only audit row.\n\n**SIMULATED MODE:** only the simulated detector exists in this phase. It is not AI, and every\nscreen and report says so.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -1052,23 +1052,161 @@
         }
       }
     },
+    "/api/v1/datasets": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "List Datasets",
+        "operationId": "list_datasets_api_v1_datasets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DatasetOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Datasets Api V1 Datasets Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/video": {
+      "get": {
+        "tags": [
+          "datasets"
+        ],
+        "summary": "Dataset Video",
+        "operationId": "dataset_video_api_v1_datasets__dataset_id__video_get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roll video (Range supported)",
+            "content": {
+              "video/webm": {},
+              "video/mp4": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/inspections": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "List Inspections",
+        "operationId": "list_inspections_api_v1_inspections_get",
+        "parameters": [
+          {
+            "name": "roll_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Roll Id"
+            }
+          },
+          {
+            "name": "open_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Open Only"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InspectionListItem"
+                  },
+                  "title": "Response List Inspections Api V1 Inspections Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "inspections"
         ],
         "summary": "Create Inspection",
-        "description": "Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "description": "Load a roll on a machine. 409 (with `inspection_id`) if the roll already has an open inspection.",
         "operationId": "create_inspection_api_v1_inspections_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/InspectionCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1077,16 +1215,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InspectionSnapshot"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1134,16 +1262,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1175,6 +1293,18 @@
               "format": "uuid",
               "title": "Inspection Id"
             }
+          },
+          {
+            "name": "takeover",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "start/resume: take the lease from another device",
+              "default": false,
+              "title": "Takeover"
+            },
+            "description": "start/resume: take the lease from another device"
           }
         ],
         "responses": {
@@ -1184,16 +1314,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InspectionSnapshot"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1229,6 +1349,18 @@
               "format": "uuid",
               "title": "Inspection Id"
             }
+          },
+          {
+            "name": "takeover",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "start/resume: take the lease from another device",
+              "default": false,
+              "title": "Takeover"
+            },
+            "description": "start/resume: take the lease from another device"
           }
         ],
         "responses": {
@@ -1238,16 +1370,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InspectionSnapshot"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1283,6 +1405,18 @@
               "format": "uuid",
               "title": "Inspection Id"
             }
+          },
+          {
+            "name": "takeover",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "start/resume: take the lease from another device",
+              "default": false,
+              "title": "Takeover"
+            },
+            "description": "start/resume: take the lease from another device"
           }
         ],
         "responses": {
@@ -1292,16 +1426,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InspectionSnapshot"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1337,6 +1461,18 @@
               "format": "uuid",
               "title": "Inspection Id"
             }
+          },
+          {
+            "name": "takeover",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "start/resume: take the lease from another device",
+              "default": false,
+              "title": "Takeover"
+            },
+            "description": "start/resume: take the lease from another device"
           }
         ],
         "responses": {
@@ -1346,16 +1482,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InspectionSnapshot"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1391,6 +1517,18 @@
               "format": "uuid",
               "title": "Inspection Id"
             }
+          },
+          {
+            "name": "takeover",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "start/resume: take the lease from another device",
+              "default": false,
+              "title": "Takeover"
+            },
+            "description": "start/resume: take the lease from another device"
           }
         ],
         "responses": {
@@ -1400,16 +1538,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InspectionSnapshot"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1457,16 +1585,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1510,16 +1628,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1539,7 +1647,7 @@
           "inspections"
         ],
         "summary": "Advance",
-        "description": "Browser-clocked processing of frames (checkpoint, until_frame] in one transaction. Only the driver-lease holder may call it. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "description": "Browser-clocked processing of frames (checkpoint, until_frame] in one transaction. Only the driver-lease holder may call it. Captures are evidence images of sampled frames. The response carries every event after `after_seq`.",
         "operationId": "advance_api_v1_inspections__inspection_id__advance_post",
         "parameters": [
           {
@@ -1570,16 +1678,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AdvanceOut"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1650,16 +1748,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1679,7 +1767,7 @@
           "inspections"
         ],
         "summary": "Stream Events",
-        "description": "Server-Sent Events. Resume with `Last-Event-ID` (= seq) or `?after_seq=`.",
+        "description": "Server-Sent Events. Resume with `Last-Event-ID` (= seq) or `?after_seq=`. The stream closes after 300 s; EventSource reconnects by itself.",
         "operationId": "stream_events_api_v1_inspections__inspection_id__stream_get",
         "parameters": [
           {
@@ -1702,6 +1790,22 @@
               "default": 0,
               "title": "After Seq"
             }
+          },
+          {
+            "name": "last-event-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
           }
         ],
         "responses": {
@@ -1709,16 +1813,6 @@
             "description": "SSE (edge profile)",
             "content": {
               "text/event-stream": {}
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
             }
           },
           "422": {
@@ -1760,16 +1854,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ScoreSummary"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -1854,6 +1938,7 @@
           "inspections"
         ],
         "summary": "Finalize",
+        "description": "Compute the roll verdict from confirmed defects. 409 while any defect is pending.",
         "operationId": "finalize_api_v1_inspections__inspection_id__finalize_post",
         "parameters": [
           {
@@ -1878,16 +1963,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1907,6 +1982,7 @@
           "inspections"
         ],
         "summary": "Decide",
+        "description": "Supervisor decision on the roll (required for BORDERLINE; any override needs a reason).",
         "operationId": "decide_api_v1_inspections__inspection_id__decision_post",
         "parameters": [
           {
@@ -1941,14 +2017,55 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/report.pdf": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Roll Report",
+        "description": "Roll inspection report (PDF). Marked SIMULATED with the provider label when applicable.",
+        "operationId": "roll_report_api_v1_inspections__inspection_id__report_pdf_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(en|bn)$",
+              "default": "en",
+              "title": "Lang"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF document",
+            "content": {
+              "application/pdf": {}
             }
           },
           "422": {
@@ -1994,16 +2111,6 @@
                     "$ref": "#/components/schemas/DefectOut"
                   },
                   "title": "Response List Defects Api V1 Inspections  Inspection Id  Defects Get"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -2060,16 +2167,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2113,14 +2210,43 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/defects/{defect_id}/crop": {
+      "get": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Defect Crop",
+        "operationId": "defect_crop_api_v1_defects__defect_id__crop_get",
+        "parameters": [
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JPEG image",
+            "content": {
+              "image/jpeg": {}
             }
           },
           "422": {
@@ -2142,6 +2268,7 @@
           "defects"
         ],
         "summary": "Confirm Defect",
+        "description": "Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
         "operationId": "confirm_defect_api_v1_defects__defect_id__confirm_post",
         "parameters": [
           {
@@ -2176,16 +2303,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2205,6 +2322,7 @@
           "defects"
         ],
         "summary": "Reject Defect",
+        "description": "Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
         "operationId": "reject_defect_api_v1_defects__defect_id__reject_post",
         "parameters": [
           {
@@ -2239,16 +2357,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2268,6 +2376,7 @@
           "defects"
         ],
         "summary": "Reclassify Defect",
+        "description": "Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
         "operationId": "reclassify_defect_api_v1_defects__defect_id__reclassify_post",
         "parameters": [
           {
@@ -2302,16 +2411,6 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
-                }
-              }
-            }
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2331,6 +2430,7 @@
           "defects"
         ],
         "summary": "Promote Nondefect",
+        "description": "Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
         "operationId": "promote_nondefect_api_v1_defects__defect_id__promote_post",
         "parameters": [
           {
@@ -2344,6 +2444,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoteIn"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2351,16 +2461,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DefectOut"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
                 }
               }
             }
@@ -2384,6 +2484,7 @@
           "defects"
         ],
         "summary": "Edit Length",
+        "description": "Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
         "operationId": "edit_length_api_v1_defects__defect_id__length_post",
         "parameters": [
           {
@@ -2418,12 +2519,46 @@
               }
             }
           },
-          "501": {
-            "description": "Contract v0: not implemented yet",
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/defects/{defect_id}/reopen": {
+      "post": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Reopen Defect",
+        "description": "Undo a confirm/reject: the defect is pending again. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "reopen_defect_api_v1_defects__defect_id__reopen_post",
+        "parameters": [
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefectOut"
                 }
               }
             }
@@ -2770,6 +2905,79 @@
         "type": "object",
         "title": "ConfirmIn"
       },
+      "DatasetOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "roll_length_yd": {
+            "type": "number",
+            "title": "Roll Length Yd"
+          },
+          "fabric_width_in": {
+            "type": "number",
+            "title": "Fabric Width In"
+          },
+          "frames": {
+            "type": "integer",
+            "title": "Frames"
+          },
+          "fps": {
+            "type": "number",
+            "title": "Fps"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "has_video": {
+            "type": "boolean",
+            "title": "Has Video"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
+          "is_simulated": {
+            "type": "boolean",
+            "title": "Is Simulated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "roll_length_yd",
+          "fabric_width_in",
+          "frames",
+          "fps",
+          "mode",
+          "note",
+          "has_video",
+          "video_url",
+          "is_simulated"
+        ],
+        "title": "DatasetOut",
+        "description": "A simulated roll that can be inspected (its answer key is never exposed)."
+      },
       "DecisionIn": {
         "properties": {
           "final_verdict": {
@@ -2801,6 +3009,11 @@
             "type": "string",
             "format": "uuid",
             "title": "Id"
+          },
+          "inspection_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Inspection Id"
           },
           "defect_no": {
             "type": "string",
@@ -2850,6 +3063,28 @@
             ],
             "title": "Status"
           },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reject Reason"
+          },
+          "uncertain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uncertain"
+          },
           "start_yd": {
             "type": "number",
             "title": "Start Yd"
@@ -2886,9 +3121,39 @@
             "type": "boolean",
             "title": "Is Continuous"
           },
+          "is_running": {
+            "type": "boolean",
+            "title": "Is Running"
+          },
           "sightings": {
             "type": "integer",
             "title": "Sightings"
+          },
+          "first_frame": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Frame"
+          },
+          "last_frame": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Frame"
+          },
+          "best_frame": {
+            "type": "integer",
+            "title": "Best Frame"
           },
           "points": {
             "anyOf": [
@@ -2900,6 +3165,17 @@
               }
             ],
             "title": "Points"
+          },
+          "points_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points Reason"
           },
           "excluded_reason": {
             "anyOf": [
@@ -2944,11 +3220,24 @@
               }
             ],
             "title": "Crop Url"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
           }
         },
         "type": "object",
         "required": [
           "id",
+          "inspection_id",
           "defect_no",
           "origin",
           "predicted_cls",
@@ -2956,6 +3245,8 @@
           "kind",
           "nondefect_category",
           "status",
+          "reject_reason",
+          "uncertain",
           "start_yd",
           "end_yd",
           "center_yd",
@@ -2964,12 +3255,18 @@
           "length_in",
           "length_source",
           "is_continuous",
+          "is_running",
           "sightings",
+          "first_frame",
+          "last_frame",
+          "best_frame",
           "points",
+          "points_reason",
           "excluded_reason",
           "explanation",
           "provider_label",
-          "crop_url"
+          "crop_url",
+          "decided_at"
         ],
         "title": "DefectOut"
       },
@@ -3175,6 +3472,21 @@
               }
             ],
             "title": "Provider Config Id"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "perfect",
+                  "realistic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
           }
         },
         "type": "object",
@@ -3184,6 +3496,144 @@
           "source"
         ],
         "title": "InspectionCreate"
+      },
+      "InspectionListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "roll_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Roll Id"
+          },
+          "roll_code": {
+            "type": "string",
+            "title": "Roll Code"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "running",
+              "paused",
+              "interrupted",
+              "completed",
+              "aborted"
+            ],
+            "title": "Status"
+          },
+          "system_verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PASS",
+                  "BORDERLINE",
+                  "FAIL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Verdict"
+          },
+          "final_verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ACCEPT",
+                  "ACCEPT_WITH_CLAIM",
+                  "REJECT"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Verdict"
+          },
+          "points_per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points Per 100"
+          },
+          "checkpoint_frame": {
+            "type": "integer",
+            "title": "Checkpoint Frame"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finalized_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finalized At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "inspector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inspector"
+          },
+          "is_simulated": {
+            "type": "boolean",
+            "title": "Is Simulated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "roll_id",
+          "roll_code",
+          "status",
+          "system_verdict",
+          "final_verdict",
+          "points_per_100",
+          "checkpoint_frame",
+          "started_at",
+          "finalized_at",
+          "created_at",
+          "inspector",
+          "is_simulated"
+        ],
+        "title": "InspectionListItem"
       },
       "InspectionSnapshot": {
         "properties": {
@@ -3265,6 +3715,10 @@
             "type": "boolean",
             "title": "Driver Session"
           },
+          "lease_held_elsewhere": {
+            "type": "boolean",
+            "title": "Lease Held Elsewhere"
+          },
           "score": {
             "anyOf": [
               {
@@ -3330,6 +3784,114 @@
               }
             ],
             "title": "Completed At"
+          },
+          "finalized_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finalized At"
+          },
+          "points_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points Total"
+          },
+          "points_per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points Per 100"
+          },
+          "yards_inspected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yards Inspected"
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Reason"
+          },
+          "decision_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision By"
+          },
+          "decision_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision At"
+          },
+          "inspector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inspector"
+          },
+          "dataset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Id"
+          },
+          "frame_count": {
+            "type": "integer",
+            "title": "Frame Count"
+          },
+          "roll": {
+            "$ref": "#/components/schemas/RollContext"
           }
         },
         "type": "object",
@@ -3348,11 +3910,23 @@
           "checkpoint_yd",
           "last_seq",
           "driver_session",
+          "lease_held_elsewhere",
           "score",
           "system_verdict",
           "final_verdict",
           "started_at",
-          "completed_at"
+          "completed_at",
+          "finalized_at",
+          "points_total",
+          "points_per_100",
+          "yards_inspected",
+          "decision_reason",
+          "decision_by",
+          "decision_at",
+          "inspector",
+          "dataset_id",
+          "frame_count",
+          "roll"
         ],
         "title": "InspectionSnapshot"
       },
@@ -3909,6 +4483,25 @@
         "title": "NotImplementedOut",
         "description": "Returned (HTTP 501) by contract-v0 endpoints that are not built yet."
       },
+      "PromoteIn": {
+        "properties": {
+          "to_cls": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Cls"
+          }
+        },
+        "type": "object",
+        "title": "PromoteIn"
+      },
       "ProviderAvailabilityOut": {
         "properties": {
           "provider_id": {
@@ -4015,6 +4608,17 @@
           "config_hash": {
             "type": "string",
             "title": "Config Hash"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
           }
         },
         "type": "object",
@@ -4093,6 +4697,71 @@
           "admin"
         ],
         "title": "Role"
+      },
+      "RollContext": {
+        "properties": {
+          "roll_code": {
+            "type": "string",
+            "title": "Roll Code"
+          },
+          "mill_roll_no": {
+            "type": "string",
+            "title": "Mill Roll No"
+          },
+          "declared_length_yd": {
+            "type": "number",
+            "title": "Declared Length Yd"
+          },
+          "declared_width_in": {
+            "type": "number",
+            "title": "Declared Width In"
+          },
+          "lot_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Lot Id"
+          },
+          "challan_no": {
+            "type": "string",
+            "title": "Challan No"
+          },
+          "supplier": {
+            "type": "string",
+            "title": "Supplier"
+          },
+          "buyer": {
+            "type": "string",
+            "title": "Buyer"
+          },
+          "fabric_type": {
+            "type": "string",
+            "title": "Fabric Type"
+          },
+          "rule_profile": {
+            "type": "string",
+            "title": "Rule Profile"
+          },
+          "threshold_per_100": {
+            "type": "number",
+            "title": "Threshold Per 100"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roll_code",
+          "mill_roll_no",
+          "declared_length_yd",
+          "declared_width_in",
+          "lot_id",
+          "challan_no",
+          "supplier",
+          "buyer",
+          "fabric_type",
+          "rule_profile",
+          "threshold_per_100"
+        ],
+        "title": "RollContext",
+        "description": "The roll, its delivery and the rules it is scored by (shown on the live and verdict screens)."
       },
       "RollCreate": {
         "properties": {
@@ -4476,6 +5145,22 @@
             ],
             "title": "Provisional Verdict"
           },
+          "confirmed_verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PASS",
+                  "BORDERLINE",
+                  "FAIL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Verdict"
+          },
           "yards_inspected": {
             "type": "number",
             "title": "Yards Inspected"
@@ -4483,6 +5168,40 @@
           "coverage_pct": {
             "type": "number",
             "title": "Coverage Pct"
+          },
+          "defects": {
+            "type": "integer",
+            "title": "Defects",
+            "default": 0
+          },
+          "pending": {
+            "type": "integer",
+            "title": "Pending",
+            "default": 0
+          },
+          "confirmed": {
+            "type": "integer",
+            "title": "Confirmed",
+            "default": 0
+          },
+          "rejected": {
+            "type": "integer",
+            "title": "Rejected",
+            "default": 0
+          },
+          "nondefects_ignored": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Nondefects Ignored"
+          },
+          "cells": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Cells"
           }
         },
         "type": "object",
@@ -4636,6 +5355,10 @@
       },
       "TrackOut": {
         "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
           "fps": {
             "type": "number",
             "title": "Fps"
@@ -4667,6 +5390,47 @@
             "maxItems": 4,
             "minItems": 4,
             "title": "View Region"
+          },
+          "fabric_width_cm": {
+            "type": "number",
+            "title": "Fabric Width Cm"
+          },
+          "selvage_band_px": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selvage Band Px"
+          },
+          "roll_length_yd": {
+            "type": "number",
+            "title": "Roll Length Yd"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
+          "video_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Type"
           },
           "roll_y_top_px": {
             "items": {
@@ -4701,7 +5465,8 @@
               "type": "string",
               "enum": [
                 "running",
-                "stopped"
+                "stopped",
+                "unknown"
               ]
             },
             "type": "array",
@@ -4724,10 +5489,16 @@
         },
         "type": "object",
         "required": [
+          "dataset_id",
           "fps",
           "frame_count",
           "px_per_cm",
           "view_region",
+          "fabric_width_cm",
+          "selvage_band_px",
+          "roll_length_yd",
+          "video_url",
+          "video_type",
           "roll_y_top_px",
           "top_yd",
           "bottom_yd",

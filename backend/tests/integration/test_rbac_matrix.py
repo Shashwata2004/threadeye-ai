@@ -37,7 +37,7 @@ def concrete(path: str) -> str:
     out = path
     for name in ("lot_id", "roll_id", "inspection_id", "defect_id", "user_id"):
         out = out.replace("{" + name + "}", str(uuid.uuid4()))
-    return out.replace("{roll_code}", "R-0001")
+    return out.replace("{roll_code}", "R-0001").replace("{dataset_id}", "no_such_roll")
 
 
 def test_discovered_a_meaningful_number_of_guarded_routes() -> None:
@@ -64,6 +64,8 @@ def test_anonymous_gets_401_everywhere(client: TestClient) -> None:
 
 def test_stub_returns_501_with_planned_milestone(client: TestClient) -> None:
     login(client, "inspector")
-    r = client.get(f"/api/v1/inspections/{uuid.uuid4()}/track")
+    r = client.post(
+        f"/api/v1/inspections/{uuid.uuid4()}/measurements", json={"kind": "width", "value": 58, "unit": "in"}
+    )
     assert r.status_code == 501
-    assert r.json()["planned_milestone"] == "M2"
+    assert r.json()["planned_milestone"] == "M4"

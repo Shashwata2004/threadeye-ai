@@ -14,7 +14,7 @@ from threadeye.settings import get_settings
 API_PREFIX = "/api/v1"
 
 DESCRIPTION = """
-ThreadEye AI: fabric inspection assistant. **API contract v0 (M0).**
+ThreadEye AI: fabric inspection assistant. **API contract v0, implemented through M2.**
 
 Endpoints that return **501** are part of the agreed contract and are implemented in the milestone
 named in the response (`planned_milestone`). Every mutating endpoint is permission-checked
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
         users.router,
         system.router,
         receiving.router,
+        inspections.datasets_router,
         inspections.router,
         inspections.defects_router,
     ):

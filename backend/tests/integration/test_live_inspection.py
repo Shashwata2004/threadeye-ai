@@ -1,0 +1,263 @@
+"""M2 acceptance (API side): the core flow on a simulated roll, driven through the HTTP API.
+
+load roll → start → advance (browser-clocked, with evidence captures) → confirm/reject/change type →
+finish → verdict → report. With the perfect preset and the simulator-parity profile the verdict must
+equal ``roll_meta.expected_score`` of the micro-fixture exactly (7 points, 142.24, FAIL).
+"""
+
+from __future__ import annotations
+
+import base64
+import io
+import json
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+from PIL import Image
+from sqlalchemy import func, select
+
+from tests.conftest import MICRO_ROLL, TEST_PASSWORD, login
+from threadeye.api.app import create_app
+from threadeye.db.models import AuditLog, InspectionEvent
+from threadeye.db.session import get_sessionmaker
+from threadeye.services import live
+
+pytestmark = pytest.mark.integration
+
+META = json.loads((MICRO_ROLL / "roll_meta.json").read_text())
+
+
+def _lot_with_roll(client: TestClient, *, profile: str = "Simulator parity") -> str:
+    login(client, "store")
+    supplier = client.get("/api/v1/suppliers").json()[0]["id"]
+    buyer = client.get("/api/v1/buyers").json()[0]["id"]
+    profile_id = next(p["id"] for p in client.get("/api/v1/rule-profiles").json() if p["name"] == profile)
+    lot = client.post(
+        "/api/v1/lots",
+        json={
+            "challan_no": f"CH-LIVE-{profile[:3]}",
+            "supplier_id": supplier,
+            "buyer_id": buyer,
+            "fabric_type": "Cotton twill",
+            "received_at": "2026-10-05",
+            "declared_rolls": 1,
+            "rule_profile_id": profile_id,
+        },
+    ).json()
+    rolls = client.post(
+        f"/api/v1/lots/{lot['id']}/rolls",
+        json={
+            "rolls": [{"mill_roll_no": "R01", "declared_length_yd": 100, "declared_width_in": META["fabric_width_in"]}]
+        },
+    ).json()
+    return str(rolls[0]["roll_code"])
+
+
+def _start(client: TestClient, roll_code: str, preset: str = "perfect") -> dict[str, Any]:
+    login(client, "inspector")
+    machine = client.get("/api/v1/machines").json()[0]["id"]
+    r = client.post(
+        "/api/v1/inspections",
+        json={"roll_code": roll_code, "machine_id": machine, "source": {"dataset_id": "micro_roll"}, "preset": preset},
+    )
+    assert r.status_code == 201, r.text
+    insp = r.json()
+    r = client.post(f"/api/v1/inspections/{insp['id']}/start")
+    assert r.status_code == 200, r.text
+    return r.json()  # type: ignore[no-any-return]
+
+
+def _jpeg(w: int = 960, h: int = 504) -> str:
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), (200, 190, 170)).save(buf, "JPEG")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def _run_to_end(client: TestClient, insp_id: str, cuts: tuple[int, ...] = (40, 120, 204)) -> list[dict[str, Any]]:
+    seen: list[dict[str, Any]] = []
+    after = 0
+    for until in cuts:
+        captures = [{"frame": 110, "jpeg_b64": _jpeg(), "width": 960, "height": 504}] if until == 120 else []
+        r = client.post(
+            f"/api/v1/inspections/{insp_id}/advance",
+            json={"until_frame": until, "after_seq": after, "captures": captures},
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        seen += body["events"]
+        after = body["last_seq"]
+        assert body["checkpoint_frame"] == until
+    return seen
+
+
+def test_core_flow_reproduces_the_expected_score(client: TestClient) -> None:
+    roll_code = _lot_with_roll(client)
+    snap = _start(client, roll_code)
+    insp_id = snap["id"]
+    assert snap["status"] == "running" and snap["driver_session"] is True
+    assert snap["is_simulated"] is True and snap["provider"]["provider_id"] == "simulated"
+
+    track = client.get(f"/api/v1/inspections/{insp_id}/track").json()
+    assert track["frame_count"] == META["frames"] and len(track["roll_y_top_px"]) == META["frames"]
+    plan = client.get(f"/api/v1/inspections/{insp_id}/plan").json()
+    assert plan["frames"] and plan["frames"][-1] == META["frames"] - 1
+
+    events = _run_to_end(client, insp_id)
+    seqs = [e["seq"] for e in events]
+    assert seqs == list(range(seqs[0], seqs[0] + len(seqs)))  # gap-free, in order
+    assert all(e["simulated"] is True for e in events)
+    assert {"frame.sampled", "detection.batch", "defect.upserted", "score.updated"} <= {e["type"] for e in events}
+
+    # Re-sending the same advance writes nothing (idempotent; e.g. a retry after a dropped response).
+    again = client.post(f"/api/v1/inspections/{insp_id}/advance", json={"until_frame": 204, "after_seq": seqs[-1]})
+    assert again.status_code == 200 and again.json()["events"] == []
+
+    defects = client.get(f"/api/v1/inspections/{insp_id}/defects").json()
+    real = [d for d in defects if d["kind"] == "defect"]
+    assert len(real) == 3 and all(d["status"] == "pending" for d in real)
+    assert {d["nondefect_category"] for d in defects if d["kind"] == "nondefect"} >= {"loose_thread"}
+
+    # Evidence photo: the stain (D2, ~1.6 yd) is in view in the captured frame 110.
+    stain = next(d for d in real if d["current_cls"] == "stain")
+    assert stain["crop_url"]
+    crop = client.get(stain["crop_url"])
+    assert crop.status_code == 200 and crop.content.startswith(b"\xff\xd8")
+
+    # The verdict is blocked while defects are pending.
+    assert client.post(f"/api/v1/inspections/{insp_id}/complete").status_code == 200
+    blocked = client.post(f"/api/v1/inspections/{insp_id}/finalize")
+    assert blocked.status_code == 409 and blocked.json()["detail"]["pending"] == 3
+
+    for d in real:
+        r = client.post(f"/api/v1/defects/{d['id']}/confirm", json={}, headers={"Idempotency-Key": f"k-{d['id']}"})
+        assert r.status_code == 200 and r.json()["status"] == "confirmed"
+    with get_sessionmaker()() as db:
+        n_events = db.scalar(select(func.count()).select_from(InspectionEvent))
+    retry = client.post(
+        f"/api/v1/defects/{real[0]['id']}/confirm", json={}, headers={"Idempotency-Key": f"k-{real[0]['id']}"}
+    )
+    assert retry.status_code == 200
+    with get_sessionmaker()() as db:
+        assert db.scalar(select(func.count()).select_from(InspectionEvent)) == n_events  # retry wrote nothing
+
+    final = client.post(f"/api/v1/inspections/{insp_id}/finalize")
+    assert final.status_code == 200, final.text
+    v = final.json()
+    expected = META["expected_score"]
+    assert v["system_verdict"] == expected["verdict"]
+    assert v["points_total"] == expected["total_points"]
+    assert v["points_per_100"] == pytest.approx(expected["points_per_100_sq_yd"], abs=0.005)
+    assert v["status"] == "completed" and v["finalized_at"]
+
+    # A supervisor records the decision; the change ledger has every step.
+    login(client, "supervisor")
+    d = client.post(
+        f"/api/v1/inspections/{insp_id}/decision", json={"final_verdict": "REJECT", "reason": "fails 4-point"}
+    )
+    assert d.status_code == 200 and d.json()["final_verdict"] == "REJECT"
+    with get_sessionmaker()() as db:
+        actions = set(db.scalars(select(AuditLog.action)).all())
+    assert {"inspection.create", "defect.confirm", "inspection.complete", "inspection.finalize"} <= actions
+    assert "inspection.decision" in actions
+
+    report = client.get(f"/api/v1/inspections/{insp_id}/report.pdf")
+    assert report.status_code == 200 and report.content.startswith(b"%PDF-")
+    if shutil.which("pdftotext"):
+        out = subprocess.run(["pdftotext", "-", "-"], input=report.content, capture_output=True, check=True)  # noqa: S607
+        text = out.stdout.decode()
+        assert "SIMULATED" in text and "simulated@" in text and "FAIL" in text
+
+
+def test_decisions_rescore_and_survive_a_restart(client: TestClient) -> None:
+    roll_code = _lot_with_roll(client)
+    insp_id = _start(client, roll_code)["id"]
+    _run_to_end(client, insp_id)
+    real = [d for d in client.get(f"/api/v1/inspections/{insp_id}/defects").json() if d["kind"] == "defect"]
+    hole = next(d for d in real if d["current_cls"] == "hole")
+    slub = next(d for d in real if d["current_cls"] == "slub")
+    stain = next(d for d in real if d["current_cls"] == "stain")
+
+    r = client.post(f"/api/v1/defects/{hole['id']}/reject", json={"reason_category": "pin_hole"})
+    assert r.status_code == 200 and r.json()["status"] == "rejected" and r.json()["reject_reason"] == "pin_hole"
+    r = client.post(f"/api/v1/defects/{slub['id']}/reclassify", json={"to_cls": "hole"})
+    assert r.status_code == 200 and r.json()["current_cls"] == "hole" and r.json()["status"] == "confirmed"
+    r = client.post(f"/api/v1/defects/{stain['id']}/length", json={"length_in": 10})
+    assert r.status_code == 200 and r.json()["length_source"] == "inspector" and r.json()["points"] == 4
+    client.post(f"/api/v1/defects/{stain['id']}/confirm", json={})
+    manual = client.post(
+        f"/api/v1/inspections/{insp_id}/defects", json={"cls": "knot", "center_yd": 0.8, "length_in": 0.5}
+    )
+    assert manual.status_code == 201, manual.text
+    assert manual.json()["origin"] == "manual" and manual.json()["status"] == "confirmed"
+    bad = client.post(f"/api/v1/defects/{stain['id']}/reclassify", json={"to_cls": "sticker"})
+    assert bad.status_code == 409  # a non-defect class is not a defect type
+
+    before = client.get(f"/api/v1/inspections/{insp_id}/score").json()
+    # slub (7.87 in) reclassified as hole → >1 in hole → 4; stain edited to 10 in → 4; knot 0.5 in → 1
+    assert before["confirmed_points"] == 9 and before["pending"] == 0 and before["rejected"] == 1
+
+    live.clear_cache()  # as after a restart: the runner is rebuilt from the stored events
+    after = client.get(f"/api/v1/inspections/{insp_id}/score").json()
+    assert after == before
+    rebuilt = client.get(f"/api/v1/inspections/{insp_id}/defects").json()
+    assert {(d["defect_no"], d["status"], d["current_cls"], d["points"]) for d in rebuilt} == {
+        (d["defect_no"], d["status"], d["current_cls"], d["points"])
+        for d in client.get(f"/api/v1/inspections/{insp_id}/defects").json()
+    }
+
+
+def test_one_driver_at_a_time_and_permissions(client: TestClient) -> None:
+    roll_code = _lot_with_roll(client)
+    insp_id = _start(client, roll_code)["id"]
+
+    with TestClient(create_app()) as other:
+        login(other, "supervisor", TEST_PASSWORD)
+        assert other.get(f"/api/v1/inspections/{insp_id}").json()["lease_held_elsewhere"] is True
+        r = other.post(f"/api/v1/inspections/{insp_id}/advance", json={"until_frame": 10, "after_seq": 0})
+        assert r.status_code == 409 and r.json()["detail"]["lease_lost"] is True
+        assert other.post(f"/api/v1/inspections/{insp_id}/start").status_code == 409
+        took = other.post(f"/api/v1/inspections/{insp_id}/start?takeover=true")
+        assert took.status_code == 200 and took.json()["driver_session"] is True
+
+    # The first browser lost the lease.
+    r = client.post(f"/api/v1/inspections/{insp_id}/advance", json={"until_frame": 10, "after_seq": 0})
+    assert r.status_code == 409
+
+    # A second open inspection of the same roll is refused, with a pointer to the open one.
+    machine = client.get("/api/v1/machines").json()[0]["id"]
+    dup = client.post(
+        "/api/v1/inspections",
+        json={"roll_code": roll_code, "machine_id": machine, "source": {"dataset_id": "micro_roll"}},
+    )
+    assert dup.status_code == 409 and dup.json()["detail"]["inspection_id"] == insp_id
+
+    login(client, "store")
+    assert client.post(f"/api/v1/inspections/{insp_id}/start").status_code == 403
+    assert client.get(f"/api/v1/inspections/{insp_id}").status_code == 200
+
+    datasets = client.get("/api/v1/datasets").json()
+    assert [d["id"] for d in datasets] == ["micro_roll"] and datasets[0]["has_video"] is False
+    assert "ground_truth" not in json.dumps(datasets)
+
+
+def test_bad_captures_are_refused(client: TestClient, tmp_path: Path) -> None:
+    roll_code = _lot_with_roll(client)
+    insp_id = _start(client, roll_code)["id"]
+    png = io.BytesIO()
+    Image.new("RGB", (10, 10)).save(png, "PNG")
+    for b64 in (base64.b64encode(png.getvalue()).decode(), "not base64!!", base64.b64encode(b"\xff\xd8junk").decode()):
+        r = client.post(
+            f"/api/v1/inspections/{insp_id}/advance",
+            json={
+                "until_frame": 5,
+                "after_seq": 0,
+                "captures": [{"frame": 1, "jpeg_b64": b64, "width": 10, "height": 10}],
+            },
+        )
+        assert r.status_code == 422, r.text
+    snap = client.get(f"/api/v1/inspections/{insp_id}").json()
+    assert snap["checkpoint_frame"] == -1  # nothing was processed by the refused calls

@@ -8,10 +8,16 @@ they are skipped locally; in CI (``CI=true``) a missing database is an error.
 from __future__ import annotations
 
 import os
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+
+# Live inspections read simulated rolls from here (the micro-fixture) and store evidence images in a
+# throwaway directory. Must be set before threadeye.settings is first used.
+os.environ.setdefault("THREADEYE_DATASETS_DIR", str(Path(__file__).parent / "fixtures"))
+os.environ.setdefault("THREADEYE_STORAGE_DIR", tempfile.mkdtemp(prefix="threadeye-test-storage-"))
 
 _TEST_DB = os.environ.get("TEST_DATABASE_URL")
 if _TEST_DB:
