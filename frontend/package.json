@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "i18n:check": "node scripts/check-i18n.mjs",
     "gen:api": "openapi-typescript ../docs/api/openapi.json -o src/lib/api/schema.d.ts",
-    "check": "pnpm i18n:check && pnpm lint && pnpm typecheck"
+    "check": "pnpm i18n:check && pnpm lint && pnpm typecheck",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
@@ -22,6 +23,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

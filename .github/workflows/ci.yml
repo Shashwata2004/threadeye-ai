@@ -95,11 +95,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The sample roll's video stays out of git (AITEX licence), so the browser test renders its own
+      # short roll with the team's simulator (synthetic fabric, no dataset needed; H.264 via ffmpeg).
+      - name: Render a simulated roll for the browser test
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+          pip install numpy opencv-python-headless pyyaml
+          python tools/simulator/make_roll_video.py --source synthetic --roll-length-m 5 --seed 3 --out data/ci_roll
       - run: cp .env.example .env
       - name: Build and start the edge stack
         run: GIT_SHA=${GITHUB_SHA::7} docker compose up -d --build --wait
       - name: Offline check (internal network, no internet, app works)
         run: ./scripts/verify_offline.sh
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - name: Golden path in the browser (Playwright + Google Chrome) against the offline stack
+        working-directory: frontend
+        run: pnpm e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+          E2E_DATASET: ci_roll
+      - name: Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
       - name: Logs on failure
         if: failure()
         run: docker compose logs --tail=200

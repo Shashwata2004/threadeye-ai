@@ -22,10 +22,14 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 .pnpm-store/
+test-results/
+playwright-report/
 
 # Runtime data (never commit)
 storage/
+.storage/
 data/generated/
+data/ci_roll/
 backend/out/
 *.log
 
