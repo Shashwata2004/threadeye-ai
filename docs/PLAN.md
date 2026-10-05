@@ -406,7 +406,7 @@ class DetectorProvider(ABC):
 ```
 
 ### 6.3 SimulatedDetector (build now)
-- **Visibility:** a GT defect is visible if its roll box intersects the frame window `[roll_y_top_px, roll_y_top_px + 1008]` with ≥ `min_visible_fraction` (0.5). It is mapped into the frame as `(x0_px + fabric_x0_px[f], y0_px − roll_y_top_px[f])` → `(x1_px + fabric_x0_px[f], y1_px − roll_y_top_px[f])` and clipped to the view, with truncation flagged. A nuisance is visible if `frame ≥ appears_frame` and it lies in the window; its box is centre ± extent/2.
+- **Visibility:** a GT defect is visible if its roll box intersects the frame window `[roll_y_top_px, roll_y_top_px + 1008]` with ≥ `min_visible_fraction` (0.5). It is mapped into the frame as `(x0_px + fabric_x0_px[f], y0_px − roll_y_top_px[f])` → `(x1_px + fabric_x0_px[f], y1_px − roll_y_top_px[f])` and clipped to the view, with truncation flagged. A nuisance is visible if `frame ≥ appears_frame` (empty `appears_frame` = from the start) and it lies in the window; its box is centre ± extent/2.
 - **Imperfection params (all seeded):**
 
   | Param | Default (realistic preset) |

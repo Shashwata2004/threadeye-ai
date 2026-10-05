@@ -171,12 +171,19 @@ class NuisanceRow(_Row):
     center_yd: float
     across_cm: float
     extent_cm: float = Field(gt=0)
-    appears_frame: int = Field(ge=0)
+    appears_frame: int | None = Field(default=None, ge=0)
+    """Empty in the simulator's CSV for things on the fabric from the start (wrinkles, threads);
+    a frame number for stickers, which the inspector places during a stop."""
 
     @field_validator("type", mode="before")
     @classmethod
     def _lower_type(cls, v: Any) -> str:
         return str(v).strip().lower()
+
+    @field_validator("appears_frame", mode="before")
+    @classmethod
+    def _optional_appears(cls, v: Any) -> Any:
+        return _blank_to_none(v)
 
 
 # --------------------------------------------------------------------------------------------- report
@@ -414,7 +421,7 @@ def _check_nuisance(meta: RollMeta, frames: list[FrameRow], nuis: list[NuisanceR
     f = FILES["nuisance"]
     for i, n in enumerate(nuis):
         line = i + 2
-        if not 0 <= n.appears_frame < max(len(frames), 1):
+        if n.appears_frame is not None and not 0 <= n.appears_frame < max(len(frames), 1):
             r.error(f, f"appears_frame {n.appears_frame} outside the video", line)
         if not 0 <= n.center_yd <= meta.roll_length_yd + 0.5:
             r.warn(f, "center_yd outside the roll length", line)

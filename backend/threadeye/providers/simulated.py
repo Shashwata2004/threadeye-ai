@@ -176,7 +176,7 @@ class SimulatedDetector(DetectorProvider):
             )
 
         for i, n in enumerate(self._key.nuisances):
-            if pos.frame < n.appears_frame:
+            if n.appears_frame is not None and pos.frame < n.appears_frame:
                 continue
             half = n.extent_cm / 2
             along_c = n.center_yd * YARD_CM

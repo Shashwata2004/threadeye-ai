@@ -8,7 +8,7 @@ Source of truth: brief §8, plus the conventions the team verified in `tools/sim
 | `roll_meta.json` | `px_per_cm`, `view_region {x,y,w,h}` (= 0,0,1920,1008), `fabric_width_cm`, `fabric_width_in`, `roll_length_yd`, `fps`, `frames`, `expected_score {total_points, points_per_100_sq_yd, threshold, verdict}`, `selvage_band_px`, `mode` (realistic/clean) |
 | `frames.csv` | `frame, time_s, roll_y_top_px, top_yd, bottom_yd, speed_m_min, state, fabric_x0_px, hand_visible` |
 | `ground_truth.csv` | `defect_id, class, center_yd, start_yd, end_yd, across_cm, length_in, points, first_full_frame, last_full_frame, operator_stop_frame, x0_px, y0_px, x1_px, y1_px, source` |
-| `nuisance.csv` | `type (wrinkle/loose_thread/sticker), center_yd, across_cm, extent_cm, appears_frame` |
+| `nuisance.csv` | `type (wrinkle/loose_thread/sticker), center_yd, across_cm, extent_cm, appears_frame` (empty = on the fabric from the start; stickers have the frame they are placed in) |
 | `roll_video.mp4` | 1920 × 1044; fabric enters at the bottom; 36-px "SIMULATED FEED" bar below `view_region` |
 
 ## Conventions (verified)

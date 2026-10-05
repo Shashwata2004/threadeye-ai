@@ -119,9 +119,25 @@ def test_nuisance_type_is_restricted(tmp_path: Path) -> None:
     assert any("nuisance.csv" in e for e in _errors_after(tmp_path, "nuisance.csv", bad))
 
 
+def test_empty_appears_frame_means_from_the_start(tmp_path: Path) -> None:
+    """The simulator leaves appears_frame empty for wrinkles and threads that are there from frame 0."""
+
+    def blank(rows, fields):  # type: ignore[no-untyped-def]
+        for r in rows:
+            r["appears_frame"] = ""
+        return rows, fields
+
+    root = copy_fixture(tmp_path)
+    rewrite_csv(root / "nuisance.csv", blank)
+    report, parsed = validate_dataset(root, require_media=False)
+    assert report.ok, report.errors
+    assert parsed is not None and all(n.appears_frame is None for n in parsed.nuisance)
+
+
 @pytest.mark.skipif(not (SAMPLE_ROLL / "roll_meta.json").exists(), reason="sample roll not in repo yet")
 def test_real_sample_roll_is_valid() -> None:
-    report, parsed = validate_dataset(SAMPLE_ROLL)
+    # The video stays out of git until the AITEX licence is confirmed, so CI validates without it.
+    report, parsed = validate_dataset(SAMPLE_ROLL, require_media=(SAMPLE_ROLL / "roll_video.mp4").exists())
     assert report.ok, report.errors
     assert parsed is not None
     es = parsed.meta.expected_score
