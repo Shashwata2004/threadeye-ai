@@ -274,10 +274,28 @@ export default function LiveInspectionPage() {
   }
 
   // ------------------------------------------------------------------------- inspector decisions
+  // Decisions update the card at once (optimistic) and save in the background: over a slow link a
+  // round trip takes seconds, and the inspector must be able to keep working through the queue.
+  const [savingIds, setSavingIds] = useState<ReadonlySet<string>>(new Set());
   const decide = useCallback(
     async (d: Defect, action: string, body: Record<string, unknown> = {}) => {
+      const key = ["defects", id];
+      const optimistic: Partial<Defect> =
+        action === "confirm"
+          ? { status: "confirmed", reject_reason: null }
+          : action === "reject"
+            ? { status: "rejected", reject_reason: String(body.reason_category) }
+            : action === "reclassify"
+              ? { status: "confirmed", current_cls: String(body.to_cls), reject_reason: null }
+              : action === "promote"
+                ? { status: "confirmed", kind: "defect", nondefect_category: null }
+                : { status: "pending", reject_reason: null };
+      await queryClient.cancelQueries({ queryKey: key });
+      queryClient.setQueryData<Defect[]>(key, (old) => old?.map((x) => (x.id === d.id ? { ...x, ...optimistic } : x)));
+      setSavingIds((s) => new Set(s).add(d.id));
+
       const opts = { params: { path: { defect_id: d.id } }, headers: { "Idempotency-Key": idempotencyKey() } };
-      let res: { data?: unknown; error?: unknown };
+      let res: { data?: Defect; error?: unknown; response: Response };
       if (action === "confirm") res = await api.POST("/api/v1/defects/{defect_id}/confirm", { ...opts, body: {} });
       else if (action === "reject")
         res = await api.POST("/api/v1/defects/{defect_id}/reject", {
@@ -291,9 +309,21 @@ export default function LiveInspectionPage() {
         });
       else if (action === "promote") res = await api.POST("/api/v1/defects/{defect_id}/promote", { ...opts, body: {} });
       else res = await api.POST("/api/v1/defects/{defect_id}/reopen", opts);
-      if (!res.data) setError(errorDetail(res.error));
-      await queryClient.invalidateQueries({ queryKey: ["defects", id] });
-      await pullEvents();
+
+      setSavingIds((s) => {
+        const next = new Set(s);
+        next.delete(d.id);
+        return next;
+      });
+      if (res.data) {
+        const saved = res.data;
+        queryClient.setQueryData<Defect[]>(key, (old) => old?.map((x) => (x.id === saved.id ? saved : x)));
+      } else {
+        setError(errorDetail(res.error, res.response.status));
+      }
+      // Points of other defects can change too (per-yard cap): refresh quietly.
+      void queryClient.invalidateQueries({ queryKey: key });
+      void pullEvents();
     },
     [id, queryClient, pullEvents],
   );
@@ -326,7 +356,19 @@ export default function LiveInspectionPage() {
 
   const togglePlay = useCallback(() => {
     const video = videoRef.current?.video;
-    if (!video) return;
+    if (!video || !track) return;
+    const lastFrame = track.frame_count - 1;
+    const done = checkpointRef.current >= lastFrame || insp?.status === "completed";
+    if (done) {
+      // Review replay after the roll has run: only the video plays again (with its boxes). The
+      // inspection is not touched: no frames are processed, no photos taken.
+      drivingRef.current = false;
+      setDriving(false);
+      if (!video.paused && !video.ended) videoRef.current?.pause();
+      else if (video.ended || frameRef.current >= lastFrame) void videoRef.current?.playFrom(0, rate);
+      else void videoRef.current?.playFrom(frameRef.current, rate);
+      return;
+    }
     if (driving && !video.paused) void pause();
     else void begin();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -376,6 +418,7 @@ export default function LiveInspectionPage() {
   const open = ["created", "running", "paused", "interrupted"].includes(status);
   const stopped = track.state[frame] === "stopped";
   const atEnd = checkpoint >= track.frame_count - 1;
+  const finished = atEnd || status === "completed";
   const leaseElsewhere = insp.lease_held_elsewhere && !driving;
 
   return (
@@ -454,10 +497,23 @@ export default function LiveInspectionPage() {
             >
               {stopped ? t("live.stopped") : t("live.running")} · {t("live.speed", { v: track.speed_m_min[frame]?.toFixed(1) ?? "0" })}
             </span>
-            {canRun && open && (
-              <Button variant="secondary" onClick={togglePlay} disabled={busy || leaseElsewhere}>
-                {driving && playing ? t("live.pause") : t("live.play")}
-              </Button>
+            {((canRun && open) || finished) && (
+              <button
+                type="button"
+                onClick={togglePlay}
+                disabled={busy || (leaseElsewhere && !finished)}
+                data-testid="play-pause"
+                title={finished ? t("live.replayNote") : undefined}
+                className={`rounded-md px-5 py-2 text-base font-bold text-white disabled:opacity-50 ${
+                  playing ? "bg-amber-600 hover:bg-amber-700" : "bg-green-700 hover:bg-green-800"
+                }`}
+              >
+                {playing
+                  ? `⏸ ${t("live.pause")}`
+                  : finished && (ended || frame >= track.frame_count - 1)
+                    ? `↻ ${t("live.playAgain")}`
+                    : `▶ ${t("live.play")}`}
+              </button>
             )}
             <label className="flex items-center gap-1 text-sm text-slate-600">
               {t("live.demoSpeed")}
@@ -556,6 +612,7 @@ export default function LiveInspectionPage() {
                     onSelect={() => setSelectedId(d.id)}
                     decide={decide}
                     canDecide={canDecide && !insp.finalized_at}
+                    saving={savingIds.has(d.id)}
                     rejectOpen={rejectFor === d.id}
                     setRejectOpen={(o) => setRejectFor(o ? d.id : null)}
                     reclassOpen={reclassFor === d.id}

@@ -7,7 +7,8 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { ProviderBadge } from "@/components/badges";
 import { Button, inputClass } from "@/components/form";
-import { api, hasPerm, idempotencyKey, type Defect } from "@/lib/api/client";
+import { Lightbox, largePhoto } from "@/components/Lightbox";
+import { api, hasPerm, idempotencyKey, type Defect, type Inspection } from "@/lib/api/client";
 import { errorDetail, useDefects, useInspection, useMe } from "@/lib/api/hooks";
 
 const VERDICT_STYLE: Record<string, string> = {
@@ -15,89 +16,52 @@ const VERDICT_STYLE: Record<string, string> = {
   BORDERLINE: "bg-amber-500 text-amber-950",
   FAIL: "bg-red-700 text-white",
 };
-const STATUS_FILL: Record<string, string> = { confirmed: "#16a34a", pending: "#dc2626", rejected: "#94a3b8" };
 
-function RollMap({
-  defects,
-  lengthYd,
-  widthCm,
-  onPick,
-}: {
-  defects: Defect[];
-  lengthYd: number;
-  widthCm: number;
-  onPick: (d: Defect) => void;
-}) {
-  const W = 1000;
-  const H = 150;
-  const x = (yd: number) => (yd / lengthYd) * W;
-  const y = (cm: number) => (cm / widthCm) * H;
-  const step = Math.max(1, Math.round(lengthYd / 12));
-  const ticks: number[] = [];
-  for (let v = 0; v <= lengthYd + 1e-9; v += step) ticks.push(v);
-  return (
-    <svg viewBox={`-10 -10 ${W + 20} ${H + 40}`} className="w-full" role="img" aria-label="roll map" data-testid="roll-map">
-      <rect x={0} y={0} width={W} height={H} fill="#f5efe4" stroke="#94a3b8" />
-      {ticks.map((v) => (
-        <g key={v}>
-          <line x1={x(v)} x2={x(v)} y1={H} y2={H + 6} stroke="#475569" />
-          <text x={x(v)} y={H + 20} fontSize={12} textAnchor="middle" fill="#334155">
-            {v}
-          </text>
-        </g>
-      ))}
-      {defects.map((d) => {
-        const x0 = x(d.start_yd);
-        const w = Math.max(x(d.end_yd) - x0, 6);
-        const y0 = y(d.across_start_cm);
-        const h = Math.max(y(d.across_end_cm) - y0, 6);
-        const nd = d.kind === "nondefect";
-        return (
-          <g key={d.id} onClick={() => onPick(d)} className="cursor-pointer">
-            <rect
-              x={x0 - (w <= 6 ? 3 : 0)}
-              y={y0 - (h <= 6 ? 3 : 0)}
-              width={w}
-              height={h}
-              fill={nd ? "none" : STATUS_FILL[d.status] ?? "#dc2626"}
-              stroke={nd ? "#64748b" : "none"}
-              strokeDasharray={nd ? "3 2" : undefined}
-            >
-              <title>{d.defect_no}</title>
-            </rect>
-            {!nd && (
-              <text x={x0} y={Math.max(y0 - 3, 10)} fontSize={11} fill="#0f172a">
-                {d.defect_no}
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function DecisionPanel({ id, systemVerdict }: { id: string; systemVerdict: string }) {
+const GALLERY_BORDER: Record<string, string> = {
+  confirmed: "border-green-500",
+  pending: "border-red-500",
+  rejected: "border-slate-300 opacity-70",
+};
+function DecisionPanel({ id, insp }: { id: string; insp: Inspection }) {
   const t = useTranslations();
   const queryClient = useQueryClient();
-  const [choice, setChoice] = useState(systemVerdict === "PASS" ? "ACCEPT" : "REJECT");
+  const systemVerdict = insp.system_verdict ?? "";
+  const [choice, setChoice] = useState<string>(insp.final_verdict ?? (systemVerdict === "PASS" ? "ACCEPT" : "REJECT"));
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const override = (systemVerdict === "PASS" && choice === "REJECT") || (systemVerdict === "FAIL" && choice === "ACCEPT");
   async function save() {
-    const { data, error: err } = await api.POST("/api/v1/inspections/{inspection_id}/decision", {
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    const { data, error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/decision", {
       params: { path: { inspection_id: id } },
       headers: { "Idempotency-Key": idempotencyKey() },
       body: { final_verdict: choice as "ACCEPT" | "ACCEPT_WITH_CLAIM" | "REJECT", reason: reason.trim() },
     });
+    setSaving(false);
     if (data) {
       queryClient.setQueryData(["inspection", id], data);
-      setError(null);
-    } else setError(errorDetail(err));
+      setSaved(true);
+      setReason("");
+    } else setError(errorDetail(err, response.status));
   }
   return (
     <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4" data-testid="decision">
       <h2 className="font-semibold">{t("verdict.decision")}</h2>
+      {insp.final_verdict && (
+        <p className="rounded bg-teal-50 px-3 py-2 text-sm text-teal-900" data-testid="decision-current">
+          ✓{" "}
+          {t("verdict.decidedBy", {
+            decision: t(`verdicts.${insp.final_verdict}`),
+            by: insp.decision_by ?? "",
+            reason: insp.decision_reason ?? "",
+          })}
+          {saved && <span className="ml-2 font-semibold">{t("verdict.saved")}</span>}
+        </p>
+      )}
       <div className="flex flex-wrap gap-3">
         {["ACCEPT", "ACCEPT_WITH_CLAIM", "REJECT"].map((v) => (
           <label key={v} className="flex items-center gap-1 text-sm">
@@ -115,8 +79,8 @@ function DecisionPanel({ id, systemVerdict }: { id: string; systemVerdict: strin
       />
       {override && <p className="text-xs font-semibold text-amber-800">{t("verdict.override")}</p>}
       {error && <p className="text-sm text-red-700">{error}</p>}
-      <Button onClick={() => void save()} disabled={reason.trim().length < 3}>
-        {t("verdict.decide")}
+      <Button onClick={() => void save()} disabled={saving || reason.trim().length < 3}>
+        {saving ? t("live.saving") : insp.final_verdict ? t("verdict.change") : t("verdict.decide")}
       </Button>
     </section>
   );
@@ -129,6 +93,7 @@ export default function VerdictPage() {
   const { data: insp } = useInspection(id);
   const { data: defects = [] } = useDefects(id);
   const [picked, setPicked] = useState<Defect | null>(null);
+  const [zoomed, setZoomed] = useState<Defect | null>(null);
 
   if (!insp) return <p className="text-slate-500">{t("common.loading")}</p>;
 
@@ -138,8 +103,6 @@ export default function VerdictPage() {
   const cells = Object.entries(insp.score?.cells ?? {})
     .map(([k, v]) => [Number(k), v] as const)
     .sort((a, b) => a[0] - b[0]);
-  const lengthYd = Math.max(insp.yards_inspected ?? insp.score?.yards_inspected ?? 1, ...defects.map((d) => d.end_yd), 1);
-  const widthCm = Math.max(r.declared_width_in * 2.54, ...defects.map((d) => d.across_end_cm), 1);
   const ignoredCounts = ignored.reduce<Record<string, number>>((acc, d) => {
     const k = d.nondefect_category ?? d.current_cls;
     acc[k] = (acc[k] ?? 0) + 1;
@@ -219,7 +182,7 @@ export default function VerdictPage() {
       )}
 
       {insp.system_verdict && hasPerm(me, "verdict.decide") && (
-        <DecisionPanel id={id} systemVerdict={insp.system_verdict} />
+        <DecisionPanel id={id} insp={insp} />
       )}
 
       {cells.length > 0 && (
@@ -238,14 +201,67 @@ export default function VerdictPage() {
       )}
 
       <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="font-semibold">{t("verdict.map")}</h2>
-        <p className="text-xs text-slate-500">{t("verdict.mapHint")}</p>
-        <RollMap defects={defects} lengthYd={lengthYd} widthCm={widthCm} onPick={setPicked} />
+        <h2 className="font-semibold">
+          {t("verdict.photos")} ({real.length})
+        </h2>
+        <p className="text-xs text-slate-500">{t("verdict.photosHint")}</p>
+        {zoomed?.crop_url && (
+          <Lightbox src={largePhoto(zoomed.crop_url)} alt={zoomed.defect_no} onClose={() => setZoomed(null)}>
+            <p className="font-semibold">
+              {zoomed.defect_no} · {t(`cls.${zoomed.current_cls}`)} ({t(`dstatus.${zoomed.status}`)})
+            </p>
+            <p className="text-slate-600">
+              {t("live.at", { yd: zoomed.center_yd.toFixed(2) })} · {t("live.size", { len: zoomed.length_in.toFixed(2) })}
+              {zoomed.status !== "rejected" && zoomed.points !== null && zoomed.points !== undefined &&
+                ` · ${t("live.pts", { n: zoomed.points })}`}
+            </p>
+            <p className="text-slate-600">{zoomed.points_reason ?? zoomed.excluded_reason}</p>
+            <p className="text-xs text-slate-500">{zoomed.explanation}</p>
+          </Lightbox>
+        )}
+        <div className="grid grid-cols-2 gap-2 pt-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7" data-testid="defect-gallery">
+          {real.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => {
+                setPicked(d);
+                if (d.crop_url) setZoomed(d);
+              }}
+              className={`overflow-hidden rounded-lg border-2 bg-white text-left ${
+                picked?.id === d.id ? "border-yellow-400 ring-2 ring-yellow-300" : GALLERY_BORDER[d.status] ?? "border-slate-200"
+              }`}
+            >
+              <div className="aspect-square w-full bg-slate-100">
+                {d.crop_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={d.crop_url} alt={d.defect_no} className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <span className="flex h-full items-center justify-center text-xs text-slate-400">{t("live.noPhoto")}</span>
+                )}
+              </div>
+              <div className="space-y-0.5 p-1.5 text-xs">
+                <p className="font-semibold">
+                  <span className="font-mono text-slate-500">{d.defect_no}</span> {t(`cls.${d.current_cls}`)}
+                </p>
+                <p className="text-slate-600">
+                  {t("live.at", { yd: d.center_yd.toFixed(2) })} · {t("live.size", { len: d.length_in.toFixed(2) })}
+                </p>
+                <p>
+                  {t(`dstatus.${d.status}`)}
+                  {d.status !== "rejected" && d.points !== null && d.points !== undefined && ` · ${t("live.pts", { n: d.points })}`}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
         {picked && (
           <div className="flex gap-3 rounded border border-slate-200 bg-slate-50 p-3 text-sm">
             {picked.crop_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={picked.crop_url} alt={picked.defect_no} className="h-32 w-32 rounded object-cover" />
+              <button type="button" className="cursor-zoom-in" title={t("live.zoom")} onClick={() => setZoomed(picked)}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={picked.crop_url} alt={picked.defect_no} className="h-32 w-32 rounded object-cover" />
+              </button>
             )}
             <div className="space-y-1">
               <p className="font-semibold">

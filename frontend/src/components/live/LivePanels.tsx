@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { Lightbox, largePhoto } from "@/components/Lightbox";
 import { DEFECT_CLASSES, REJECT_REASONS, type Defect, type ScoreSummary, type Track } from "@/lib/api/client";
 
 /** Vertical yard tape beside the video: the part of the roll in view, with defects marked. */
@@ -98,6 +99,7 @@ export function DefectCard({
   setRejectOpen,
   reclassOpen,
   setReclassOpen,
+  saving = false,
 }: {
   d: Defect;
   selected: boolean;
@@ -108,9 +110,11 @@ export function DefectCard({
   setRejectOpen: (open: boolean) => void;
   reclassOpen: boolean;
   setReclassOpen: (open: boolean) => void;
+  saving?: boolean;
 }) {
   const t = useTranslations();
   const [imgFailed, setImgFailed] = useState(false);
+  const [zoom, setZoom] = useState(false);
   const border =
     d.status === "confirmed" ? "border-green-600" : d.status === "rejected" ? "border-slate-300" : "border-red-600";
   return (
@@ -122,13 +126,23 @@ export function DefectCard({
     >
       <div className="h-20 w-20 shrink-0 overflow-hidden rounded bg-slate-100">
         {d.crop_url && !imgFailed ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`${d.crop_url}?v=${d.best_frame}`}
-            alt={d.defect_no}
-            className="h-full w-full object-cover"
-            onError={() => setImgFailed(true)}
-          />
+          <button
+            type="button"
+            className="h-full w-full cursor-zoom-in"
+            title={t("live.zoom")}
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoom(true);
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`${d.crop_url}?v=${d.best_frame}`}
+              alt={d.defect_no}
+              className="h-full w-full object-cover"
+              onError={() => setImgFailed(true)}
+            />
+          </button>
         ) : (
           <span className="flex h-full items-center justify-center p-1 text-center text-[10px] text-slate-400">
             {t("live.noPhoto")}
@@ -157,7 +171,8 @@ export function DefectCard({
         <p className="truncate text-[11px] text-slate-500" title={d.explanation ?? ""}>
           {d.explanation}
         </p>
-        {canDecide && (
+        {saving && <p className="text-xs font-semibold text-slate-500">{t("live.saving")}</p>}
+        {canDecide && !saving && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {d.status === "pending" ? (
               <>
@@ -225,6 +240,18 @@ export function DefectCard({
               </button>
             ))}
           </div>
+        )}
+        {zoom && d.crop_url && (
+          <Lightbox src={largePhoto(`${d.crop_url}?v=${d.best_frame}`)} alt={d.defect_no} onClose={() => setZoom(false)}>
+            <p className="font-semibold">
+              {d.defect_no} · {t(`cls.${d.current_cls}`)} ({t(`dstatus.${d.status}`)})
+            </p>
+            <p className="text-slate-600">
+              {t("live.at", { yd: d.center_yd.toFixed(2) })} · {t("live.size", { len: d.length_in.toFixed(2) })}
+              {d.points !== null && d.points !== undefined && ` · ${t("live.pts", { n: d.points })}`}
+            </p>
+            <p className="text-xs text-slate-500">{d.explanation}</p>
+          </Lightbox>
         )}
         {reclassOpen && (
           <select

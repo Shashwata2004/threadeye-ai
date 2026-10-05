@@ -13,7 +13,7 @@ the simulator's answer key. Say so out loud once, at the start.
 | 5 | 1:20 | Live screen | On a false alarm (sticker / thread): **X**, pick the reason. On a real one: **C** | "The detector is not trusted blindly: one key confirms, one key rejects, and the reason becomes training data." |
 | 6 | 1:45 | Points meter | Point at the points against the roll's budget and the per-100 colour | "The 4-point score is live, under the buyer's own rule profile." |
 | 7 | 2:05 | End of roll | **Finish roll**, clear the last pending defects, **Compute verdict** | "No verdict while anything is undecided." |
-| 8 | 2:20 | Verdict page | Verdict badge, per-yard points with the cap, roll map; click a defect for its photo | "Every point has a reason the supervisor can check." |
+| 8 | 2:20 | Verdict page | Verdict badge, per-yard points with the cap, the defect photos in roll order; click one for its reason | "Every point has a reason the supervisor can check." |
 | 9 | 2:40 | `supervisor` · Verdict | For BORDERLINE: choose *Accept with a claim*, type a reason, record | "Humans decide the money questions; the change ledger records who and why." |
 | 10 | 2:50 | Report PDF | Open the Bangla or English PDF | "The report goes to the mill. It says SIMULATED until the real model is in." |
 

@@ -3,7 +3,7 @@ import path from "node:path";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
 // M2 acceptance: the core flow in a real browser against the running app.
-//   load roll → start → video plays, boxes drawn → confirm every defect → finish → verdict → roll map → PDF
+//   load roll → start → video plays, boxes drawn → confirm every defect → finish → verdict → defect photos → PDF
 // With the perfect preset and the simulator-parity profile the verdict must equal the roll's
 // roll_meta.json expected_score. The page must not make a single request outside the app (offline).
 
@@ -106,7 +106,7 @@ for (const lang of ["bn", "en"] as const) test(`core flow (${lang}): live inspec
   // Language-independent: the inspector's own UI language (Bangla) applies after login.
   await expect(page.getByTestId("verdict-summary")).toHaveText(new RegExp(`^${es.total_points}\\D`));
   await expect(page.getByTestId("verdict-summary")).toContainText(es.points_per_100_sq_yd.toFixed(2));
-  await expect(page.getByTestId("roll-map")).toBeVisible();
+  await expect(page.getByTestId("defect-gallery")).toBeVisible();
   await expect(page.getByTestId("defects-table")).toBeVisible();
 
   // Report PDF, labelled SIMULATED.

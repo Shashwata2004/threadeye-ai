@@ -3543,7 +3543,12 @@ export interface operations {
     };
     defect_crop_api_v1_defects__defect_id__crop_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Output side in pixels */
+                size?: number;
+                /** @description How much fabric around the defect */
+                context?: number;
+            };
             header?: never;
             path: {
                 defect_id: string;

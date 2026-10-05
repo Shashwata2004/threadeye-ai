@@ -48,12 +48,19 @@ def best_capture(
     return best[1] if best else None
 
 
-def crop(image: bytes, view_box: tuple[float, float, float, float], scale: float, *, size: int = 360) -> bytes:
-    """Square crop around the defect (with context), the box outlined, as JPEG."""
+def crop(
+    image: bytes,
+    view_box: tuple[float, float, float, float],
+    scale: float,
+    *,
+    size: int = 360,
+    context: float = 2.2,
+) -> bytes:
+    """Square crop around the defect, the box outlined, as JPEG. ``context`` = window side ÷ defect size."""
     with Image.open(io.BytesIO(image)) as img:
         x0, y0, x1, y1 = (v * scale for v in view_box)
-        side = max(x1 - x0, y1 - y0) * 2.2
-        side = max(side, 120 * scale)
+        side = max(x1 - x0, y1 - y0) * context
+        side = max(side, 120 * scale * context / 2.2)
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         side = min(side, img.width, img.height)
         # Keep the window inside the image (a defect near the edge is then off-centre, not cut off).

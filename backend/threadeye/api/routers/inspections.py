@@ -612,7 +612,7 @@ def roll_report(
             if ev and ev.frame.image_key:
                 try:
                     crops[d.defect_no] = evidence.crop(
-                        storage.get(ev.frame.image_key), ev.view_box, ev.frame.image_scale or 1.0, size=240
+                        storage.get(db, ev.frame.image_key), ev.view_box, ev.frame.image_scale or 1.0, size=240
                     )
                 except (OSError, ValueError):
                     continue
@@ -688,7 +688,12 @@ def get_defect(defect_id: uuid.UUID, db: Session = Depends(get_db)) -> DefectOut
 
 
 @defects_router.get("/defects/{defect_id}/crop", response_class=Response, responses=JPEG, dependencies=READ)
-def defect_crop(defect_id: uuid.UUID, db: Session = Depends(get_db)) -> Response:
+def defect_crop(
+    defect_id: uuid.UUID,
+    size: int = Query(360, ge=120, le=1000, description="Output side in pixels"),
+    context: float = Query(2.2, ge=1.5, le=8.0, description="How much fabric around the defect"),
+    db: Session = Depends(get_db),
+) -> Response:
     row = _row(db, defect_id)
     insp = _get(db, row.inspection_id)
     info = _dataset(insp)
@@ -699,7 +704,9 @@ def defect_crop(defect_id: uuid.UUID, db: Session = Depends(get_db)) -> Response
     if ev is None or ev.frame.image_key is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no evidence image")
     try:
-        content = evidence.crop(storage.get(ev.frame.image_key), ev.view_box, ev.frame.image_scale or 1.0)
+        content = evidence.crop(
+            storage.get(db, ev.frame.image_key), ev.view_box, ev.frame.image_scale or 1.0, size=size, context=context
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "evidence image missing") from exc
     return Response(content, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=60"})

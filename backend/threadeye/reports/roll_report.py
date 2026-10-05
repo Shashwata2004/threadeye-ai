@@ -1,4 +1,4 @@
-"""Roll inspection report (PDF): verdict, per-yard points, roll map, every defect with its photo.
+"""Roll inspection report (PDF): verdict, per-yard points, every defect with its photo.
 
 Honesty rules (PLAN.md §2): a simulated inspection carries the SIMULATED watermark and footer and the
 detector's provider label on every page; the title never claims ASTM/AQL compliance.
@@ -17,7 +17,6 @@ from threadeye.reports.pdf import ThreadEyePDF
 
 DHAKA = ZoneInfo("Asia/Dhaka")
 VERDICT_COLOUR = {"PASS": (22, 128, 61), "BORDERLINE": (180, 110, 0), "FAIL": (190, 30, 30)}
-STATUS_COLOUR = {"confirmed": (22, 128, 61), "rejected": (120, 120, 120), "pending": (190, 30, 30)}
 
 TEXT = {
     "en": {
@@ -38,7 +37,6 @@ TEXT = {
         "threshold": "threshold",
         "yards": "Yards inspected",
         "perYard": "Points per yard (after the 4-point cap)",
-        "map": "Roll map",
         "defects": "Defects",
         "ignored": "Shown but not scored (not defects)",
         "no": "No.",
@@ -81,7 +79,6 @@ TEXT = {
         "threshold": "সীমা",
         "yards": "পরিদর্শিত গজ",
         "perYard": "প্রতি গজে পয়েন্ট (৪-পয়েন্ট সীমার পরে)",
-        "map": "রোলের মানচিত্র",
         "defects": "ত্রুটি",
         "ignored": "দেখানো হয়েছে, গোনা হয়নি (ত্রুটি নয়)",
         "no": "নং",
@@ -224,38 +221,6 @@ def build_roll_report(
                 pdf.cell(15, 5, str(pts), border=1, align="C")
             pdf.ln()
         pdf.ln(2)
-
-    # ---------------------------------------------------------------------------------- roll map
-    length = max((snap.yards_inspected or 0.0), max((d.end_yd for d in defects), default=0.0), 1.0)
-    pdf.use_font(11, bold=True)
-    pdf.cell(0, 7, t["map"], new_x="LMARGIN", new_y="NEXT")
-    x0, y0 = pdf.l_margin, pdf.get_y() + 1
-    w, h = pdf.w - pdf.l_margin - pdf.r_margin, 18.0
-    width_cm = max((d.across_end_cm for d in defects), default=150.0)
-    width_cm = max(width_cm, 150.0)
-    pdf.set_draw_color(120, 120, 120)
-    pdf.set_fill_color(245, 240, 230)
-    pdf.rect(x0, y0, w, h, style="DF")
-    pdf.use_font(6)
-    step = max(1, round(length / 12))
-    for yd in range(0, int(length) + 1, step):
-        x = x0 + w * yd / length
-        pdf.line(x, y0 + h, x, y0 + h + 1.5)
-        pdf.text(x - 1.5, y0 + h + 4, f"{yd}")
-    for d in defects:
-        if d.kind != "defect":
-            continue
-        colour = STATUS_COLOUR.get(d.status, (0, 0, 0))
-        pdf.set_fill_color(*colour)
-        dx0 = x0 + w * d.start_yd / length
-        dx1 = max(dx0 + 0.8, x0 + w * d.end_yd / length)
-        dy0 = y0 + h * d.across_start_cm / width_cm
-        dy1 = max(dy0 + 0.8, y0 + h * d.across_end_cm / width_cm)
-        pdf.rect(dx0, dy0, dx1 - dx0, dy1 - dy0, style="F")
-        pdf.set_text_color(*colour)
-        pdf.text(dx0, max(y0 + 2, dy0 - 0.5), d.defect_no)
-        pdf.set_text_color(0, 0, 0)
-    pdf.set_y(y0 + h + 7)
 
     # ---------------------------------------------------------------------------------- defects
     real = [d for d in defects if d.kind == "defect"]

@@ -2240,6 +2240,34 @@
               "format": "uuid",
               "title": "Defect Id"
             }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 120,
+              "description": "Output side in pixels",
+              "default": 360,
+              "title": "Size"
+            },
+            "description": "Output side in pixels"
+          },
+          {
+            "name": "context",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 8.0,
+              "minimum": 1.5,
+              "description": "How much fabric around the defect",
+              "default": 2.2,
+              "title": "Context"
+            },
+            "description": "How much fabric around the defect"
           }
         ],
         "responses": {
