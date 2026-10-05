@@ -23,7 +23,7 @@ TEST_DATABASE_URL ?= postgresql+psycopg://threadeye:threadeye@localhost:$(TEST_D
 
 .PHONY: help env up down logs ps build test test-db test-db-stop test-backend test-frontend lint check \
         openapi openapi-check verify-offline spike-pdf validate-sample micro-fixture save-images \
-        cloud-env cloud-migrate cloud-seed cloud-check cloud-setup cloud-sql cloud-run
+        cloud-env cloud-migrate cloud-seed cloud-check cloud-setup cloud-sql cloud-upload-video cloud-run
 
 help: ## list commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk -F ':.*?## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -113,6 +113,10 @@ cloud-check: ## verify the Supabase connection, schema isolation and audit chain
 	$(cloud_run) $(THREADEYE) cloud-check
 
 cloud-setup: cloud-migrate cloud-seed cloud-check ## migrate + seed + verify in one go
+
+cloud-upload-video: ## store data/sample_roll/roll_video.mp4 in Supabase (for the Vercel deployment)
+	@python3 scripts/check_cloud_env.py $(CLOUD_ENV)
+	$(cloud_run) $(THREADEYE) upload-video ../data/sample_roll
 
 cloud-run: ## run the app on this machine against Supabase → http://localhost:3000
 	./scripts/run_cloud.sh

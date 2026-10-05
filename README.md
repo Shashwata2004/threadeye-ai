@@ -93,6 +93,17 @@ roll's video is read from `data/` on each machine.
 Tables live in the `threadeye` schema, not `public`, so Supabase's public Data API cannot reach
 them. In the dashboard's table editor, switch the schema selector from `public` to `threadeye`.
 
+### Cloud demo on Vercel
+
+**https://threadeye-web.vercel.app** (frontend) and **https://threadeye-api.vercel.app** (API), both in
+Tokyo (`hnd1`) next to the Supabase database. The frontend forwards `/api` to the API, so the
+browser sees one origin. Log in with the demo accounts and the password from `.env.cloud`.
+
+```bash
+make cloud-upload-video        # once: the sample roll's video into Supabase (served in 3 MB pieces)
+./scripts/deploy_vercel.sh     # build and deploy both projects (Vercel CLI logged in, uv, .env.cloud)
+```
+
 ## Architecture
 
 ```mermaid

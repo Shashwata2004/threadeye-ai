@@ -1083,6 +1083,7 @@
           "datasets"
         ],
         "summary": "Dataset Video",
+        "description": "The roll video. Range requests are supported; from Supabase it comes in pieces of at most 3 MB.",
         "operationId": "dataset_video_api_v1_datasets__dataset_id__video_get",
         "parameters": [
           {
@@ -1093,15 +1094,34 @@
               "type": "string",
               "title": "Dataset Id"
             }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Range"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Roll video (Range supported)",
+            "description": "Roll video",
             "content": {
               "video/webm": {},
               "video/mp4": {}
             }
+          },
+          "206": {
+            "description": "Part of the roll video (Range requests)"
           },
           "422": {
             "description": "Validation Error",

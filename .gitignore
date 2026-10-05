@@ -31,6 +31,8 @@ storage/
 data/generated/
 data/ci_roll/
 backend/out/
+build/
+.vercel/
 *.log
 
 # Large simulator outputs: commit only after the licence check (PLAN.md Q2)

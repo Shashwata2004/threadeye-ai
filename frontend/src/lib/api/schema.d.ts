@@ -423,7 +423,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Dataset Video */
+        /**
+         * Dataset Video
+         * @description The roll video. Range requests are supported; from Supabase it comes in pieces of at most 3 MB.
+         */
         get: operations["dataset_video_api_v1_datasets__dataset_id__video_get"];
         put?: never;
         post?: never;
@@ -2808,7 +2811,9 @@ export interface operations {
     dataset_video_api_v1_datasets__dataset_id__video_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                Range?: string | null;
+            };
             path: {
                 dataset_id: string;
             };
@@ -2816,7 +2821,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Roll video (Range supported) */
+            /** @description Roll video */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2825,6 +2830,13 @@ export interface operations {
                     "video/webm": unknown;
                     "video/mp4": unknown;
                 };
+            };
+            /** @description Part of the roll video (Range requests) */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

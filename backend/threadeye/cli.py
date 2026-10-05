@@ -140,6 +140,36 @@ def _cloud_check(_: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _upload_video(args: argparse.Namespace) -> int:
+    """Cloud profile: keep a simulated roll's video in the shared database, for hosts without local files."""
+    from sqlalchemy import delete, text
+
+    from threadeye.db.models import Blob
+    from threadeye.db.session import get_sessionmaker
+    from threadeye.services import storage
+    from threadeye.settings import get_settings
+
+    if not get_settings().is_cloud:
+        print("upload-video is for the cloud profile: run `make cloud-upload-video`")
+        return 1
+    directory = Path(args.directory)
+    video = directory / "roll_video.mp4"
+    if not video.is_file():
+        print(f"{video} not found")
+        return 1
+    data = video.read_bytes()
+    key = storage.video_key(directory.name)
+    with get_sessionmaker()() as db:
+        # One large statement: lift Supabase's per-statement time limit for this transaction only,
+        # and send the bytes once (delete + insert, not an upsert that repeats them).
+        db.execute(text("SET LOCAL statement_timeout = '15min'"))
+        db.execute(delete(Blob).where(Blob.key == key))
+        sha = storage.put(db, key, data, content_type="video/mp4")
+        db.commit()
+    print(f"uploaded {video} ({len(data) / 1e6:.1f} MB, sha256 {sha[:16]}) as {key}")
+    return 0
+
+
 def _spike_pdf(args: argparse.Namespace) -> int:
     from threadeye.reports.spike import build_spike_pdf
 
@@ -185,6 +215,10 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("cloud-check", help="verify a cloud database: schema, guards, audit chain")
     p.set_defaults(fn=_cloud_check)
+
+    p = sub.add_parser("upload-video", help="cloud: store a simulated roll's video in Supabase")
+    p.add_argument("directory")
+    p.set_defaults(fn=_upload_video)
 
     p = sub.add_parser("spike-pdf", help="render the Bangla shaping spike PDF")
     p.add_argument("output", nargs="?", default="out/spike_bangla.pdf")

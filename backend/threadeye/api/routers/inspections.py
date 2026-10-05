@@ -6,6 +6,7 @@ Every command takes a row lock on the inspection and commits once.
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 from collections.abc import Iterator
@@ -95,8 +96,18 @@ def _dataset(insp: Inspection) -> datasets.DatasetInfo | None:
         return None
 
 
-def _video_url(info: datasets.DatasetInfo) -> str | None:
-    return f"/api/v1/datasets/{info.id}/video" if info.video_file else None
+VIDEO_CHUNK = 3 * 1024 * 1024
+"""Largest piece of a video in one response: serverless hosts cap a response at 4.5 MB."""
+
+
+def _video(db: Session, info: datasets.DatasetInfo) -> tuple[str | None, str | None]:
+    """URL and type of a roll's video: a file next to the roll's CSVs, or (cloud) a file in Supabase."""
+    url = f"/api/v1/datasets/{info.id}/video"
+    if info.video_file:
+        return url, info.video_type
+    if storage.blob_size(db, storage.video_key(info.id)):
+        return url, "video/mp4"
+    return None, None
 
 
 # ------------------------------------------------------------------------------------------ views
@@ -225,38 +236,68 @@ def _envelope(insp: Inspection, ev: InspectionEvent) -> EventEnvelope:
 
 # ------------------------------------------------------------------------------------------ datasets
 @datasets_router.get("/datasets", response_model=list[DatasetOut], dependencies=READ)
-def list_datasets() -> list[DatasetOut]:
-    return [
-        DatasetOut(
-            id=d.id,
-            roll_length_yd=d.roll_length_yd,
-            fabric_width_in=d.fabric_width_in,
-            frames=d.frames,
-            fps=d.fps,
-            mode=d.mode,
-            note=d.note,
-            has_video=d.video_file is not None,
-            video_url=_video_url(d),
-            is_simulated=d.is_simulated,
+def list_datasets(db: Session = Depends(get_db)) -> list[DatasetOut]:
+    out = []
+    for d in datasets.list_datasets():
+        url, _ = _video(db, d)
+        out.append(
+            DatasetOut(
+                id=d.id,
+                roll_length_yd=d.roll_length_yd,
+                fabric_width_in=d.fabric_width_in,
+                frames=d.frames,
+                fps=d.fps,
+                mode=d.mode,
+                note=d.note,
+                has_video=url is not None,
+                video_url=url,
+                is_simulated=d.is_simulated,
+            )
         )
-        for d in datasets.list_datasets()
-    ]
+    return out
 
 
 @datasets_router.get(
     "/datasets/{dataset_id}/video",
-    response_class=FileResponse,
+    response_class=Response,
     dependencies=READ,
-    responses={200: {"content": {"video/webm": {}, "video/mp4": {}}, "description": "Roll video (Range supported)"}},
+    responses={
+        200: {"content": {"video/webm": {}, "video/mp4": {}}, "description": "Roll video"},
+        206: {"description": "Part of the roll video (Range requests)"},
+    },
+    description="The roll video. Range requests are supported; from Supabase it comes in pieces of at most 3 MB.",
 )
-def dataset_video(dataset_id: str) -> FileResponse:
+def dataset_video(
+    dataset_id: str, range_header: str | None = Header(None, alias="Range"), db: Session = Depends(get_db)
+) -> Response:
     try:
         info = datasets.get_dataset(dataset_id)
     except datasets.DatasetNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such roll") from exc
-    if info.video_path is None:
+    cache = {"Cache-Control": "private, max-age=3600"}
+    if info.video_path is not None:
+        return FileResponse(info.video_path, media_type=info.video_type, headers=cache)
+    key = storage.video_key(info.id)
+    total = storage.blob_size(db, key)
+    if not total:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "this roll has no video")
-    return FileResponse(info.video_path, media_type=info.video_type, headers={"Cache-Control": "private, max-age=3600"})
+    start, end = 0, total - 1
+    m = re.fullmatch(r"bytes=(\d*)-(\d*)", (range_header or "").strip())
+    if m and m.group(1):
+        start = int(m.group(1))
+        end = int(m.group(2)) if m.group(2) else total - 1
+    elif m and m.group(2):  # the last N bytes
+        start = max(0, total - int(m.group(2)))
+    if start >= total:
+        return Response(status_code=416, headers={"Content-Range": f"bytes */{total}"})
+    end = min(end, total - 1, start + VIDEO_CHUNK - 1)
+    data = storage.read_range(db, key, start, end - start + 1)
+    return Response(
+        data,
+        status_code=206,
+        media_type="video/mp4",
+        headers={**cache, "Accept-Ranges": "bytes", "Content-Range": f"bytes {start}-{end}/{total}"},
+    )
 
 
 # ------------------------------------------------------------------------------------------ lifecycle
@@ -396,6 +437,7 @@ def frame_track(inspection_id: uuid.UUID, db: Session = Depends(get_db)) -> Trac
         raise HTTPException(status.HTTP_409_CONFLICT, "the inspection's roll video is not available on this server")
     source = datasets.track_source(info)
     track, calib = source.track(), source.calibration
+    video_url, video_type = _video(db, info)
     return TrackOut(
         dataset_id=info.id,
         fps=info.fps,
@@ -405,8 +447,8 @@ def frame_track(inspection_id: uuid.UUID, db: Session = Depends(get_db)) -> Trac
         fabric_width_cm=calib.fabric_width_cm,
         selvage_band_px=calib.selvage_band_px,
         roll_length_yd=info.roll_length_yd,
-        video_url=_video_url(info),
-        video_type=info.video_type,
+        video_url=video_url,
+        video_type=video_type,
         roll_y_top_px=[p.roll_y_top_px for p in track],
         top_yd=[p.top_yd for p in track],
         bottom_yd=[p.bottom_yd for p in track],

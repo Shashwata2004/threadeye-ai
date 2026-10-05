@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from PIL import Image
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -40,15 +41,15 @@ def _path(key: str) -> Path:
     return Path(get_settings().storage_dir) / key
 
 
-def put(db: Session, key: str, data: bytes) -> str:
+def put(db: Session, key: str, data: bytes, content_type: str = "image/jpeg") -> str:
     """Store ``data`` under ``key`` durably; returns its SHA-256."""
     sha = hashlib.sha256(data).hexdigest()
     if get_settings().is_cloud:
         _check_key(key)
-        stmt = insert(Blob).values(key=key, data=data, sha256=sha, size=len(data))
-        db.execute(
-            stmt.on_conflict_do_update(index_elements=[Blob.key], set_={"data": data, "sha256": sha, "size": len(data)})
-        )
+        stmt = insert(Blob).values(key=key, data=data, sha256=sha, size=len(data), content_type=content_type)
+        # excluded.* reuses the inserted values: the bytes are sent once, not twice.
+        update = {c: getattr(stmt.excluded, c) for c in ("data", "sha256", "size", "content_type")}
+        db.execute(stmt.on_conflict_do_update(index_elements=[Blob.key], set_=update))
         return sha
     target = _path(key)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +73,29 @@ def get(db: Session, key: str) -> bytes:
     if not path.is_file():
         raise FileNotFoundError(key)
     return path.read_bytes()
+
+
+def video_key(dataset_id: str) -> str:
+    """Where a simulated roll's video is kept on the cloud profile (no local files on a serverless host)."""
+    return f"datasets/{dataset_id}/roll_video.mp4"
+
+
+def blob_size(db: Session, key: str) -> int | None:
+    """Size of a stored file, without reading it (cloud profile only)."""
+    if not get_settings().is_cloud:
+        return None
+    _check_key(key)
+    size = db.scalar(select(Blob.size).where(Blob.key == key))
+    return int(size) if size is not None else None
+
+
+def read_range(db: Session, key: str, start: int, length: int) -> bytes:
+    """Bytes ``start`` .. ``start + length - 1`` of a stored file (Postgres reads only that slice)."""
+    _check_key(key)
+    data = db.scalar(select(func.substring(Blob.data, start + 1, length)).where(Blob.key == key))
+    if data is None:
+        raise FileNotFoundError(key)
+    return bytes(data)
 
 
 def clean_jpeg(data: bytes) -> tuple[bytes, int, int]:
