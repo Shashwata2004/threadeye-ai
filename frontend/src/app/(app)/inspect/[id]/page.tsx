@@ -465,8 +465,8 @@ export default function LiveInspectionPage() {
         </div>
       )}
 
-      <div className="grid gap-3 xl:grid-cols-[1fr_380px]">
-        <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-2">
           <div className="flex gap-2">
             <YardTape track={track} frame={frame} defects={defects} />
             <div className="min-w-0 flex-1">
@@ -534,7 +534,7 @@ export default function LiveInspectionPage() {
                 ))}
               </select>
             </label>
-            <span className="text-xs text-slate-500">{t("live.shortcuts")}</span>
+            <span className="hidden text-xs text-slate-500 md:inline">{t("live.shortcuts")}</span>
           </div>
           <PlayingTracker videoRef={videoRef} onChange={setPlaying} />
 
@@ -556,7 +556,7 @@ export default function LiveInspectionPage() {
           )}
         </div>
 
-        <aside className="space-y-3">
+        <aside className="min-w-0 space-y-3">
           <PointsMeter score={score} />
           <section className="space-y-2">
             <div className="flex items-center justify-between">

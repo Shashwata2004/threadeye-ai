@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="text-xl font-bold text-brand-navy">{t("app.name")}</span>
           <span className="hidden text-sm text-brand-teal sm:inline">{t("app.tagline")}</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="text-sm text-slate-600" data-testid="current-user">
             {me.display_name} · {t(`roles.${me.role}`)}
           </span>
@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
           </ul>
         </nav>
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );
