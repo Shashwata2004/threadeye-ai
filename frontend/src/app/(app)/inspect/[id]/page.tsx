@@ -22,6 +22,12 @@ import {
 import { errorDetail, useDefects, useInspection, useMe, usePlan, useTrack } from "@/lib/api/hooks";
 import { viewCentreYd } from "@/lib/live/geometry";
 
+/** The fields of a defect.upserted event the overlay needs to draw a box. */
+type LiveBox = Pick<
+  Defect,
+  "defect_no" | "kind" | "status" | "start_yd" | "end_yd" | "center_yd" | "across_start_cm" | "across_end_cm"
+>;
+
 const TICK_MS = 300; // how often the browser asks the server to process the frames played so far
 const MAX_CAPTURES = 8;
 const SPEEDS = [1, 2, 4];
@@ -45,6 +51,7 @@ export default function LiveInspectionPage() {
   const capturesRef = useRef<Capture[]>([]);
   const nextSampleRef = useRef(0);
   const drivingRef = useRef(false);
+  const [liveBoxes, setLiveBoxes] = useState<ReadonlyMap<string, LiveBox>>(new Map());
   const lastCaptureTopRef = useRef<number | null>(null);
 
   const [frame, setFrame] = useState(0);
@@ -93,13 +100,25 @@ export default function LiveInspectionPage() {
     (events: EventEnvelope[]) => {
       let defectsChanged = false;
       let sessionChanged = false;
+      const fresh: LiveBox[] = [];
       for (const ev of events) {
         if (ev.seq <= lastSeqRef.current) continue; // idempotent by seq
         lastSeqRef.current = ev.seq;
         if (ev.type === "score.updated") setScore(ev.payload as unknown as ScoreSummary);
-        else if (ev.type === "defect.upserted") defectsChanged = true;
+        else if (ev.type === "defect.upserted") {
+          defectsChanged = true;
+          // The event already carries where the defect is: draw its box now, without waiting for the
+          // defect list to be fetched again (that round trip took the defect out of view on a slow link).
+          fresh.push((ev.payload as { defect: LiveBox }).defect);
+        }
         else if (ev.type.startsWith("session.") || ev.type.startsWith("verdict.")) sessionChanged = true;
       }
+      if (fresh.length)
+        setLiveBoxes((prev) => {
+          const next = new Map(prev);
+          for (const v of fresh) next.set(v.defect_no, v);
+          return next;
+        });
       if (defectsChanged) void queryClient.invalidateQueries({ queryKey: ["defects", id] });
       if (sessionChanged) void refetchInsp();
     },
@@ -343,6 +362,14 @@ export default function LiveInspectionPage() {
 
   // ------------------------------------------------------------------------- queue and keys
   const real = useMemo(() => defects.filter((d) => d.kind === "defect"), [defects]);
+  // For the overlay: the fetched defects, plus boxes known from events that the list does not have yet.
+  const overlay = useMemo(() => {
+    const known = new Set(defects.map((d) => d.defect_no));
+    const extra = [...liveBoxes.values()]
+      .filter((v) => !known.has(v.defect_no))
+      .map((v) => ({ ...v, id: `live-${v.defect_no}` }) as unknown as Defect);
+    return [...defects, ...extra];
+  }, [defects, liveBoxes]);
   const queue = useMemo(
     () => [
       ...real.filter((d) => d.status === "pending").sort((a, b) => a.center_yd - b.center_yd),
@@ -468,7 +495,7 @@ export default function LiveInspectionPage() {
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-2">
           <div className="flex gap-2">
-            <YardTape track={track} frame={frame} defects={defects} />
+            <YardTape track={track} frame={frame} defects={overlay} />
             <div className="min-w-0 flex-1">
               {track.video_url ? (
                 <LiveVideo
@@ -476,7 +503,7 @@ export default function LiveInspectionPage() {
                   src={track.video_url}
                   type={track.video_type}
                   track={track}
-                  defects={defects}
+                  defects={overlay}
                   selectedId={selected?.id ?? null}
                   onFrame={onFrame}
                   onEnded={() => void onEnded()}
