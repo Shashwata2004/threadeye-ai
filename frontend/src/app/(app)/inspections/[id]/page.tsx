@@ -49,8 +49,8 @@ function DecisionPanel({ id, insp }: { id: string; insp: Inspection }) {
     } else setError(errorDetail(err, response.status));
   }
   return (
-    <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4" data-testid="decision">
-      <h2 className="font-semibold">{t("verdict.decision")}</h2>
+    <section className="te-stitched space-y-2 rounded-lg p-4" data-testid="decision">
+      <h2 className="te-serif text-lg font-semibold text-(--te-ink)">{t("verdict.decision")}</h2>
       {insp.final_verdict && (
         <p className="rounded bg-teal-50 px-3 py-2 text-sm text-teal-900" data-testid="decision-current">
           ✓{" "}
@@ -95,7 +95,7 @@ export default function VerdictPage() {
   const [picked, setPicked] = useState<Defect | null>(null);
   const [zoomed, setZoomed] = useState<Defect | null>(null);
 
-  if (!insp) return <p className="text-slate-500">{t("common.loading")}</p>;
+  if (!insp) return <p className="text-(--te-muted)">{t("common.loading")}</p>;
 
   const r = insp.roll;
   const real = defects.filter((d) => d.kind === "defect").sort((a, b) => a.center_yd - b.center_yd);
@@ -113,15 +113,15 @@ export default function VerdictPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-brand-navy">{t("verdict.title")}</h1>
-          <p className="text-slate-600">
+          <h1 className="te-serif text-2xl font-bold text-(--te-ink)">{t("verdict.title")}</h1>
+          <p className="te-serif text-(--te-ink-soft)">
             {t("verdict.roll", { code: r.roll_code, challan: r.challan_no, mill: r.supplier, buyer: r.buyer })}
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-(--te-faint)">
             {t("verdict.rules", { profile: r.rule_profile })}
             {insp.inspector && ` · ${t("verdict.inspector", { name: insp.inspector })}`}
           </p>
-          <Link href={`/lots/${r.lot_id}`} className="text-sm text-brand-blue hover:underline">
+          <Link href={`/lots/${r.lot_id}`} className="text-sm text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy">
             {t("lots.back")}
           </Link>
         </div>
@@ -132,7 +132,8 @@ export default function VerdictPage() {
       </div>
 
       {insp.system_verdict ? (
-        <section className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-white p-4">
+        <section className="te-rope">
+        <div className="te-rope-inner flex flex-wrap items-center gap-4 p-4">
           <span
             className={`rounded-lg px-5 py-3 text-2xl font-bold ${VERDICT_STYLE[insp.system_verdict]}`}
             data-testid="system-verdict"
@@ -148,7 +149,7 @@ export default function VerdictPage() {
                 threshold: r.threshold_per_100,
               })}
             </p>
-            <p className="text-sm text-slate-500">{t("verdict.yards", { yd: (insp.yards_inspected ?? 0).toFixed(2) })}</p>
+            <p className="text-sm text-(--te-faint)">{t("verdict.yards", { yd: (insp.yards_inspected ?? 0).toFixed(2) })}</p>
             {insp.system_verdict === "BORDERLINE" && !insp.final_verdict && (
               <p className="font-semibold text-amber-800">{t("verdict.needSup")}</p>
             )}
@@ -163,19 +164,20 @@ export default function VerdictPage() {
             )}
           </div>
           <div className="ml-auto flex gap-2 text-sm">
-            <span className="text-slate-600">{t("verdict.report")}:</span>
-            <a className="font-semibold text-brand-blue hover:underline" href={`/api/v1/inspections/${id}/report.pdf?lang=en`} target="_blank" rel="noopener">
+            <span className="text-(--te-muted)">{t("verdict.report")}:</span>
+            <a className="font-semibold text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy" href={`/api/v1/inspections/${id}/report.pdf?lang=en`} target="_blank" rel="noopener">
               {t("verdict.reportEn")}
             </a>
-            <a className="font-semibold text-brand-blue hover:underline" href={`/api/v1/inspections/${id}/report.pdf?lang=bn`} target="_blank" rel="noopener">
+            <a className="font-semibold text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy" href={`/api/v1/inspections/${id}/report.pdf?lang=bn`} target="_blank" rel="noopener">
               {t("verdict.reportBn")}
             </a>
           </div>
+        </div>
         </section>
       ) : (
-        <section className="rounded-lg border border-amber-300 bg-amber-50 p-4">
-          <p className="text-amber-900">{t("verdict.notFinal")}</p>
-          <Link href={`/inspect/${id}`} className="font-semibold text-brand-blue hover:underline">
+        <section className="te-stitched rounded-lg p-4">
+          <p className="te-serif text-lg text-amber-900">{t("verdict.notFinal")}</p>
+          <Link href={`/inspect/${id}`} className="font-semibold text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy">
             {t("verdict.backToLive")}
           </Link>
         </section>
@@ -186,25 +188,25 @@ export default function VerdictPage() {
       )}
 
       {cells.length > 0 && (
-        <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">{t("verdict.perYard")}</h2>
+        <section className="te-stitched space-y-2 rounded-lg p-4">
+          <h2 className="te-serif text-lg font-semibold text-(--te-ink)">{t("verdict.perYard")}</h2>
           <div className="flex flex-wrap gap-1">
             {cells.map(([yd, pts]) => (
-              <div key={yd} className={`w-14 rounded border text-center ${pts >= 4 ? "border-red-400 bg-red-50" : "border-slate-200"}`}>
-                <div className="text-[11px] text-slate-500">{yd}</div>
+              <div key={yd} className={`w-14 rounded border text-center ${pts >= 4 ? "border-red-400 bg-red-50" : "border-(--te-line) bg-(--te-linen)/60"}`}>
+                <div className="text-[11px] text-(--te-faint)">{yd}</div>
                 <div className="font-mono font-bold">{pts}</div>
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-500">{t("verdict.capNote")}</p>
+          <p className="text-xs text-(--te-faint)">{t("verdict.capNote")}</p>
         </section>
       )}
 
-      <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="font-semibold">
+      <section className="te-stitched space-y-2 rounded-lg p-4">
+        <h2 className="te-serif text-lg font-semibold text-(--te-ink)">
           {t("verdict.photos")} ({real.length})
         </h2>
-        <p className="text-xs text-slate-500">{t("verdict.photosHint")}</p>
+        <p className="text-xs text-(--te-faint)">{t("verdict.photosHint")}</p>
         {zoomed?.crop_url && (
           <Lightbox src={largePhoto(zoomed.crop_url)} alt={zoomed.defect_no} onClose={() => setZoomed(null)}>
             <p className="font-semibold">
@@ -228,7 +230,7 @@ export default function VerdictPage() {
                 setPicked(d);
                 if (d.crop_url) setZoomed(d);
               }}
-              className={`overflow-hidden rounded-lg border-2 bg-white text-left ${
+              className={`overflow-hidden rounded-lg border-2 bg-white text-left shadow-sm shadow-(--te-shadow)/15 ${
                 picked?.id === d.id ? "border-yellow-400 ring-2 ring-yellow-300" : GALLERY_BORDER[d.status] ?? "border-slate-200"
               }`}
             >
@@ -242,9 +244,9 @@ export default function VerdictPage() {
               </div>
               <div className="space-y-0.5 p-1.5 text-xs">
                 <p className="font-semibold">
-                  <span className="font-mono text-slate-500">{d.defect_no}</span> {t(`cls.${d.current_cls}`)}
+                  <span className="font-mono text-(--te-faint)">{d.defect_no}</span> {t(`cls.${d.current_cls}`)}
                 </p>
-                <p className="text-slate-600">
+                <p className="text-(--te-muted)">
                   {t("live.at", { yd: d.center_yd.toFixed(2) })} · {t("live.size", { len: d.length_in.toFixed(2) })}
                 </p>
                 <p>
@@ -256,7 +258,7 @@ export default function VerdictPage() {
           ))}
         </div>
         {picked && (
-          <div className="flex gap-3 rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+          <div className="flex gap-3 rounded border border-(--te-line-soft) bg-(--te-linen)/60 p-3 text-sm">
             {picked.crop_url && (
               <button type="button" className="cursor-zoom-in" title={t("live.zoom")} onClick={() => setZoomed(picked)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -272,9 +274,9 @@ export default function VerdictPage() {
                 {t("live.at", { yd: picked.center_yd.toFixed(2) })} · {t("live.size", { len: picked.length_in.toFixed(2) })}
                 {picked.points !== null && picked.points !== undefined && ` · ${t("live.pts", { n: picked.points })}`}
               </p>
-              <p className="text-slate-600">{picked.points_reason ?? picked.excluded_reason}</p>
-              <p className="text-xs text-slate-500">{picked.explanation}</p>
-              <button type="button" onClick={() => setPicked(null)} className="text-xs text-brand-blue hover:underline">
+              <p className="text-(--te-muted)">{picked.points_reason ?? picked.excluded_reason}</p>
+              <p className="text-xs text-(--te-faint)">{picked.explanation}</p>
+              <button type="button" onClick={() => setPicked(null)} className="text-xs text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy">
                 {t("verdict.close")}
               </button>
             </div>
@@ -282,12 +284,14 @@ export default function VerdictPage() {
         )}
       </section>
 
-      <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <h2 className="px-4 pt-3 font-semibold">
+      <section className="te-rope">
+        <div className="te-rope-inner">
+        <div className="overflow-x-auto">
+        <h2 className="te-serif text-lg font-semibold text-(--te-ink) px-4 pb-2 pt-3">
           {t("verdict.defects")} ({real.length})
         </h2>
-        <table className="min-w-full text-sm" data-testid="defects-table">
-          <thead className="text-left text-slate-600">
+        <table className="min-w-full text-sm text-(--te-ink)" data-testid="defects-table">
+          <thead className="border-y border-(--te-line)/70 bg-(--te-head)/60 text-left text-(--te-ink-soft)">
             <tr>
               <th className="px-3 py-2">{t("verdict.no")}</th>
               <th className="px-3 py-2">{t("verdict.type")}</th>
@@ -300,7 +304,7 @@ export default function VerdictPage() {
           </thead>
           <tbody>
             {real.map((d) => (
-              <tr key={d.id} className="cursor-pointer border-t border-slate-100 hover:bg-slate-50" onClick={() => setPicked(d)}>
+              <tr key={d.id} className="cursor-pointer border-t border-(--te-line-soft)/60 first:border-t-0 hover:bg-(--te-head)/40" onClick={() => setPicked(d)}>
                 <td className="px-3 py-1.5 font-mono">{d.defect_no}</td>
                 <td className="px-3 py-1.5">{t(`cls.${d.current_cls}`)}</td>
                 <td className="px-3 py-1.5 font-mono">{d.center_yd.toFixed(2)}</td>
@@ -310,19 +314,21 @@ export default function VerdictPage() {
                   {d.reject_reason && ` (${t(`reasons.${d.reject_reason}`)})`}
                 </td>
                 <td className="px-3 py-1.5 font-mono">{d.status === "rejected" ? "–" : d.points ?? "–"}</td>
-                <td className="px-3 py-1.5 text-xs text-slate-600">{d.excluded_reason && d.status !== "confirmed" ? d.excluded_reason : d.points_reason}</td>
+                <td className="px-3 py-1.5 text-xs text-(--te-muted)">{d.excluded_reason && d.status !== "confirmed" ? d.excluded_reason : d.points_reason}</td>
               </tr>
             ))}
           </tbody>
         </table>
         {ignored.length > 0 && (
-          <p className="px-4 py-3 text-sm text-slate-600">
+          <p className="px-4 py-3 text-sm text-(--te-muted)">
             {t("live.nondefects")}:{" "}
             {Object.entries(ignoredCounts)
               .map(([k, n]) => `${t(`cls.${k}`)} ${n}`)
               .join(" · ")}
           </p>
         )}
+        </div>
+        </div>
       </section>
     </div>
   );

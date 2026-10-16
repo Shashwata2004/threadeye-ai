@@ -11,24 +11,25 @@ import { errorDetail, useDatasets, useInspections, useMachines, useMe } from "@/
 function InspectionList({ items, title }: { items: InspectionListItem[]; title: string }) {
   const t = useTranslations();
   return (
-    <section className="rounded-lg border border-slate-200 bg-white">
-      <h2 className="border-b border-slate-100 px-4 py-2 font-semibold">{title}</h2>
+    // Stitched panel; rules are inset (mx-2) so they stop at the stitch line instead of crossing it.
+    <section className="te-stitched rounded-lg py-1">
+      <h2 className="te-serif mx-2 border-b border-(--te-line)/70 px-2 py-2 text-lg font-semibold text-(--te-ink)">{title}</h2>
       {!items.length ? (
-        <p className="p-4 text-sm text-slate-500">{t("inspect.none")}</p>
+        <p className="p-4 text-sm text-(--te-faint)">{t("inspect.none")}</p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="mx-2 divide-y divide-(--te-line-soft)/60">
           {items.map((i) => {
             const live = ["created", "running", "paused", "interrupted"].includes(i.status);
             return (
-              <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
+              <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 px-2 py-2 text-sm text-(--te-ink)">
                 <span>
                   <span className="font-mono font-semibold">{i.roll_code}</span> · {t(`istatus.${i.status}`)}
                   {i.system_verdict && ` · ${t(`verdicts.${i.system_verdict}`)}`}
-                  {i.inspector && <span className="text-slate-500"> · {i.inspector}</span>}
+                  {i.inspector && <span className="text-(--te-faint)"> · {i.inspector}</span>}
                 </span>
                 <Link
                   href={live ? `/inspect/${i.id}` : `/inspections/${i.id}`}
-                  className="font-semibold text-brand-blue hover:underline"
+                  className="font-semibold text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy"
                 >
                   {live ? t("inspect.continue") : t("inspect.view")}
                 </Link>
@@ -88,14 +89,21 @@ export default function InspectPage() {
   }
 
   return (
-    <div className="space-y-5">
+    // The background sketch sits in the bottom-right corner of the page, below the last box: the
+    // page is at least screen height and keeps room for it at the bottom. It never takes clicks.
+    <div className="relative z-[1] space-y-5 md:min-h-[calc(100vh-9rem)] md:pb-52">
+      <div
+        aria-hidden="true"
+        className="te-sketch-magnifier pointer-events-none absolute bottom-0 right-0 -z-10 hidden h-52 w-[320px] bg-contain bg-right-bottom bg-no-repeat opacity-30 md:block"
+      />
       <div>
-        <h1 className="text-2xl font-bold text-brand-navy">{t("inspect.title")}</h1>
-        <p className="text-slate-600">{t("inspect.subtitle")}</p>
+        <h1 className="te-serif text-2xl font-bold text-(--te-ink)">{t("inspect.title")}</h1>
+        <p className="te-serif text-(--te-ink-soft)">{t("inspect.subtitle")}</p>
       </div>
 
       {canRun ? (
-        <form onSubmit={load} className="grid max-w-3xl gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2">
+        <form onSubmit={load} className="te-rope max-w-3xl">
+        <div className="te-rope-inner grid gap-4 p-4 sm:grid-cols-2">
           <Field label={t("inspect.rollCode")} wide>
             <input
               autoFocus
@@ -151,13 +159,19 @@ export default function InspectPage() {
             </p>
           )}
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={busy || !datasetId || !machineId} data-testid="load-roll">
+            <Button
+              type="submit"
+              disabled={busy || !datasetId || !machineId}
+              data-testid="load-roll"
+              className="shadow-md shadow-(--te-shadow)/20"
+            >
               {busy ? t("inspect.loadingRoll") : t("inspect.load")}
             </Button>
           </div>
+        </div>
         </form>
       ) : (
-        <p className="text-sm text-slate-600">{t("inspect.readOnly")}</p>
+        <p className="text-sm text-(--te-muted)">{t("inspect.readOnly")}</p>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">

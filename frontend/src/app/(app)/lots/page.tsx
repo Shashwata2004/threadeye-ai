@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { SampleBadge } from "@/components/badges";
+import { DeliveryBoxesSketch } from "@/components/FabricArt";
 import { Button, Field, inputClass } from "@/components/form";
 import { api, hasPerm } from "@/lib/api/client";
 import { errorDetail, useLots, useMasterData, useMe } from "@/lib/api/hooks";
@@ -65,7 +66,7 @@ function NewLotForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:grid-cols-2">
+    <form onSubmit={submit} className="te-stitched grid gap-4 rounded-lg p-5 sm:grid-cols-2">
       <Field label={t("challan")}>
         <input required maxLength={64} value={form.challan_no} onChange={set("challan_no")} className={inputClass} />
       </Field>
@@ -158,25 +159,33 @@ export default function LotsPage() {
   const canWrite = hasPerm(me, "lots.write");
 
   return (
-    <div className="space-y-5">
+    // Content sits above the fixed background sketch (z-[1]); the sketch never takes clicks.
+    <div className="relative z-[1] space-y-5">
+      <DeliveryBoxesSketch className="pointer-events-none fixed bottom-6 right-6 -z-10 hidden h-64 text-(--te-sketch) opacity-25 md:block" />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-brand-navy">{t("lots.title")}</h1>
-          <p className="text-sm text-slate-600">{t("lots.subtitle")}</p>
+          <h1 className="te-serif text-2xl font-bold text-(--te-ink)">{t("lots.title")}</h1>
+          <p className="te-serif text-(--te-ink-soft)">{t("lots.subtitle")}</p>
         </div>
-        {canWrite && !creating && <Button onClick={() => setCreating(true)}>{t("lots.new")}</Button>}
+        {canWrite && !creating && (
+          <Button onClick={() => setCreating(true)} className="shadow-md shadow-(--te-shadow)/20">
+            {t("lots.new")}
+          </Button>
+        )}
       </div>
-      {!canWrite && me && <p className="text-sm text-slate-500">{t("lots.readOnly")}</p>}
+      {!canWrite && me && <p className="text-sm text-(--te-muted)">{t("lots.readOnly")}</p>}
       {creating && <NewLotForm onDone={() => setCreating(false)} />}
 
       {isLoading ? (
-        <p className="text-slate-500">{t("common.loading")}</p>
+        <p className="text-(--te-muted)">{t("common.loading")}</p>
       ) : !lots?.length ? (
-        <p className="text-slate-500">{t("lots.empty")}</p>
+        <p className="text-(--te-muted)">{t("lots.empty")}</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-left text-slate-700">
+        <section className="te-rope">
+          <div className="te-rope-inner">
+          <div className="overflow-x-auto">
+          <table className="min-w-full text-sm text-(--te-ink)">
+            <thead className="border-b border-(--te-line)/70 bg-(--te-head)/60 text-left text-(--te-ink-soft)">
               <tr>
                 <th className="px-3 py-2">{t("lots.challan")}</th>
                 <th className="px-3 py-2">{t("lots.mill")}</th>
@@ -189,9 +198,9 @@ export default function LotsPage() {
             </thead>
             <tbody>
               {lots.map((lot) => (
-                <tr key={lot.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr key={lot.id} className="border-t border-(--te-line-soft)/60 first:border-t-0 hover:bg-(--te-head)/40">
                   <td className="px-3 py-2">
-                    <Link href={`/lots/${lot.id}`} className="font-semibold text-brand-blue hover:underline">
+                    <Link href={`/lots/${lot.id}`} className="font-semibold text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy">
                       {lot.challan_no}
                     </Link>{" "}
                     {lot.is_sample_data && <SampleBadge />}
@@ -210,7 +219,9 @@ export default function LotsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+          </div>
+        </section>
       )}
     </div>
   );

@@ -66,12 +66,12 @@ function AddRolls({ lotId, onSaved }: { lotId: string; onSaved: () => void }) {
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="font-semibold">{t("addRolls")}</h2>
-      <p className="text-xs text-slate-500">{t("pasteHint")}</p>
+    <section className="te-stitched space-y-3 rounded-lg p-4">
+      <h2 className="te-serif text-lg font-semibold text-(--te-ink)">{t("addRolls")}</h2>
+      <p className="text-xs text-(--te-faint)">{t("pasteHint")}</p>
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="text-left text-slate-600">
+          <thead className="text-left text-(--te-ink-soft)">
             <tr>
               <th className="pr-2">{t("millRollNo")}</th>
               <th className="pr-2">{t("lengthYd")}</th>
@@ -124,7 +124,7 @@ function AddRolls({ lotId, onSaved }: { lotId: string; onSaved: () => void }) {
                   <button
                     type="button"
                     onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
-                    className="text-xs text-slate-500 hover:text-red-700"
+                    className="text-xs text-(--te-faint) hover:text-red-700"
                   >
                     {t("removeRow")}
                   </button>
@@ -177,27 +177,33 @@ export default function LotDetailPage() {
     setTimeout(refresh, 1500); // label_printed_at is set when the PDF is generated
   }
 
-  if (isLoading) return <p className="text-slate-500">{t("common.loading")}</p>;
+  if (isLoading) return <p className="text-(--te-muted)">{t("common.loading")}</p>;
   if (!lot) return <p className="text-red-700">{t("common.error")}</p>;
 
   const canWriteRolls = hasPerm(me, "rolls.write");
   const canPrint = hasPerm(me, "labels.print");
 
   return (
-    <div className="space-y-5">
-      <Link href="/lots" className="text-sm text-brand-blue hover:underline">
+    // The background sketch sits in the bottom-right corner of the page, below the last box: the
+    // page is at least screen height and keeps room for it at the bottom. It never takes clicks.
+    <div className="relative z-[1] space-y-5 md:min-h-[calc(100vh-9rem)] md:pb-52">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 right-0 -z-10 hidden h-52 w-[380px] te-sketch-rolls bg-contain bg-right-bottom bg-no-repeat opacity-30 md:block"
+      />
+      <Link href="/lots" className="text-sm text-brand-navy hover:underline">
         {t("lots.back")}
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-brand-navy">
+          <h1 className="te-serif text-2xl font-bold text-(--te-ink)">
             {lot.challan_no} {lot.is_sample_data && <SampleBadge />}
           </h1>
-          <p className="text-slate-600">
+          <p className="te-serif text-(--te-ink-soft)">
             {lot.supplier.name} → {lot.buyer.name} · {lot.fabric_type}
             {lot.colour ? ` · ${lot.colour}` : ""}
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-(--te-faint)">
             {format.dateTime(new Date(lot.received_at), { dateStyle: "long" })} ·{" "}
             {t("lots.registeredOf", { count: lot.rolls_registered, declared: lot.declared_rolls })}
             {lot.rule_profile &&
@@ -205,30 +211,32 @@ export default function LotDetailPage() {
           </p>
         </div>
         {canPrint && (rolls?.length ?? 0) > 0 && (
-          <Button onClick={() => openPdf(`/api/v1/lots/${lot.id}/labels.pdf`)}>{t("lots.printAll")}</Button>
+          <Button onClick={() => openPdf(`/api/v1/lots/${lot.id}/labels.pdf`)} className="shadow-md shadow-(--te-shadow)/20">{t("lots.printAll")}</Button>
         )}
       </div>
 
       {sampling && (
-        <section className="rounded-lg border border-teal-200 bg-teal-50 p-4" data-testid="sampling">
-          <h2 className="font-semibold text-teal-900">{t("lots.sampling")}</h2>
-          <p className="text-teal-900">
+        <section className="te-stitched rounded-lg p-4" data-testid="sampling">
+          <h2 className="te-serif text-lg font-semibold text-brand-teal">{t("lots.sampling")}</h2>
+          <p className="text-(--te-ink)">
             {t("lots.samplingText", {
               count: sampling.suggested_count,
               total: sampling.total_rolls,
               pct: sampling.sampling_pct,
             })}
           </p>
-          <p className="text-xs text-teal-800">{t("lots.millHistory", { count: sampling.mill_recent_rolls })}</p>
+          <p className="text-xs text-(--te-faint)">{t("lots.millHistory", { count: sampling.mill_recent_rolls })}</p>
         </section>
       )}
 
-      <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <section className="te-rope">
+        <div className="te-rope-inner">
+        <div className="overflow-x-auto">
         {!rolls?.length ? (
-          <p className="p-4 text-slate-500">{t("lots.noRolls")}</p>
+          <p className="p-4 text-(--te-muted)">{t("lots.noRolls")}</p>
         ) : (
-          <table className="min-w-full text-sm" data-testid="rolls-table">
-            <thead className="bg-slate-100 text-left text-slate-700">
+          <table className="min-w-full text-sm text-(--te-ink)" data-testid="rolls-table">
+            <thead className="border-b border-(--te-line)/70 bg-(--te-head)/60 text-left text-(--te-ink-soft)">
               <tr>
                 <th className="px-3 py-2">{t("lots.rollCode")}</th>
                 <th className="px-3 py-2">{t("lots.millRollNo")}</th>
@@ -242,7 +250,7 @@ export default function LotDetailPage() {
             </thead>
             <tbody>
               {rolls.map((r) => (
-                <tr key={r.id} className="border-t border-slate-100">
+                <tr key={r.id} className="border-t border-(--te-line-soft)/60 first:border-t-0 hover:bg-(--te-head)/40">
                   <td className="px-3 py-2 font-mono font-semibold">{r.roll_code}</td>
                   <td className="px-3 py-2">{r.mill_roll_no}</td>
                   <td className="px-3 py-2 font-mono">{r.declared_length_yd}</td>
@@ -254,7 +262,7 @@ export default function LotDetailPage() {
                       <button
                         type="button"
                         onClick={() => openPdf(`/api/v1/rolls/${r.id}/label.pdf`)}
-                        className="text-brand-blue hover:underline"
+                        className="text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy"
                       >
                         {t("lots.labelPrint")}
                       </button>
@@ -269,7 +277,7 @@ export default function LotDetailPage() {
                       return (
                         <Link
                           href={open ? `/inspect/${i.id}` : `/inspections/${i.id}`}
-                          className="text-brand-blue hover:underline"
+                          className="text-brand-navy underline decoration-(--te-accent)/60 underline-offset-2 hover:decoration-brand-navy"
                         >
                           {i.system_verdict ? t(`verdicts.${i.system_verdict}`) : t(`istatus.${i.status}`)}
                           {i.points_per_100 !== null && i.points_per_100 !== undefined && ` · ${i.points_per_100.toFixed(2)}`}
@@ -282,6 +290,8 @@ export default function LotDetailPage() {
             </tbody>
           </table>
         )}
+        </div>
+        </div>
       </section>
 
       {canWriteRolls && <AddRolls lotId={lot.id} onSaved={refresh} />}

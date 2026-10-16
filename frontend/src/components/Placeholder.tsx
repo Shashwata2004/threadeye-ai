@@ -6,9 +6,9 @@ import { useTranslations } from "next-intl";
 export function Placeholder({ titleKey, bodyKey, milestone }: { titleKey: string; bodyKey: string; milestone: string }) {
   const t = useTranslations();
   return (
-    <section className="max-w-2xl rounded-lg border border-dashed border-slate-300 bg-white p-6">
-      <h1 className="mb-2 text-2xl font-bold text-brand-navy">{t(titleKey)}</h1>
-      <p className="mb-4 text-slate-700">{t(bodyKey)}</p>
+    <section className="te-stitched max-w-2xl rounded-lg p-6">
+      <h1 className="te-serif mb-2 text-2xl font-bold text-(--te-ink)">{t(titleKey)}</h1>
+      <p className="te-serif mb-4 text-(--te-ink-soft)">{t(bodyKey)}</p>
       <p className="text-sm font-semibold text-brand-amber">{t("placeholder.comingIn", { milestone })}</p>
     </section>
   );
