@@ -16,6 +16,12 @@ body {
   color: #0f172a;
 }
 
+/* Serif for the fabric skin's headings. styles/fabric.css sets --te-serif on :root; html:root is
+ * more specific, so this wins without editing that file. */
+html:root {
+  --te-serif: var(--font-serif-latin), var(--font-bengali), Georgia, serif;
+}
+
 /* Bangla needs more line height for vowel signs above and below the line. */
 html:lang(bn) body {
   line-height: 1.7;
