@@ -1,0 +1,458 @@
+/*
+ * "Fabric" skin for the app shell and its screens: denim sidebar, linen canvas, braided-rope
+ * frame and stitched panels. Plain CSS (no Tailwind layer) so it sits on top of utility classes.
+ * Textures are inline SVG: no image files and no CDN, so the edge box works offline.
+ *
+ * Every colour is a variable. Light is the default; the shell sets data-theme="dark" to switch
+ * (see ThemeToggle). Screens use the variables through Tailwind, e.g. text-(--te-ink).
+ */
+
+:root {
+  --te-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Noto Serif",
+    var(--font-bengali), serif;
+
+  --te-denim: #1e293b;
+  --te-linen: #ece4d4;
+  --te-linen-card: #f5f0e6;
+  --te-header: #f4efe5;
+  --te-ink: #1f2a37;
+  --te-ink-soft: #4b4436;
+  --te-muted: #5b5446;
+  --te-faint: #7a705f;
+  --te-line: #cbbd9f;
+  --te-line-soft: #d6c8ad;
+  --te-accent: #b8976a;
+  --te-head: #e9dfcc;
+  --te-shadow: #3c2a14;
+  --te-sketch: #8a6a43;
+  --te-stitch: rgba(122, 96, 62, 0.5);
+  --te-card-border: #d6c8ad;
+
+  --te-thread-a: rgba(150, 128, 96, 0.08);
+  --te-thread-b: rgba(255, 255, 255, 0.35);
+  --te-card-thread: rgba(150, 128, 96, 0.055);
+  --te-rope-1: #cdb791;
+  --te-rope-2: #e9dcc3;
+  --te-rope-3: #f5eddd;
+  --te-rope-4: #dccaa7;
+  --te-rope-sheen: rgba(255, 255, 255, 0.3);
+  --te-rope-edge: rgba(150, 120, 80, 0.25);
+  --te-drop: rgba(60, 42, 20, 0.1);
+  --te-card-drop: rgba(60, 42, 20, 0.12);
+  --te-btn-bg: rgba(255, 255, 255, 0.55);
+  --te-btn-bg-hover: rgba(255, 255, 255, 0.9);
+  --te-btn-border: #c9bba1;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  color: var(--te-ink);
+
+  --te-denim: #111827;
+  --te-linen: #1d1915;
+  --te-linen-card: #27221c;
+  --te-header: #221e19;
+  --te-ink: #efe6d6;
+  --te-ink-soft: #d8ccb8;
+  --te-muted: #bcae98;
+  --te-faint: #9d907b;
+  --te-line: #4e4436;
+  --te-line-soft: #463d31;
+  --te-accent: #a88a5e;
+  --te-head: #3a3227;
+  --te-shadow: #000000;
+  --te-sketch: #c2a172;
+  --te-stitch: rgba(214, 190, 150, 0.32);
+  --te-card-border: #3f3629;
+
+  --te-thread-a: rgba(0, 0, 0, 0.25);
+  --te-thread-b: rgba(255, 240, 220, 0.035);
+  --te-card-thread: rgba(255, 240, 220, 0.025);
+  --te-rope-1: #5a4830;
+  --te-rope-2: #75603f;
+  --te-rope-3: #8a7250;
+  --te-rope-4: #64513a;
+  --te-rope-sheen: rgba(255, 255, 255, 0.06);
+  --te-rope-edge: rgba(0, 0, 0, 0.4);
+  --te-drop: rgba(0, 0, 0, 0.35);
+  --te-card-drop: rgba(0, 0, 0, 0.4);
+  --te-btn-bg: rgba(255, 255, 255, 0.05);
+  --te-btn-bg-hover: rgba(255, 255, 255, 0.11);
+  --te-btn-border: #54493a;
+}
+
+.te-serif {
+  font-family: var(--te-serif);
+  letter-spacing: 0.005em;
+}
+
+/* Bengali script has no italic tradition: keep the login motto upright in Bangla. */
+html:lang(bn) .te-motto {
+  font-style: normal;
+}
+
+/* Woven linen canvas: fine warp/weft threads plus a soft fibre noise. */
+.te-linen {
+  background-color: var(--te-linen);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9 .35' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .28 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(0deg, var(--te-thread-a) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, var(--te-thread-b) 0 1px, transparent 1px 3px);
+}
+
+/* Dark denim: diagonal twill lines over a navy slate base with fibre noise. */
+.te-denim {
+  background-color: var(--te-denim);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .75 0 0 0 0 .8 0 0 0 0 .9 0 0 0 .12 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 5px);
+  color: #e2e8f0;
+}
+
+.te-header {
+  background-color: var(--te-header);
+  border-bottom: 1px dashed var(--te-stitch);
+  box-shadow: 0 1px 0 var(--te-thread-b), 0 2px 6px var(--te-drop);
+}
+
+.te-btn {
+  background: var(--te-btn-bg);
+  border: 1px solid var(--te-btn-border);
+  color: var(--te-ink);
+}
+.te-btn:hover {
+  background: var(--te-btn-bg-hover);
+}
+
+/* Sidebar links */
+.te-nav-link {
+  color: #cbd5e1;
+  transition: background-color 0.15s, color 0.15s;
+}
+.te-nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+.te-nav-link[aria-current="page"] {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.55), 0 1px 3px rgba(0, 0, 0, 0.35);
+  outline: 1.5px dashed rgba(226, 232, 240, 0.65);
+  outline-offset: -5px;
+}
+
+/* Braided rope frame: diagonal twisted strands on a rounded ring. */
+.te-rope {
+  position: relative;
+  padding: 5px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, var(--te-rope-sheen), rgba(0, 0, 0, 0.04)),
+    repeating-linear-gradient(
+      55deg,
+      var(--te-rope-1) 0 1.5px,
+      var(--te-rope-2) 1.5px 4px,
+      var(--te-rope-3) 4px 5.5px,
+      var(--te-rope-4) 5.5px 7px
+    );
+  box-shadow:
+    0 6px 16px var(--te-drop),
+    0 1px 2px var(--te-drop),
+    inset 0 0 0 1px var(--te-rope-edge);
+}
+.te-rope > .te-rope-inner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 15px;
+  background-color: var(--te-linen-card);
+  background-image:
+    repeating-linear-gradient(0deg, var(--te-card-thread) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, var(--te-card-thread) 0 1px, transparent 1px 3px);
+  box-shadow: inset 0 0 0 1px var(--te-rope-edge), inset 0 1px 4px var(--te-drop);
+}
+
+/* Stitched panel: same footprint as the plain card, the stitch line is drawn inside the padding. */
+.te-stitched {
+  position: relative;
+  background-color: var(--te-linen-card);
+  background-image:
+    repeating-linear-gradient(0deg, var(--te-card-thread) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, var(--te-card-thread) 0 1px, transparent 1px 3px);
+  border: 1px solid var(--te-card-border);
+  box-shadow: 0 4px 12px var(--te-card-drop), 0 1px 2px var(--te-card-drop);
+}
+.te-stitched::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1.5px dashed var(--te-stitch);
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.te-watermark {
+  position: absolute;
+  pointer-events: none;
+  color: var(--te-sketch);
+}
+
+/* Pencil sketches in page corners (static files, recoloured copies for dark mode). */
+.te-sketch-rolls {
+  background-image: url("/sketches/fabric-rolls-yarn.svg");
+}
+[data-theme="dark"] .te-sketch-rolls {
+  background-image: url("/sketches/fabric-rolls-yarn-dark.svg");
+}
+.te-sketch-magnifier {
+  background-image: url("/sketches/inspect-magnifier.svg");
+}
+[data-theme="dark"] .te-sketch-magnifier {
+  background-image: url("/sketches/inspect-magnifier-dark.svg");
+}
+.te-sketch-checklist {
+  background-image: url("/sketches/dashboard-checklist.svg");
+}
+[data-theme="dark"] .te-sketch-checklist {
+  background-image: url("/sketches/dashboard-checklist-dark.svg");
+}
+.te-sketch-stamp {
+  background-image: url("/sketches/verification-stamp.svg");
+}
+[data-theme="dark"] .te-sketch-stamp {
+  background-image: url("/sketches/verification-stamp-dark.svg");
+}
+
+/* Garment worker at her sewing station, on the login page. Served from /login-art/ because the
+ * proxy lets paths starting with "login" through without a session (the other sketches need one).
+ * The edges fade out so the drawing melts into the linen instead of ending in a hard rectangle. */
+.te-sketch-login {
+  background-image: url("/login-art/garment-worker.webp");
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 100%);
+}
+[data-theme="dark"] .te-sketch-login {
+  background-image: url("/login-art/garment-worker-dark.webp");
+  opacity: 0.5; /* the dark copy uses a muted ink with capped shading, so it needs less fading */
+}
+
+/*
+ * Dark mode for screens that still use the plain Tailwind palette (white cards, slate text,
+ * pale status boxes). Mapping them here keeps those screens readable without editing them.
+ */
+[data-theme="dark"] .bg-white {
+  background-color: var(--te-linen-card);
+}
+[data-theme="dark"] .bg-slate-50,
+[data-theme="dark"] .bg-slate-100 {
+  background-color: #2e281f;
+}
+[data-theme="dark"] .bg-slate-200 {
+  background-color: #3a3227;
+}
+[data-theme="dark"] .hover\:bg-slate-50:hover,
+[data-theme="dark"] .hover\:bg-slate-100:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+[data-theme="dark"] .border-slate-100,
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] .border-slate-300,
+[data-theme="dark"] .divide-slate-100 > :not(:last-child) {
+  border-color: var(--te-card-border);
+}
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-brand-navy {
+  color: var(--te-ink);
+}
+[data-theme="dark"] .text-slate-600,
+[data-theme="dark"] .text-stone-700 {
+  color: var(--te-ink-soft);
+}
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-400 {
+  color: var(--te-faint);
+}
+[data-theme="dark"] .text-brand-blue {
+  color: #8cb8dc;
+}
+[data-theme="dark"] .text-brand-teal,
+[data-theme="dark"] .text-teal-700,
+[data-theme="dark"] .text-teal-800,
+[data-theme="dark"] .text-teal-900 {
+  color: #6fd0c0;
+}
+[data-theme="dark"] .text-amber-700,
+[data-theme="dark"] .text-amber-800,
+[data-theme="dark"] .text-amber-900 {
+  color: #f0c27a;
+}
+[data-theme="dark"] .text-red-700,
+[data-theme="dark"] .text-red-800 {
+  color: #f19a8f;
+}
+[data-theme="dark"] .text-emerald-800,
+[data-theme="dark"] .text-green-900 {
+  color: #7fdcb0;
+}
+[data-theme="dark"] .bg-teal-50,
+[data-theme="dark"] .bg-teal-100 {
+  background-color: rgba(20, 184, 166, 0.16);
+}
+[data-theme="dark"] .bg-amber-50,
+[data-theme="dark"] .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.18);
+}
+[data-theme="dark"] .bg-red-50,
+[data-theme="dark"] .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.18);
+}
+[data-theme="dark"] .bg-green-100,
+[data-theme="dark"] .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.18);
+}
+[data-theme="dark"] .bg-stone-200\/60,
+[data-theme="dark"] .bg-stone-200\/80 {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color: var(--te-ink);
+}
+
+/* ---------- Login page: robot holding the board, sewn-in motto, thread through the needle ---------- */
+:root {
+  --te-visor: #1f2a37;
+}
+[data-theme="dark"] {
+  --te-visor: #0d0b09;
+}
+
+/* The robot rises from behind the board as the page opens. */
+.te-robot-rise {
+  animation: te-robot-rise 1s cubic-bezier(0.2, 0.8, 0.3, 1.1) 0.2s both;
+}
+@keyframes te-robot-rise {
+  from {
+    opacity: 0;
+    transform: translateY(34px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Head tilts a little now and then. */
+.te-robot-head {
+  transform-box: view-box;
+  transform-origin: 220px 100px;
+  animation: te-robot-tilt 7s ease-in-out 1.4s infinite;
+}
+@keyframes te-robot-tilt {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-3deg);
+  }
+  62% {
+    transform: rotate(2.5deg);
+  }
+}
+/* Eyes sweep side to side like an inspection scan, glow, and blink. */
+.te-robot-scan {
+  filter: drop-shadow(0 0 3px #5eead4);
+  animation: te-robot-scan 3.4s ease-in-out 1.2s infinite;
+}
+@keyframes te-robot-scan {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+.te-robot-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: te-robot-blink 4.6s ease-in-out 1.5s infinite;
+}
+@keyframes te-robot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+/* Antenna light pulses. */
+.te-robot-led {
+  filter: drop-shadow(0 0 3px #5eead4);
+  animation: te-robot-led 2.2s ease-in-out infinite;
+}
+@keyframes te-robot-led {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* The motto's stitch line sews itself in from left to right. */
+.te-stitch-underline {
+  position: relative;
+}
+.te-stitch-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 1.5px dashed var(--te-accent);
+  animation: te-stitch-draw 1.4s ease-out 0.2s both;
+}
+@keyframes te-stitch-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* The logo's thread draws itself through the needle's eye. */
+.te-thread-draw {
+  stroke-dasharray: 1;
+  animation: te-thread-draw 1.6s ease-in-out 0.1s both;
+}
+@keyframes te-thread-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .te-robot-rise,
+  .te-robot-head,
+  .te-robot-scan,
+  .te-robot-blink,
+  .te-robot-led,
+  .te-stitch-underline::after,
+  .te-thread-draw {
+    animation: none;
+  }
+}
