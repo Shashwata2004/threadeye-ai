@@ -22,6 +22,39 @@ html:root {
   --te-serif: var(--font-serif-latin), var(--font-bengali), Georgia, serif;
 }
 
+/* Dark mode in pure black instead of fabric.css's warm brown. div[data-theme] is more specific
+ * than fabric.css's [data-theme], so these win without editing that file. */
+div[data-theme="dark"] {
+  --te-denim: #0a0d12;
+  --te-linen: #000000;
+  --te-linen-card: #0e0f11;
+  --te-header: #070708;
+  --te-head: #1a1b1e;
+  --te-ink: #ededed;
+  --te-ink-soft: #c8c8c8;
+  --te-muted: #a5a5a5;
+  --te-faint: #8a8a8a;
+  --te-line: #2e3034;
+  --te-line-soft: #26282c;
+  --te-card-border: #26282c;
+  --te-stitch: rgba(220, 220, 220, 0.18);
+  --te-thread-a: rgba(255, 255, 255, 0.015);
+  --te-thread-b: rgba(255, 255, 255, 0.015);
+  --te-card-thread: rgba(255, 255, 255, 0.015);
+  --te-btn-border: #34363b;
+  --te-rope-1: #2a2b2e;
+  --te-rope-2: #3a3b3f;
+  --te-rope-3: #4a4b50;
+  --te-rope-4: #323337;
+}
+div[data-theme="dark"] .bg-slate-50,
+div[data-theme="dark"] .bg-slate-100 {
+  background-color: #1a1b1e;
+}
+div[data-theme="dark"] .bg-slate-200 {
+  background-color: #232428;
+}
+
 /* Bangla needs more line height for vowel signs above and below the line. */
 html:lang(bn) body {
   line-height: 1.7;

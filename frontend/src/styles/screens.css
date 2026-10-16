@@ -43,7 +43,7 @@
   --tw-ring-color: rgba(140, 184, 220, 0.3);
 }
 [data-theme="dark"] .te-screen .bg-slate-400 {
-  background-color: #8a7f6e;
+  background-color: #6e7178;
 }
 [data-theme="dark"] .te-screen .text-white {
   color: #fff;
