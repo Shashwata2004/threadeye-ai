@@ -20,7 +20,7 @@ import {
   type ScoreSummary,
 } from "@/lib/api/client";
 import { errorDetail, useDefects, useInspection, useMe, usePlan, useTrack } from "@/lib/api/hooks";
-import { defectBox, inView, YARD_CM } from "@/lib/live/geometry";
+import { defectBox, frameAt, inView, YARD_CM } from "@/lib/live/geometry";
 
 /** The fields of a defect.upserted event the overlay needs to draw a box. */
 type LiveBox = Pick<
@@ -180,8 +180,16 @@ export default function LiveInspectionPage() {
     return Math.round(seconds * track.fps * rateRef.current);
   }, [track]);
 
+  /** The frame the video is at. requestVideoFrameCallback stops when the page is not painted (another tab
+   * in front, a minimised window) while the video keeps playing, so the clock is read from the video too. */
+  const syncFrame = useCallback(() => {
+    const video = videoRef.current?.video;
+    if (track && video && !video.paused && !video.ended) frameRef.current = frameAt(track, video.currentTime);
+  }, [track]);
+
   const advance = useCallback(async () => {
     if (!drivingRef.current || inFlightRef.current || !track) return;
+    syncFrame();
     const until = Math.min(Math.max(frameRef.current + aheadFrames(), checkpointRef.current), track.frame_count - 1);
     if (until <= checkpointRef.current && !capturesRef.current.length) return;
     inFlightRef.current = true;
@@ -213,7 +221,7 @@ export default function LiveInspectionPage() {
     } finally {
       inFlightRef.current = false;
     }
-  }, [id, track, applyEvents, stopDriving, refetchInsp, queryClient, aheadFrames]);
+  }, [id, track, applyEvents, stopDriving, refetchInsp, queryClient, aheadFrames, syncFrame]);
 
   useEffect(() => {
     const timer = setInterval(() => void advance(), TICK_MS);
@@ -224,6 +232,7 @@ export default function LiveInspectionPage() {
   // show the scores the server computed ahead once the video reaches their frame.
   useEffect(() => {
     const timer = setInterval(() => {
+      syncFrame();
       setFrame(frameRef.current);
       const held = heldScoresRef.current;
       let due: ScoreSummary | undefined;
@@ -231,7 +240,7 @@ export default function LiveInspectionPage() {
       if (due) setScore(due);
     }, 200);
     return () => clearInterval(timer);
-  }, []);
+  }, [syncFrame]);
 
   useEffect(() => {
     if (insp) workAheadRef.current = !insp.provider.requires_image;
