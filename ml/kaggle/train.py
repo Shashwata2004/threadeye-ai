@@ -157,7 +157,8 @@ env = f"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 PYTHONPATH={YOLOX}:$PYTHONPATH"
 # Kaggle stops a GPU session at 12 h and keeps nothing it had not written: training gets a time budget, after
 # which the best checkpoint so far (saved at every evaluation) is tested and exported as usual.
 try:
-    sh(f"timeout --signal=INT {TRAIN_BUDGET_H}h {env} {sys.executable} tools/train.py -f {exp} -d 1 -b {BATCH} "
+    # The variables come first: "timeout VAR=x cmd" would try to run "VAR=x" as the command.
+    sh(f"{env} timeout --signal=INT {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} -d 1 -b {BATCH} "
        f"--fp16 -o -c {weights}", cwd=YOLOX)
 except subprocess.CalledProcessError as exc:
     if exc.returncode not in (124, 130) or not (YOLOX / "YOLOX_outputs" / f"threadeye_{SIZE}/best_ckpt.pth").exists():
