@@ -1958,7 +1958,7 @@
           "inspections"
         ],
         "summary": "Finalize",
-        "description": "Compute the roll verdict from confirmed defects. 409 while any defect is pending.",
+        "description": "Compute the roll verdict from confirmed defects. 409 while pending defects could still change the verdict; pending defects that cannot change it are recorded as not reviewed.",
         "operationId": "finalize_api_v1_inspections__inspection_id__finalize_post",
         "parameters": [
           {
@@ -2152,7 +2152,7 @@
           "defects"
         ],
         "summary": "Add Manual Defect",
-        "description": "Inspector adds a defect the detector missed. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "description": "Inspector adds a defect the detector missed: a box drawn on a video frame (with a photo of that frame), or a yard and a length. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
         "operationId": "add_manual_defect_api_v1_inspections__inspection_id__defects_post",
         "parameters": [
           {
@@ -2183,6 +2183,60 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DefectOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/defects/confirm-pending": {
+      "post": {
+        "tags": [
+          "defects"
+        ],
+        "summary": "Confirm Pending",
+        "description": "Confirm every pending defect (up to `up_to_yd`) at once: the inspector rejects the false alarms and accepts the rest in one step. Recorded per defect and as one change-ledger entry. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.",
+        "operationId": "confirm_pending_api_v1_inspections__inspection_id__defects_confirm_pending_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPendingIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmPendingOut"
                 }
               }
             }
@@ -2676,6 +2730,24 @@
             "type": "array",
             "maxItems": 8,
             "title": "Captures"
+          },
+          "start_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Key"
+          },
+          "takeover": {
+            "type": "boolean",
+            "title": "Takeover",
+            "default": false
           }
         },
         "type": "object",
@@ -2952,6 +3024,52 @@
         },
         "type": "object",
         "title": "ConfirmIn"
+      },
+      "ConfirmPendingIn": {
+        "properties": {
+          "up_to_yd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Up To Yd"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "ConfirmPendingIn"
+      },
+      "ConfirmPendingOut": {
+        "properties": {
+          "confirmed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Confirmed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "confirmed"
+        ],
+        "title": "ConfirmPendingOut"
       },
       "DatasetOut": {
         "properties": {
@@ -3878,6 +3996,36 @@
             ],
             "title": "Yards Inspected"
           },
+          "unreviewed": {
+            "type": "integer",
+            "title": "Unreviewed",
+            "default": 0
+          },
+          "points_if_all_confirmed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points If All Confirmed"
+          },
+          "verdict_cells": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict Cells"
+          },
           "decision_reason": {
             "anyOf": [
               {
@@ -4295,9 +4443,65 @@
             "minLength": 1,
             "title": "Cls"
           },
+          "frame": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame"
+          },
+          "bbox_px": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 4,
+                "minItems": 4
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox Px"
+          },
+          "capture": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Capture"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "center_yd": {
-            "type": "number",
-            "minimum": 0.0,
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Center Yd"
           },
           "across_cm": {
@@ -4313,9 +4517,16 @@
             "title": "Across Cm"
           },
           "length_in": {
-            "type": "number",
-            "maximum": 2000.0,
-            "exclusiveMinimum": 0.0,
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Length In"
           },
           "note": {
@@ -4333,11 +4544,10 @@
         },
         "type": "object",
         "required": [
-          "cls",
-          "center_yd",
-          "length_in"
+          "cls"
         ],
-        "title": "ManualDefectIn"
+        "title": "ManualDefectIn",
+        "description": "A defect the detector missed. Preferably drawn: ``frame`` + ``bbox_px`` (a box in view pixels of\nthat frame, at the video's own scale) give the exact position and size, and ``capture`` (a photo\nof that frame) becomes its evidence photo. Otherwise ``center_yd`` + ``length_in``."
       },
       "MeOut": {
         "properties": {
@@ -5209,9 +5419,25 @@
             ],
             "title": "Confirmed Verdict"
           },
+          "verdict_settled": {
+            "type": "boolean",
+            "title": "Verdict Settled",
+            "default": false
+          },
           "yards_inspected": {
             "type": "number",
             "title": "Yards Inspected"
+          },
+          "at_frame": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At Frame"
           },
           "coverage_pct": {
             "type": "number",

@@ -98,9 +98,11 @@ export default function VerdictPage() {
   if (!insp) return <p className="text-slate-500">{t("common.loading")}</p>;
 
   const r = insp.roll;
+  // After the verdict, a defect still pending was left undecided because it could not change the verdict.
+  const statusOf = (d: Defect) => t(`dstatus.${d.status === "pending" && insp.finalized_at ? "unreviewed" : d.status}`);
   const real = defects.filter((d) => d.kind === "defect").sort((a, b) => a.center_yd - b.center_yd);
   const ignored = defects.filter((d) => d.kind === "nondefect");
-  const cells = Object.entries(insp.score?.cells ?? {})
+  const cells = Object.entries(insp.verdict_cells ?? insp.score?.cells ?? {})
     .map(([k, v]) => [Number(k), v] as const)
     .sort((a, b) => a[0] - b[0]);
   const ignoredCounts = ignored.reduce<Record<string, number>>((acc, d) => {
@@ -149,6 +151,15 @@ export default function VerdictPage() {
               })}
             </p>
             <p className="text-sm text-slate-500">{t("verdict.yards", { yd: (insp.yards_inspected ?? 0).toFixed(2) })}</p>
+            {insp.unreviewed > 0 && (
+              <p className="text-sm text-amber-800" data-testid="unreviewed">
+                {t("verdict.unreviewed", {
+                  n: insp.unreviewed,
+                  low: insp.points_total ?? 0,
+                  high: insp.points_if_all_confirmed ?? insp.points_total ?? 0,
+                })}
+              </p>
+            )}
             {insp.system_verdict === "BORDERLINE" && !insp.final_verdict && (
               <p className="font-semibold text-amber-800">{t("verdict.needSup")}</p>
             )}
@@ -208,7 +219,7 @@ export default function VerdictPage() {
         {zoomed?.crop_url && (
           <Lightbox src={largePhoto(zoomed.crop_url)} alt={zoomed.defect_no} onClose={() => setZoomed(null)}>
             <p className="font-semibold">
-              {zoomed.defect_no} · {t(`cls.${zoomed.current_cls}`)} ({t(`dstatus.${zoomed.status}`)})
+              {zoomed.defect_no} · {t(`cls.${zoomed.current_cls}`)} ({statusOf(zoomed)})
             </p>
             <p className="text-slate-600">
               {t("live.at", { yd: zoomed.center_yd.toFixed(2) })} · {t("live.size", { len: zoomed.length_in.toFixed(2) })}
@@ -248,7 +259,7 @@ export default function VerdictPage() {
                   {t("live.at", { yd: d.center_yd.toFixed(2) })} · {t("live.size", { len: d.length_in.toFixed(2) })}
                 </p>
                 <p>
-                  {t(`dstatus.${d.status}`)}
+                  {statusOf(d)}
                   {d.status !== "rejected" && d.points !== null && d.points !== undefined && ` · ${t("live.pts", { n: d.points })}`}
                 </p>
               </div>
@@ -266,7 +277,7 @@ export default function VerdictPage() {
             <div className="space-y-1">
               <p className="font-semibold">
                 {picked.defect_no} · {t(`cls.${picked.nondefect_category ?? picked.current_cls}`)} ·{" "}
-                {t(`dstatus.${picked.status}`)}
+                {statusOf(picked)}
               </p>
               <p>
                 {t("live.at", { yd: picked.center_yd.toFixed(2) })} · {t("live.size", { len: picked.length_in.toFixed(2) })}
@@ -306,7 +317,7 @@ export default function VerdictPage() {
                 <td className="px-3 py-1.5 font-mono">{d.center_yd.toFixed(2)}</td>
                 <td className="px-3 py-1.5 font-mono">{d.length_in.toFixed(2)}</td>
                 <td className="px-3 py-1.5">
-                  {t(`dstatus.${d.status}`)}
+                  {statusOf(d)}
                   {d.reject_reason && ` (${t(`reasons.${d.reject_reason}`)})`}
                 </td>
                 <td className="px-3 py-1.5 font-mono">{d.status === "rejected" ? "–" : d.points ?? "–"}</td>

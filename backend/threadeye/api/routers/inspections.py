@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from threadeye.api.deps import client_ip, current_session_id, idempotency_key, require
 from threadeye.api.errors import NOT_IMPLEMENTED_RESPONSE, not_implemented
@@ -24,6 +24,8 @@ from threadeye.api.schemas.inspection import (
     AdvanceIn,
     AdvanceOut,
     ConfirmIn,
+    ConfirmPendingIn,
+    ConfirmPendingOut,
     DatasetOut,
     DecisionIn,
     DefectOut,
@@ -111,19 +113,45 @@ def _video(db: Session, info: datasets.DatasetInfo) -> tuple[str | None, str | N
 
 
 # ------------------------------------------------------------------------------------------ views
+def _latest_payload(insp: Inspection, type_: str) -> Any:
+    return (
+        select(InspectionEvent.payload)
+        .where(InspectionEvent.inspection_id == insp.id, InspectionEvent.type == type_)
+        .order_by(InspectionEvent.seq.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+
 def _snapshot(db: Session, insp: Inspection, session_id: uuid.UUID | None) -> InspectionSnapshot:
-    roll = db.get(Roll, insp.roll_id)
-    assert roll
-    lot = db.get(Lot, roll.lot_id)
-    assert lot
-    supplier, buyer = db.get(Supplier, lot.supplier_id), db.get(Buyer, lot.buyer_id)
-    profile = db.get(RuleProfileRow, insp.rule_profile_id)
-    inspector = db.get(User, insp.inspector_id) if insp.inspector_id else None
-    decider = db.get(User, insp.decision_by) if insp.decision_by else None
+    # Everything the snapshot shows in ONE query: on a remote database each round trip costs
+    # 0.1-0.5 s, and this is read after every command.
+    inspector_u, decider_u = aliased(User), aliased(User)
+    row = db.execute(
+        select(
+            Roll,
+            Lot,
+            Supplier,
+            Buyer,
+            RuleProfileRow,
+            inspector_u.display_name,
+            decider_u.display_name,
+            _latest_payload(insp, "score.updated"),
+            _latest_payload(insp, "verdict.computed"),
+        )
+        .join(Lot, Lot.id == Roll.lot_id)
+        .outerjoin(Supplier, Supplier.id == Lot.supplier_id)
+        .outerjoin(Buyer, Buyer.id == Lot.buyer_id)
+        .outerjoin(RuleProfileRow, RuleProfileRow.id == insp.rule_profile_id)
+        .outerjoin(inspector_u, inspector_u.id == insp.inspector_id)
+        .outerjoin(decider_u, decider_u.id == insp.decision_by)
+        .where(Roll.id == insp.roll_id)
+    ).one()
+    roll, lot, supplier, buyer, profile, inspector_name, decider_name, score, verdict = row
+    verdict = (verdict or {}) if insp.finalized_at else {}
     info = _dataset(insp)
     track = datasets.track_source(info).track() if info else []
     cp = insp.checkpoint_frame
-    score = live.latest_score(db, insp)
     status_now = live.effective_status(insp)
     holds = live.holds_lease(insp, session_id)
     snap = insp.provider_snapshot
@@ -152,10 +180,13 @@ def _snapshot(db: Session, insp: Inspection, session_id: uuid.UUID | None) -> In
         points_total=insp.points_total,
         points_per_100=insp.points_per_100,
         yards_inspected=insp.yards_inspected,
+        unreviewed=int(verdict.get("unreviewed") or 0),
+        points_if_all_confirmed=verdict.get("points_if_all_confirmed"),
+        verdict_cells=verdict.get("cells"),
         decision_reason=insp.decision_reason,
-        decision_by=decider.display_name if decider else None,
+        decision_by=decider_name,
         decision_at=insp.decision_at,
-        inspector=inspector.display_name if inspector else None,
+        inspector=inspector_name,
         dataset_id=insp.dataset_id,
         frame_count=len(track),
         roll=RollContext(
@@ -469,18 +500,23 @@ def frame_track(inspection_id: uuid.UUID, db: Session = Depends(get_db)) -> Trac
 def advance(
     inspection_id: uuid.UUID,
     body: AdvanceIn,
-    _: User = Depends(require(Perm.INSPECTIONS_RUN)),
+    actor: User = Depends(require(Perm.INSPECTIONS_RUN)),
     session_id: uuid.UUID | None = Depends(current_session_id),
     db: Session = Depends(get_db),
 ) -> AdvanceOut:
     insp = _locked(db, inspection_id)
     try:
+        runner = None
+        if body.start_key:  # one runner for both steps (the cache hands each runner out once)
+            runner = live.runner_for(db, insp)
+            live.start(db, insp, actor, session_id, body.start_key, takeover=body.takeover, runner=runner)
         result = live.advance(
             db,
             insp,
             until_frame=body.until_frame,
             captures=[live.CaptureIn(c.frame, c.jpeg_b64, c.width, c.height) for c in body.captures],
             session_id=session_id,
+            runner=runner,
         )
     except live.InspectionError as exc:
         db.rollback()
@@ -583,7 +619,8 @@ def add_measurement(inspection_id: uuid.UUID, body: MeasurementIn) -> None:
 @router.post(
     "/inspections/{inspection_id}/finalize",
     response_model=InspectionSnapshot,
-    description="Compute the roll verdict from confirmed defects. 409 while any defect is pending.",
+    description="Compute the roll verdict from confirmed defects. 409 while pending defects could still "
+    "change the verdict; pending defects that cannot change it are recorded as not reviewed.",
 )
 def finalize(
     inspection_id: uuid.UUID,
@@ -684,10 +721,11 @@ def _decide(
     actor: User,
     idem: str,
     ip: str | None,
+    captures: list[live.CaptureIn] | None = None,
 ) -> DefectOut:
     insp = _locked(db, inspection_id)
     try:
-        target = live.decide(db, insp, defect_no, decision, actor, idem, ip)
+        target = live.decide(db, insp, defect_no, decision, actor, idem, ip, captures or [])
     except live.InspectionError as exc:
         db.rollback()
         raise _http(exc) from exc
@@ -702,7 +740,8 @@ def _decide(
     "/inspections/{inspection_id}/defects",
     response_model=DefectOut,
     status_code=201,
-    description="Inspector adds a defect the detector missed. " + IDEMPOTENCY_NOTE,
+    description="Inspector adds a defect the detector missed: a box drawn on a video frame (with a photo "
+    "of that frame), or a yard and a length. " + IDEMPOTENCY_NOTE,
 )
 def add_manual_defect(
     inspection_id: uuid.UUID,
@@ -712,8 +751,34 @@ def add_manual_defect(
     idem: str = Depends(idempotency_key),
     db: Session = Depends(get_db),
 ) -> DefectOut:
-    decision = {"action": "manual", **body.model_dump()}
-    return _decide(db, inspection_id, None, decision, actor, idem, client_ip(request))
+    decision = {"action": "manual", **body.model_dump(exclude={"capture"}, exclude_none=True)}
+    c = body.capture
+    captures = [live.CaptureIn(c.frame, c.jpeg_b64, c.width, c.height)] if c else []
+    return _decide(db, inspection_id, None, decision, actor, idem, client_ip(request), captures)
+
+
+@defects_router.post(
+    "/inspections/{inspection_id}/defects/confirm-pending",
+    response_model=ConfirmPendingOut,
+    description="Confirm every pending defect (up to `up_to_yd`) at once: the inspector rejects the false "
+    "alarms and accepts the rest in one step. Recorded per defect and as one change-ledger entry. " + IDEMPOTENCY_NOTE,
+)
+def confirm_pending(
+    inspection_id: uuid.UUID,
+    body: ConfirmPendingIn,
+    request: Request,
+    actor: User = Depends(require(Perm.DEFECTS_CONFIRM)),
+    idem: str = Depends(idempotency_key),
+    db: Session = Depends(get_db),
+) -> ConfirmPendingOut:
+    insp = _locked(db, inspection_id)
+    try:
+        numbers = live.confirm_pending(db, insp, body.up_to_yd, body.note, actor, idem, client_ip(request))
+    except live.InspectionError as exc:
+        db.rollback()
+        raise _http(exc) from exc
+    db.commit()
+    return ConfirmPendingOut(confirmed=numbers)
 
 
 def _row(db: Session, defect_id: uuid.UUID) -> DefectRow:

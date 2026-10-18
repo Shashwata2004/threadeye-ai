@@ -710,7 +710,7 @@ export interface paths {
         put?: never;
         /**
          * Finalize
-         * @description Compute the roll verdict from confirmed defects. 409 while any defect is pending.
+         * @description Compute the roll verdict from confirmed defects. 409 while pending defects could still change the verdict; pending defects that cannot change it are recorded as not reviewed.
          */
         post: operations["finalize_api_v1_inspections__inspection_id__finalize_post"];
         delete?: never;
@@ -771,9 +771,29 @@ export interface paths {
         put?: never;
         /**
          * Add Manual Defect
-         * @description Inspector adds a defect the detector missed. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         * @description Inspector adds a defect the detector missed: a box drawn on a video frame (with a photo of that frame), or a yard and a length. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
          */
         post: operations["add_manual_defect_api_v1_inspections__inspection_id__defects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/defects/confirm-pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Pending
+         * @description Confirm every pending defect (up to `up_to_yd`) at once: the inspector rejects the false alarms and accepts the rest in one step. Recorded per defect and as one change-ledger entry. Send an `Idempotency-Key` header (UUID); retries with the same key are no-ops.
+         */
+        post: operations["confirm_pending_api_v1_inspections__inspection_id__defects_confirm_pending_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -956,6 +976,13 @@ export interface components {
             after_seq: number;
             /** Captures */
             captures?: components["schemas"]["Capture"][];
+            /** Start Key */
+            start_key?: string | null;
+            /**
+             * Takeover
+             * @default false
+             */
+            takeover: boolean;
         };
         /** AdvanceOut */
         AdvanceOut: {
@@ -1041,6 +1068,18 @@ export interface components {
         ConfirmIn: {
             /** Note */
             note?: string | null;
+        };
+        /** ConfirmPendingIn */
+        ConfirmPendingIn: {
+            /** Up To Yd */
+            up_to_yd?: number | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** ConfirmPendingOut */
+        ConfirmPendingOut: {
+            /** Confirmed */
+            confirmed: string[];
         };
         /**
          * DatasetOut
@@ -1363,6 +1402,17 @@ export interface components {
             points_per_100: number | null;
             /** Yards Inspected */
             yards_inspected: number | null;
+            /**
+             * Unreviewed
+             * @default 0
+             */
+            unreviewed: number;
+            /** Points If All Confirmed */
+            points_if_all_confirmed?: number | null;
+            /** Verdict Cells */
+            verdict_cells?: {
+                [key: string]: number;
+            } | null;
             /** Decision Reason */
             decision_reason: string | null;
             /** Decision By */
@@ -1480,16 +1530,31 @@ export interface components {
             /** Active */
             active: boolean;
         };
-        /** ManualDefectIn */
+        /**
+         * ManualDefectIn
+         * @description A defect the detector missed. Preferably drawn: ``frame`` + ``bbox_px`` (a box in view pixels of
+         *     that frame, at the video's own scale) give the exact position and size, and ``capture`` (a photo
+         *     of that frame) becomes its evidence photo. Otherwise ``center_yd`` + ``length_in``.
+         */
         ManualDefectIn: {
             /** Cls */
             cls: string;
+            /** Frame */
+            frame?: number | null;
+            /** Bbox Px */
+            bbox_px?: [
+                number,
+                number,
+                number,
+                number
+            ] | null;
+            capture?: components["schemas"]["Capture"] | null;
             /** Center Yd */
-            center_yd: number;
+            center_yd?: number | null;
             /** Across Cm */
             across_cm?: number | null;
             /** Length In */
-            length_in: number;
+            length_in?: number | null;
             /** Note */
             note?: string | null;
         };
@@ -1812,8 +1877,15 @@ export interface components {
             provisional_verdict: ("PASS" | "BORDERLINE" | "FAIL") | null;
             /** Confirmed Verdict */
             confirmed_verdict?: ("PASS" | "BORDERLINE" | "FAIL") | null;
+            /**
+             * Verdict Settled
+             * @default false
+             */
+            verdict_settled: boolean;
             /** Yards Inspected */
             yards_inspected: number;
+            /** At Frame */
+            at_frame?: number | null;
             /** Coverage Pct */
             coverage_pct: number;
             /**
@@ -3509,6 +3581,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DefectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_pending_api_v1_inspections__inspection_id__defects_confirm_pending_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmPendingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmPendingOut"];
                 };
             };
             /** @description Validation Error */

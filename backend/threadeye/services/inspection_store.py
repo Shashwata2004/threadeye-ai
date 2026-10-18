@@ -72,10 +72,14 @@ def append_events(
     actor_kind: str = "engine",
     actor_user_id: uuid.UUID | None = None,
     checkpoint_frame: int | None = None,
+    locked: Inspection | None = None,
 ) -> AppendResult:
-    """Append events and update projections. The caller commits (or rolls back) the transaction."""
+    """Append events and update projections. The caller commits (or rolls back) the transaction.
+
+    ``locked``: the inspection row, when the caller already holds its lock (saves a round trip).
+    """
     batch = list(events)
-    inspection = _lock(db, inspection_id)
+    inspection = locked if locked is not None and locked.id == inspection_id else _lock(db, inspection_id)
     keys = [e.idempotency_key for e in batch]
     existing = set(db.scalars(select(InspectionEvent.idempotency_key).where(InspectionEvent.idempotency_key.in_(keys))))
     seq = inspection.last_seq

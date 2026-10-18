@@ -199,7 +199,6 @@
     "rejectWhy": "Why is it not a defect?",
     "changeTo": "Change type to…",
     "addMissed": "Add missed defect",
-    "addMissedHint": "Added as a confirmed defect at {yd} yd (the middle of the view now).",
     "lengthIn": "Length (in)",
     "type": "Type",
     "add": "Add",
@@ -237,7 +236,16 @@
     "saving": "Saving…",
     "playAgain": "Play again",
     "replayNote": "Replays the video to look again. The inspection and its results do not change.",
-    "zoom": "Click to enlarge"
+    "zoom": "Click to enlarge",
+    "drawHint": "The video is paused. Drag a box around the defect on the video.",
+    "drawnAt": "Box at {yd} yd, {len} in. Pick the type and add it, or draw again.",
+    "redraw": "Draw again",
+    "confirmAll": "Confirm all pending ({n})",
+    "confirmAllAsk": "Confirm all {n} pending defects seen so far? Reject the false alarms first: everything still pending is accepted as a real defect.",
+    "confirmAllYes": "Yes, confirm {n}",
+    "settled": "The {n} pending defect(s) cannot change the verdict ({verdict} either way). You can compute the verdict now; they will be marked not reviewed.",
+    "notSettled": "The pending defects could still change the verdict: decide them first.",
+    "starting": "Starting…"
   },
   "verdict": {
     "title": "Roll verdict",
@@ -273,7 +281,8 @@
     "saved": "Saved.",
     "change": "Change decision",
     "photos": "Defect photos",
-    "photosHint": "In order along the roll. Click a photo for the reason and the points."
+    "photosHint": "In order along the roll. Click a photo for the reason and the points.",
+    "unreviewed": "{n} defect(s) were not reviewed. They cannot change the verdict: {low} points if they are all false alarms, {high} if they are all real."
   },
   "verdicts": {
     "PASS": "Pass",
@@ -286,7 +295,8 @@
   "dstatus": {
     "pending": "pending",
     "confirmed": "confirmed",
-    "rejected": "not a defect"
+    "rejected": "not a defect",
+    "unreviewed": "Not reviewed"
   },
   "istatus": {
     "created": "Loaded",

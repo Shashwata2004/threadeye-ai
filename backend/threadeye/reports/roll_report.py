@@ -54,6 +54,9 @@ TEXT = {
         "status_confirmed": "confirmed",
         "status_rejected": "rejected",
         "status_pending": "pending",
+        "status_unreviewed": "not reviewed",
+        "unreviewed": "{n} defect(s) were not reviewed: they cannot change the verdict "
+        "({low} points if all are false alarms, {high} if all are real).",
         "PASS": "PASS",
         "BORDERLINE": "BORDERLINE",
         "FAIL": "FAIL",
@@ -95,6 +98,9 @@ TEXT = {
         "status_confirmed": "নিশ্চিত",
         "status_rejected": "বাতিল",
         "status_pending": "বাকি",
+        "status_unreviewed": "পর্যালোচনা হয়নি",
+        "unreviewed": "{n}টি ত্রুটি পর্যালোচনা হয়নি: এগুলো রায় বদলাতে পারে না "
+        "(সব ভুল সতর্কতা হলে {low} পয়েন্ট, সব সত্যি হলে {high} পয়েন্ট)।",
         "PASS": "পাস",
         "BORDERLINE": "সীমার কাছাকাছি",
         "FAIL": "বাতিল",
@@ -193,6 +199,10 @@ def build_roll_report(
             new_x="LMARGIN",
             new_y="NEXT",
         )
+        if snap.unreviewed:
+            pdf.use_font(9)
+            note = t["unreviewed"].format(n=snap.unreviewed, low=snap.points_total, high=snap.points_if_all_confirmed)
+            _wrapped(pdf, note, 5)
         if snap.final_verdict:
             pdf.use_font(10, bold=True)
             decision = t.get(snap.final_verdict, snap.final_verdict)
@@ -205,7 +215,9 @@ def build_roll_report(
     pdf.ln(2)
 
     # ---------------------------------------------------------------------------------- per yard
-    cells = {int(k): v for k, v in (score.cells if score else {}).items()}
+    # After the verdict: its own per-yard points (confirmed defects only); before it, the live score.
+    raw_cells = snap.verdict_cells if snap.verdict_cells is not None else (score.cells if score else {})
+    cells = {int(k): v for k, v in raw_cells.items()}
     if cells:
         pdf.use_font(11, bold=True)
         pdf.cell(0, 7, t["perYard"], new_x="LMARGIN", new_y="NEXT")
@@ -250,7 +262,7 @@ def build_roll_report(
                 label(d.current_cls),
                 f"{d.center_yd:.2f}",
                 f"{d.length_in:.2f}",
-                t.get(f"status_{d.status}", d.status),
+                t["status_unreviewed"] if d.status == "pending" and verdict else t.get(f"status_{d.status}", d.status),
                 "-" if d.points is None or d.status == "rejected" else str(d.points),
                 why.replace("→", "=")[:60],  # the PDF font has no arrow glyph
             )
@@ -289,7 +301,10 @@ def build_roll_report(
             y = pdf.get_y()
             pdf.image(io.BytesIO(crops[d.defect_no]), x=x, y=y, w=size, h=size)
             pdf.use_font(7)
-            pdf.text(x, y + size + 3.5, f"{d.defect_no} · {label(d.current_cls)} · {d.center_yd:.2f} yd")
+            # cell(), not text(): text() skips Bangla shaping.
+            pdf.set_xy(x, y + size + 0.5)
+            pdf.cell(size, 4, f"{d.defect_no} · {label(d.current_cls)} · {d.center_yd:.2f} yd")
+            pdf.set_y(y)
         pdf.set_y(pdf.get_y() + size + 9)
 
     if snap.is_simulated:

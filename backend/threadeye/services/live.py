@@ -25,6 +25,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import event, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from threadeye.core.providers import ProviderContext
@@ -260,7 +261,14 @@ def create(
 
 
 def start(
-    db: Session, insp: Inspection, actor: User, session_id: uuid.UUID | None, idem: str, *, takeover: bool = False
+    db: Session,
+    insp: Inspection,
+    actor: User,
+    session_id: uuid.UUID | None,
+    idem: str,
+    *,
+    takeover: bool = False,
+    runner: Runner | None = None,
 ) -> list[RunnerEvent]:
     """Start or resume, and take the driver lease for this browser session."""
     if session_id is None:
@@ -271,7 +279,7 @@ def start(
     if status == "running" and not holds_lease(insp, session_id) and not takeover:
         raise InspectionError(409, "another device is running this inspection", lease_held=True)
     key = _cmd_key(insp, idem)
-    runner = runner_for(db, insp)
+    runner = runner or runner_for(db, insp)
     pos = runner.position()
     at = {"checkpoint_frame": insp.checkpoint_frame, "checkpoint_yd": round(pos.bottom_yd, 3) if pos else 0.0}
     if insp.status == "created":
@@ -285,7 +293,7 @@ def start(
     insp.status = "running"
     insp.driver_session_id = session_id
     insp.driver_expires_at = now() + timedelta(seconds=LEASE_SECONDS)
-    append_events(db, insp.id, events, actor_kind="user", actor_user_id=actor.id)
+    append_events(db, insp.id, events, actor_kind="user", actor_user_id=actor.id, locked=insp)
     _give_back_after_commit(db, insp, runner)
     return events
 
@@ -296,7 +304,7 @@ def pause(db: Session, insp: Inspection, actor: User, idem: str) -> None:
     insp.status = "paused"
     key = _cmd_key(insp, idem)
     ev = RunnerEvent("session.paused", {"checkpoint_frame": insp.checkpoint_frame}, key("session.paused", ""))
-    append_events(db, insp.id, [ev], actor_kind="user", actor_user_id=actor.id)
+    append_events(db, insp.id, [ev], actor_kind="user", actor_user_id=actor.id, locked=insp)
 
 
 def complete(db: Session, insp: Inspection, actor: User, idem: str, ip: str | None) -> None:
@@ -323,6 +331,7 @@ def complete(db: Session, insp: Inspection, actor: User, idem: str, ip: str | No
         [RunnerEvent("session.completed", payload, key("session.completed", ""))],
         actor_kind="user",
         actor_user_id=actor.id,
+        locked=insp,
     )
     _audit(db, "inspection.complete", insp, actor, ip, **runner.counts())
     _give_back_after_commit(db, insp, runner)
@@ -339,7 +348,7 @@ def abort(db: Session, insp: Inspection, actor: User, idem: str, ip: str | None)
         roll.status = "registered"
     key = _cmd_key(insp, idem)
     ev = RunnerEvent("session.aborted", {"checkpoint_frame": insp.checkpoint_frame}, key("session.aborted", ""))
-    append_events(db, insp.id, [ev], actor_kind="user", actor_user_id=actor.id)
+    append_events(db, insp.id, [ev], actor_kind="user", actor_user_id=actor.id, locked=insp)
     _audit(db, "inspection.abort", insp, actor, ip, checkpoint_frame=insp.checkpoint_frame)
 
 
@@ -366,23 +375,26 @@ def store_captures(db: Session, insp: Inspection, runner: Runner, captures: Sequ
             raise InspectionError(422, f"capture of frame {c.frame}: {exc}") from exc
         key = f"inspections/{insp.id}/frames/{c.frame:06d}.jpg"
         sha = storage.put(db, key, jpeg)
-        row = db.scalar(
-            select(InspectionFrame).where(InspectionFrame.inspection_id == insp.id, InspectionFrame.frame == c.frame)
-        )
         pos = runner.track[c.frame]
-        if row is None:
-            row = InspectionFrame(
-                inspection_id=insp.id,
-                frame=c.frame,
-                top_yd=pos.top_yd,
-                bottom_yd=pos.bottom_yd,
-                hand_visible=bool(pos.hand_visible),
-                sample_reason="capture",
-            )
-            db.add(row)
-        row.image_key, row.image_sha256, row.width, row.height = key, sha, w, h
-        row.image_scale = w / view_w
-        row.captured_at = now()
+        image = {
+            "image_key": key,
+            "image_sha256": sha,
+            "width": w,
+            "height": h,
+            "image_scale": w / view_w,
+            "captured_at": now(),
+        }
+        # One statement (no read first): every round trip to a remote database costs.
+        stmt = pg_insert(InspectionFrame).values(
+            inspection_id=insp.id,
+            frame=c.frame,
+            top_yd=pos.top_yd,
+            bottom_yd=pos.bottom_yd,
+            hand_visible=bool(pos.hand_visible),
+            sample_reason="capture",
+            **image,
+        )
+        db.execute(stmt.on_conflict_do_update(constraint="uq_inspection_frames_inspection_id_frame", set_=image))
         stored += 1
     return stored
 
@@ -401,6 +413,7 @@ def advance(
     until_frame: int,
     captures: Sequence[CaptureIn],
     session_id: uuid.UUID | None,
+    runner: Runner | None = None,
 ) -> AdvanceResult:
     status = effective_status(insp)
     if status != "running" or not holds_lease(insp, session_id):
@@ -408,15 +421,22 @@ def advance(
             raise InspectionError(409, "this browser does not hold the driver lease: press resume", lease_lost=True)
         raise InspectionError(409, f"inspection is {status}")
     insp.driver_expires_at = now() + timedelta(seconds=LEASE_SECONDS)
-    runner = runner_for(db, insp)
+    runner = runner or runner_for(db, insp)
     store_captures(db, insp, runner, captures)
     events = runner.advance(until_frame)
-    result = append_events(db, insp.id, events, checkpoint_frame=runner.checkpoint)
+    result = append_events(db, insp.id, events, checkpoint_frame=runner.checkpoint, locked=insp)
     _give_back_after_commit(db, insp, runner)
     return AdvanceResult(insp.checkpoint_frame, result.last_seq, result.written)
 
 
 # ------------------------------------------------------------------------------------------ decisions
+def _check_decidable(insp: Inspection) -> None:
+    if insp.finalized_at is not None:
+        raise InspectionError(409, "the verdict is already computed; defects can no longer change")
+    if insp.status not in (*OPEN, "completed"):
+        raise InspectionError(409, f"inspection is {insp.status}")
+
+
 def decide(
     db: Session,
     insp: Inspection,
@@ -425,12 +445,12 @@ def decide(
     actor: User,
     idem: str,
     ip: str | None,
+    captures: Sequence[CaptureIn] = (),
 ) -> str:
-    if insp.finalized_at is not None:
-        raise InspectionError(409, "the verdict is already computed; defects can no longer change")
-    if insp.status not in (*OPEN, "completed"):
-        raise InspectionError(409, f"inspection is {insp.status}")
+    """One inspector decision. ``captures``: a photo of the frame a missed defect was drawn on."""
+    _check_decidable(insp)
     runner = runner_for(db, insp)
+    store_captures(db, insp, runner, captures)
     try:
         events = runner.decide(defect_no, decision, _cmd_key(insp, idem))
     except DecisionError as exc:
@@ -438,7 +458,7 @@ def decide(
     except KeyError as exc:
         raise InspectionError(404, "defect not found") from exc
     target = next((e.payload["defect"]["defect_no"] for e in events if e.payload.get("decision")), defect_no)
-    append_events(db, insp.id, events, actor_kind="user", actor_user_id=actor.id)
+    append_events(db, insp.id, events, actor_kind="user", actor_user_id=actor.id, locked=insp)
     audit.record(
         db,
         action=f"defect.{decision['action']}",
@@ -454,6 +474,46 @@ def decide(
     return target
 
 
+def confirm_pending(
+    db: Session,
+    insp: Inspection,
+    up_to_yd: float | None,
+    note: str | None,
+    actor: User,
+    idem: str,
+    ip: str | None,
+) -> list[str]:
+    """Confirm every defect still pending (up to ``up_to_yd``) in one step.
+
+    The inspector rejects the false alarms they see and accepts the rest at once. Each defect gets its
+    own event (with ``bulk: true`` in the decision) and the change ledger gets one entry listing them.
+    """
+    _check_decidable(insp)
+    runner = runner_for(db, insp)
+    numbers = runner.pending_defects(up_to_yd)
+    if not numbers:
+        _give_back(insp, runner)
+        return []
+    decision: dict[str, Any] = {"action": "confirm", "bulk": True, "note": note}
+    try:
+        events = runner.decide_many(numbers, decision, _cmd_key(insp, idem))
+    except DecisionError as exc:
+        raise InspectionError(409, str(exc)) from exc
+    append_events(db, insp.id, events, actor_kind="user", actor_user_id=actor.id, locked=insp)
+    audit.record(
+        db,
+        action="defect.confirm_bulk",
+        actor_user_id=actor.id,
+        actor_role=actor.role,
+        entity_type="inspection",
+        entity_id=str(insp.id),
+        after={"defects": numbers, "up_to_yd": up_to_yd, "note": note},
+        ip=ip,
+    )
+    _give_back_after_commit(db, insp, runner)
+    return numbers
+
+
 # ------------------------------------------------------------------------------------------ verdict
 def finalize(db: Session, insp: Inspection, actor: User, idem: str, ip: str | None) -> None:
     if insp.finalized_at is not None:
@@ -462,10 +522,18 @@ def finalize(db: Session, insp: Inspection, actor: User, idem: str, ip: str | No
         raise InspectionError(409, "finish the roll first")
     runner = runner_for(db, insp)
     counts = runner.counts()
-    if counts["pending"]:
-        raise InspectionError(409, f"{counts['pending']} defect(s) still need a decision", pending=counts["pending"])
+    # Pending defects block the verdict only while they could still change it (PASS/BORDERLINE/FAIL
+    # is the same whether they are all rejected or all confirmed): the rest are recorded as not
+    # reviewed, never silently accepted.
+    if counts["pending"] and not runner.verdict_settled():
+        raise InspectionError(
+            409,
+            f"{counts['pending']} defect(s) still need a decision: they could change the verdict",
+            pending=counts["pending"],
+        )
     score = runner.score(final=True)
-    if score is None:
+    upper = runner.score(final=False)
+    if score is None or upper is None:
         raise InspectionError(409, "nothing was inspected")
     p = runner.profile
     insp.system_verdict = score.verdict
@@ -487,6 +555,9 @@ def finalize(db: Session, insp: Inspection, actor: User, idem: str, ip: str | No
         "uncapped_cells": {str(k): v for k, v in score.uncapped_cells.items()},
         "explanation": score.explanation,
         "needs_decision": score.verdict == "BORDERLINE",
+        "unreviewed": counts["pending"],
+        "points_if_all_confirmed": upper.total_points,
+        "per_100_if_all_confirmed": round(upper.per_100, p.per100_rounding),
         **counts,
     }
     key = _cmd_key(insp, idem)
@@ -496,8 +567,18 @@ def finalize(db: Session, insp: Inspection, actor: User, idem: str, ip: str | No
         [RunnerEvent("verdict.computed", payload, key("verdict.computed", ""))],
         actor_kind="user",
         actor_user_id=actor.id,
+        locked=insp,
     )
-    _audit(db, "inspection.finalize", insp, actor, ip, verdict=score.verdict, points=score.total_points)
+    _audit(
+        db,
+        "inspection.finalize",
+        insp,
+        actor,
+        ip,
+        verdict=score.verdict,
+        points=score.total_points,
+        unreviewed=counts["pending"],
+    )
     _give_back_after_commit(db, insp, runner)
 
 
@@ -528,6 +609,7 @@ def decide_verdict(
         [RunnerEvent("verdict.decided", payload, key("verdict.decided", ""))],
         actor_kind="user",
         actor_user_id=actor.id,
+        locked=insp,
     )
     audit.record(
         db,
@@ -543,16 +625,6 @@ def decide_verdict(
 
 
 # ------------------------------------------------------------------------------------------ queries
-def latest_score(db: Session, insp: Inspection) -> dict[str, Any] | None:
-    row = db.scalar(
-        select(InspectionEvent.payload)
-        .where(InspectionEvent.inspection_id == insp.id, InspectionEvent.type == "score.updated")
-        .order_by(InspectionEvent.seq.desc())
-        .limit(1)
-    )
-    return dict(row) if row else None
-
-
 def defects(db: Session, insp: Inspection) -> list[DefectRow]:
     return list(
         db.scalars(

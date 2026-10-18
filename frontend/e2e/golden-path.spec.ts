@@ -90,11 +90,18 @@ for (const lang of ["bn", "en"] as const) test(`core flow (${lang}): live inspec
   await page.getByTestId("finish").click();
   await expect(page.getByTestId("compute-verdict")).toBeVisible();
 
-  // The inspector confirms every defect (perfect preset: every one is real).
+  // The inspector confirms every defect (perfect preset: every one is real): one by one in Bangla,
+  // all at once with "confirm all pending" in English.
   const confirm = page.getByTestId("confirm");
-  for (let left = await confirm.count(); left > 0; left = await confirm.count()) {
-    await confirm.first().click();
-    await expect(confirm).toHaveCount(left - 1);
+  if (lang === "en") {
+    await page.getByTestId("confirm-all").click();
+    await page.getByTestId("confirm-all-yes").click();
+    await expect(confirm).toHaveCount(0);
+  } else {
+    for (let left = await confirm.count(); left > 0; left = await confirm.count()) {
+      await confirm.first().click();
+      await expect(confirm).toHaveCount(left - 1);
+    }
   }
   await expect(page.getByTestId("compute-verdict")).toBeEnabled();
   await page.getByTestId("compute-verdict").click();

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from threadeye.api.schemas.common import ApiModel
 from threadeye.api.schemas.events import EventEnvelope
@@ -57,7 +57,13 @@ class ScoreSummary(ApiModel):
     points_budget: float | None
     provisional_verdict: Verdict | None
     confirmed_verdict: Verdict | None = None
+    verdict_settled: bool = False
+    """The pending defects cannot change the verdict (same verdict whether they are rejected or confirmed)."""
     yards_inspected: float
+    at_frame: int | None = None
+    """Last frame processed when this score was computed. The server may work ahead of the video the
+    inspector watches (like a camera mounted before the inspection board): the screen shows a score
+    once the video reaches this frame."""
     coverage_pct: float
     defects: int = 0
     pending: int = 0
@@ -111,6 +117,11 @@ class InspectionSnapshot(ApiModel):
     points_total: int | None
     points_per_100: float | None
     yards_inspected: float | None
+    unreviewed: int = 0
+    """Defects left undecided because they could not change the verdict (see ``points_if_all_confirmed``)."""
+    points_if_all_confirmed: int | None = None
+    verdict_cells: dict[str, int] | None = None
+    """Yard index → points of the verdict (confirmed defects, after the per-yard cap)."""
     decision_reason: str | None
     decision_by: str | None
     decision_at: datetime | None
@@ -147,6 +158,11 @@ class AdvanceIn(ApiModel):
     until_frame: int = Field(ge=0)
     after_seq: int = Field(ge=0)
     captures: list[Capture] = Field(default_factory=list, max_length=8)
+    start_key: str | None = Field(default=None, min_length=8, max_length=64)
+    """Start (or resume) the inspection in the same request, with this idempotency key: one round trip
+    instead of two before the video plays, so the first defect boxes are there from the first frame."""
+    takeover: bool = False
+    """With ``start_key``: take the driver lease from another device."""
 
 
 class AdvanceOut(ApiModel):
@@ -243,11 +259,40 @@ class LengthIn(ApiModel):
 
 
 class ManualDefectIn(ApiModel):
+    """A defect the detector missed. Preferably drawn: ``frame`` + ``bbox_px`` (a box in view pixels of
+    that frame, at the video's own scale) give the exact position and size, and ``capture`` (a photo
+    of that frame) becomes its evidence photo. Otherwise ``center_yd`` + ``length_in``."""
+
     cls: str = Field(min_length=1, max_length=64)
-    center_yd: float = Field(ge=0)
+    frame: int | None = Field(default=None, ge=0)
+    bbox_px: tuple[float, float, float, float] | None = None
+    capture: Capture | None = None
+    center_yd: float | None = Field(default=None, ge=0)
     across_cm: float | None = Field(default=None, ge=0)
-    length_in: float = Field(gt=0, le=2000)
+    length_in: float | None = Field(default=None, gt=0, le=2000)
     note: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _where(self) -> ManualDefectIn:
+        if self.bbox_px is not None:
+            if self.frame is None:
+                raise ValueError("bbox_px needs the frame it was drawn on")
+            if self.capture is not None and self.capture.frame != self.frame:
+                raise ValueError("the capture must be of the frame the box was drawn on")
+        elif self.center_yd is None or self.length_in is None:
+            raise ValueError("give bbox_px + frame, or center_yd + length_in")
+        return self
+
+
+class ConfirmPendingIn(ApiModel):
+    up_to_yd: float | None = Field(default=None, ge=0)
+    """Only defects up to this yard (e.g. the part of the roll already seen); all when omitted."""
+    note: str | None = Field(default=None, max_length=500)
+
+
+class ConfirmPendingOut(ApiModel):
+    confirmed: list[str]
+    """Defect numbers confirmed by this call (empty if nothing was pending)."""
 
 
 class MeasurementIn(ApiModel):

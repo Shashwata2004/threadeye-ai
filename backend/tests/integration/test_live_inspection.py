@@ -303,3 +303,80 @@ def test_sample_roll_through_the_api_matches_roll_meta(client: TestClient, monke
         es["points_per_100_sq_yd"],
         es["verdict"],
     )
+
+
+def test_drawn_missed_defect_bulk_confirm_and_a_verdict_with_unreviewed_defects(client: TestClient) -> None:
+    roll_code = _lot_with_roll(client)
+    insp_id = _start(client, roll_code)["id"]
+    _run_to_end(client, insp_id)
+    real = [d for d in client.get(f"/api/v1/inspections/{insp_id}/defects").json() if d["kind"] == "defect"]
+
+    # A missed defect drawn on frame 150, with a photo of that frame: it gets an evidence photo.
+    capture = {"frame": 150, "jpeg_b64": _jpeg(), "width": 960, "height": 504}
+    body = {"cls": "knot", "frame": 150, "bbox_px": [600, 300, 660, 340], "capture": capture}
+    r = client.post(f"/api/v1/inspections/{insp_id}/defects", json=body)
+    assert r.status_code == 201, r.text
+    drawn = r.json()
+    assert drawn["origin"] == "manual" and drawn["length_source"] == "pixels" and drawn["best_frame"] == 150
+    assert drawn["crop_url"] and client.get(drawn["crop_url"]).content.startswith(b"\xff\xd8")
+    bad = client.post(f"/api/v1/inspections/{insp_id}/defects", json={"cls": "knot", "bbox_px": [1, 2, 30, 40]})
+    assert bad.status_code == 422  # a box needs the frame it was drawn on
+
+    # Confirm every pending defect up to the first one's yard, then the rest.
+    first = min(real, key=lambda d: d["center_yd"])
+    r = client.post(f"/api/v1/inspections/{insp_id}/defects/confirm-pending", json={"up_to_yd": first["center_yd"]})
+    assert r.status_code == 200 and r.json()["confirmed"] == [first["defect_no"]]
+    with get_sessionmaker()() as db:
+        assert "defect.confirm_bulk" in set(db.scalars(select(AuditLog.action)).all())
+
+    # The slub alone fails the roll (3 points = 60.96 > 40): once it is confirmed, the defects still
+    # pending cannot change the verdict, and the verdict may be computed with them not reviewed.
+    client.post(f"/api/v1/defects/{first['id']}/reopen")
+    slub = next(d for d in real if d["current_cls"] == "slub")
+    client.post(f"/api/v1/defects/{slub['id']}/confirm", json={})
+    score = client.get(f"/api/v1/inspections/{insp_id}/score").json()
+    assert score["pending"] == 2 and score["verdict_settled"] is True
+    assert client.post(f"/api/v1/inspections/{insp_id}/complete").status_code == 200
+    final = client.post(f"/api/v1/inspections/{insp_id}/finalize")
+    assert final.status_code == 200, final.text
+    v = final.json()
+    assert v["system_verdict"] == "FAIL" and v["unreviewed"] == 2
+    assert v["points_total"] < v["points_if_all_confirmed"]
+    assert sum(v["verdict_cells"].values()) == v["points_total"]  # the per-yard table matches the verdict
+    report = client.get(f"/api/v1/inspections/{insp_id}/report.pdf")
+    if shutil.which("pdftotext"):
+        out = subprocess.run(["pdftotext", "-", "-"], input=report.content, capture_output=True, check=True)  # noqa: S607
+        assert "2 defect(s) were not reviewed" in out.stdout.decode()
+    after = client.post(f"/api/v1/inspections/{insp_id}/defects/confirm-pending", json={})
+    assert after.status_code == 409  # nothing changes after the verdict
+
+
+def test_the_verdict_waits_while_pending_defects_could_change_it(client: TestClient) -> None:
+    roll_code = _lot_with_roll(client)
+    insp_id = _start(client, roll_code)["id"]
+    _run_to_end(client, insp_id)
+    assert client.post(f"/api/v1/inspections/{insp_id}/complete").status_code == 200
+    blocked = client.post(f"/api/v1/inspections/{insp_id}/finalize")
+    assert blocked.status_code == 409 and "could change the verdict" in blocked.json()["detail"]["message"]
+    r = client.post(f"/api/v1/inspections/{insp_id}/defects/confirm-pending", json={})
+    assert r.status_code == 200 and len(r.json()["confirmed"]) == 3
+    final = client.post(f"/api/v1/inspections/{insp_id}/finalize").json()
+    assert final["unreviewed"] == 0 and final["points_total"] == META["expected_score"]["total_points"]
+
+
+def test_advance_can_start_the_inspection_in_the_same_request(client: TestClient) -> None:
+    roll_code = _lot_with_roll(client)
+    login(client, "inspector")
+    machine = client.get("/api/v1/machines").json()[0]["id"]
+    source = {"dataset_id": "micro_roll"}
+    create = {"roll_code": roll_code, "machine_id": machine, "source": source, "preset": "perfect"}
+    insp = client.post("/api/v1/inspections", json=create).json()
+    body = {"until_frame": 120, "after_seq": 0, "start_key": "start-0001"}
+    r = client.post(f"/api/v1/inspections/{insp['id']}/advance", json=body)
+    assert r.status_code == 200, r.text
+    types = [e["type"] for e in r.json()["events"]]
+    assert types[0] == "session.started" and "detection.batch" in types and r.json()["checkpoint_frame"] == 120
+    score = next(e for e in reversed(r.json()["events"]) if e["type"] == "score.updated")
+    assert score["payload"]["at_frame"] == 120
+    snap = client.get(f"/api/v1/inspections/{insp['id']}").json()
+    assert snap["status"] == "running" and snap["driver_session"] is True

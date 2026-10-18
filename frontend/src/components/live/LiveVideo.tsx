@@ -6,6 +6,9 @@ import { defectBox, frameAt, inView, rawSize, timeOf } from "@/lib/live/geometry
 
 export type Capture = { frame: number; jpeg_b64: string; width: number; height: number };
 
+/** A box in view pixels (inside ``view_region``, at the video's own scale): x0, y0, x1, y1. */
+export type ViewBox = [number, number, number, number];
+
 export type LiveVideoHandle = {
   video: HTMLVideoElement | null;
   /** JPEG of the camera view (label bar cropped off) at 960 px wide, for evidence photos. */
@@ -28,6 +31,11 @@ type Props = {
   /** Called on every presented video frame (requestVideoFrameCallback), with the roll frame index. */
   onFrame: (frame: number) => void;
   onEnded: () => void;
+  /** Drawing mode: the inspector drags a box around a defect the detector missed. */
+  drawing?: boolean;
+  /** The box drawn so far (shown until it is saved or cancelled). */
+  draft?: ViewBox | null;
+  onDrawn?: (box: ViewBox) => void;
 };
 
 const COLOURS = {
@@ -37,6 +45,8 @@ const COLOURS = {
   nondefect: "#64748b",
 };
 const MIN_BOX_PX = 18; // tiny defects (a few raw pixels) still get a visible box
+const DRAFT_COLOUR = "#f59e0b";
+const MIN_DRAWN_PX = 6; // a click without a drag is not a box
 
 type FrameCallbackVideo = HTMLVideoElement & {
   requestVideoFrameCallback?: (cb: (now: number, meta: { mediaTime: number }) => void) => number;
@@ -48,7 +58,7 @@ type FrameCallbackVideo = HTMLVideoElement & {
  * canvas on top that draws each defect where it is on the fabric in the presented frame.
  */
 export const LiveVideo = forwardRef<LiveVideoHandle, Props>(function LiveVideo(
-  { src, type, track, defects, selectedId, onFrame, onEnded },
+  { src, type, track, defects, selectedId, onFrame, onEnded, drawing = false, draft = null, onDrawn },
   ref,
 ) {
   const videoRef = useRef<FrameCallbackVideo>(null);
@@ -56,9 +66,13 @@ export const LiveVideo = forwardRef<LiveVideoHandle, Props>(function LiveVideo(
   const defectsRef = useRef(defects);
   const selectedRef = useRef(selectedId);
   const onFrameRef = useRef(onFrame);
+  const draftRef = useRef(draft);
+  /** The box being dragged right now, in CSS pixels of the canvas. */
+  const dragRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   defectsRef.current = defects;
   selectedRef.current = selectedId;
   onFrameRef.current = onFrame;
+  draftRef.current = draft;
 
   const draw = useCallback(
     (frame: number) => {
@@ -109,9 +123,68 @@ export const LiveVideo = forwardRef<LiveVideoHandle, Props>(function LiveVideo(
         ctx.fillStyle = "#fff";
         ctx.fillText(label, x0 + 4, Math.max(12, y0 - 5));
       }
+      // The missed defect being drawn (amber): the finished draft, or the box under the pointer.
+      const [vx, vy] = track.view_region;
+      const d = draftRef.current;
+      const drag = dragRef.current;
+      const rect = drag
+        ? { x: Math.min(drag.x0, drag.x1), y: Math.min(drag.y0, drag.y1), w: Math.abs(drag.x1 - drag.x0), h: Math.abs(drag.y1 - drag.y0) }
+        : d
+          ? { x: (d[0] + vx) * s, y: (d[1] + vy) * s, w: (d[2] - d[0]) * s, h: (d[3] - d[1]) * s }
+          : null;
+      if (rect) {
+        ctx.strokeStyle = DRAFT_COLOUR;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
+        ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(245, 158, 11, 0.15)";
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      }
     },
     [track],
   );
+
+  // Pointer → view pixels of the raw video (clamped to the camera view, label bar excluded).
+  const toView = useCallback(
+    (cssX: number, cssY: number): [number, number] => {
+      const video = videoRef.current;
+      const [vx, vy, vw, vh] = track.view_region;
+      const s = (video?.clientWidth ?? 1) / rawSize(track, video).w;
+      return [Math.min(Math.max(cssX / s - vx, 0), vw), Math.min(Math.max(cssY / s - vy, 0), vh)];
+    },
+    [track],
+  );
+
+  function pointerAt(e: React.PointerEvent<HTMLCanvasElement>): [number, number] {
+    const r = e.currentTarget.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawing) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const [x, y] = pointerAt(e);
+    dragRef.current = { x0: x, y0: y, x1: x, y1: y };
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawing || !dragRef.current) return;
+    const [x, y] = pointerAt(e);
+    dragRef.current = { ...dragRef.current, x1: x, y1: y };
+    draw(frameAt(track, videoRef.current?.currentTime ?? 0));
+  }
+
+  function onPointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!drawing || !drag) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    const [ax, ay] = toView(Math.min(drag.x0, drag.x1), Math.min(drag.y0, drag.y1));
+    const [bx, by] = toView(Math.max(drag.x0, drag.x1), Math.max(drag.y0, drag.y1));
+    if (bx - ax >= MIN_DRAWN_PX && by - ay >= MIN_DRAWN_PX) onDrawn?.([ax, ay, bx, by]);
+    draw(frameAt(track, videoRef.current?.currentTime ?? 0));
+  }
 
   const currentFrame = useCallback(() => frameAt(track, videoRef.current?.currentTime ?? 0), [track]);
 
@@ -198,10 +271,10 @@ export const LiveVideo = forwardRef<LiveVideoHandle, Props>(function LiveVideo(
     };
   }, [track, draw]);
 
-  // Redraw when the defect list or selection changes while the video is paused.
+  // Redraw when the defect list, the selection or the drawn box changes while the video is paused.
   useEffect(() => {
     draw(currentFrame());
-  }, [defects, selectedId, draw, currentFrame]);
+  }, [defects, selectedId, draft, drawing, draw, currentFrame]);
 
   return (
     <div className="relative w-full overflow-hidden rounded-md bg-black">
@@ -216,7 +289,18 @@ export const LiveVideo = forwardRef<LiveVideoHandle, Props>(function LiveVideo(
       >
         <source src={src} type={type ?? undefined} />
       </video>
-      <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden />
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 h-full w-full ${drawing ? "cursor-crosshair touch-none" : "pointer-events-none"}`}
+        aria-hidden
+        data-testid="video-overlay"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => {
+          dragRef.current = null;
+        }}
+      />
     </div>
   );
 });

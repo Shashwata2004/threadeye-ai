@@ -8,7 +8,8 @@ the events it produced. The same call serves all three clocks:
 - server-clocked webcams (later): the worker calls it as frames arrive
 
 Inspector decisions (confirm, reject, change type, promote a non-defect, edit length, add a missed
-defect) go through ``decide()`` and also return events.
+defect) go through ``decide()`` and also return events; ``decide_many()`` applies one decision to
+several defects at once (confirm every pending defect).
 
 Pure: no database, no web framework. The caller persists the events (with their idempotency keys)
 and the defect projections in one transaction, which is what makes a resume after a power cut safe.
@@ -24,7 +25,7 @@ from typing import Any
 
 from threadeye.core.dedupe import DedupeConfig, Deduper, DefectTrack, Sighting
 from threadeye.core.frames import FramePosition, FrameSource, SourceInfo
-from threadeye.core.geometry import INCH_CM, YARD_CM, RollBox, view_to_roll
+from threadeye.core.geometry import INCH_CM, YARD_CM, RollBox, clip_to_view, view_to_roll
 from threadeye.core.geometry import truncation as truncation_of
 from threadeye.core.nondefect import NonDefectFilter, NonDefectVerdict
 from threadeye.core.providers import DetectorProvider
@@ -73,7 +74,11 @@ class DefectState:
 
 @dataclass(frozen=True)
 class ManualDefect:
-    """A defect the detector missed, added by the inspector at the current yard."""
+    """A defect the detector missed, added by the inspector.
+
+    Either drawn as a box on a video frame (``roll_box`` and ``bbox_px`` set: exact position and size,
+    and the frame is an evidence photo and a training label), or entered by hand as a length at a yard.
+    """
 
     defect_no: str
     cls: str
@@ -82,9 +87,13 @@ class ManualDefect:
     length_in: float
     frame: int
     note: str | None = None
+    roll_box: RollBox | None = None
+    bbox_px: tuple[float, float, float, float] | None = None
 
     @property
     def box(self) -> RollBox:
+        if self.roll_box is not None:
+            return self.roll_box
         half = self.length_in * INCH_CM / 2
         along = self.center_yd * YARD_CM
         return RollBox(max(0.0, along - half), along + half, max(0.0, self.across_cm - half), self.across_cm + half)
@@ -205,6 +214,8 @@ class Runner:
         state = self.manual_states.get(m.defect_no, DefectState(status="confirmed"))
         box = m.box
         note = f": {m.note}" if m.note else ""
+        drawn = m.roll_box is not None
+        how = "drawn on the video" if drawn else "entered by hand"
         return {
             "defect_no": m.defect_no,
             "origin": "manual",
@@ -221,14 +232,14 @@ class Runner:
             "across_start_cm": round(box.across_start_cm, 2),
             "across_end_cm": round(box.across_end_cm, 2),
             "length_in": round(state.length_override_in or m.length_in, 3),
-            "length_source": "inspector",
+            "length_source": "pixels" if drawn and not state.length_override_in else "inspector",
             "is_running": False,
             "sightings": 0,
             "first_frame": m.frame,
             "last_frame": m.frame,
             "best_frame": m.frame,
-            "best_bbox_px": None,
-            "explanation": f"Added by the inspector (missed by the detector){note}",
+            "best_bbox_px": [round(v, 1) for v in m.bbox_px] if m.bbox_px else None,
+            "explanation": f"Added by the inspector, {how} (missed by the detector){note}",
             "points": points,
             "provider": "inspector",
         }
@@ -359,10 +370,49 @@ class Runner:
         events = self._sync(
             key,
             lambda no: decision["action"] if no == target else "rescored",
-            decision_for=(target, dict(decision)),
-            always=(target,),
+            decisions={target: dict(decision)},
         )
         return [*events, RunnerEvent("score.updated", self.score_payload(), key("score.updated", ""))]
+
+    def decide_many(self, defect_nos: Iterable[str], decision: Mapping[str, Any], key: KeyFn) -> list[RunnerEvent]:
+        """One decision applied to several defects (e.g. confirm every pending defect up to a yard).
+
+        Each defect's event carries the decision, exactly as if it had been decided on its own, so a
+        replay does not need to know about bulk actions. All or nothing: a defect the decision does
+        not apply to raises before anything changes.
+        """
+        numbers = list(dict.fromkeys(defect_nos))
+        if decision["action"] == "manual":
+            raise DecisionError("missed defects are added one at a time")
+        for no in numbers:
+            if self._track(no) is None and self._manual(no) is None:
+                raise KeyError(no)
+            if decision["action"] != "reopen" and self._is_nondefect(no):
+                raise DecisionError(f"{no} is a non-defect: promote it to a defect first")
+        for no in numbers:
+            self.apply_decision(no, decision)
+        done = set(numbers)
+        events = self._sync(
+            key,
+            lambda no: decision["action"] if no in done else "rescored",
+            decisions={no: dict(decision) for no in numbers},
+        )
+        return [*events, RunnerEvent("score.updated", self.score_payload(), key("score.updated", ""))]
+
+    def pending_defects(self, up_to_yd: float | None = None) -> list[str]:
+        """Defects (not non-defects) still waiting for a decision, optionally only up to a yard."""
+        return [
+            v["defect_no"]
+            for v in sorted(self.views().values(), key=lambda v: (v["center_yd"], v["defect_no"]))
+            if v["kind"] == "defect" and v["status"] == "pending" and (up_to_yd is None or v["center_yd"] <= up_to_yd)
+        ]
+
+    def _is_nondefect(self, defect_no: str) -> bool:
+        track = self._track(defect_no)
+        if track is None:
+            return False
+        state = self.states.get(track.track_no, DefectState())
+        return bool(self._verdict(track).category) and not state.promoted
 
     def apply_decision(self, defect_no: str | None, decision: Mapping[str, Any], *, strict: bool = True) -> str:
         """Change the state of a defect. Returns the defect number it applied to."""
@@ -370,21 +420,8 @@ class Runner:
         if action not in DECISION_ACTIONS:
             raise DecisionError(f"unknown action {action!r}")
         if action == "manual":
-            cls = self._defect_class(decision["cls"])
             number = defect_no or f"M-{len(self.manual) + 1:02d}"
-            self.manual.append(
-                ManualDefect(
-                    defect_no=number,
-                    cls=cls,
-                    center_yd=float(decision["center_yd"]),
-                    across_cm=float(
-                        decision["across_cm"] if decision.get("across_cm") is not None else self._mid_across()
-                    ),
-                    length_in=float(decision["length_in"]),
-                    frame=int(decision.get("frame", max(self.checkpoint, 0))),
-                    note=decision.get("note"),
-                )
-            )
+            self.manual.append(self._manual_defect(number, decision))
             self.manual_states[number] = DefectState(status="confirmed")
             return number
 
@@ -426,6 +463,43 @@ class Runner:
         elif action == "reopen":
             state.status, state.reject_reason = "pending", None
         return defect_no
+
+    def _manual_defect(self, number: str, decision: Mapping[str, Any]) -> ManualDefect:
+        cls = self._defect_class(decision["cls"])
+        frame = int(decision.get("frame", max(self.checkpoint, 0)))
+        note = decision.get("note")
+        if decision.get("bbox_px") is not None:
+            # Drawn on the video: the box (view pixels of ``frame``) gives position and size.
+            if not 0 <= frame < len(self.track):
+                raise DecisionError(f"frame {frame} is outside this roll")
+            x0, y0, x1, y1 = (float(v) for v in decision["bbox_px"])
+            clipped = clip_to_view((min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)), self.calibration)
+            if clipped is None or clipped[2] - clipped[0] < 2 or clipped[3] - clipped[1] < 2:
+                raise DecisionError("draw the box around the defect, inside the camera view")
+            box = view_to_roll(clipped, self.track[frame], self.calibration)
+            length = decision.get("length_in")
+            return ManualDefect(
+                defect_no=number,
+                cls=cls,
+                center_yd=box.center_yd,
+                across_cm=box.across_center_cm,
+                length_in=float(length) if length is not None else box.length_in,
+                frame=frame,
+                note=note,
+                roll_box=box,
+                bbox_px=clipped,
+            )
+        if decision.get("center_yd") is None or decision.get("length_in") is None:
+            raise DecisionError("a missed defect needs a box drawn on the video, or a yard and a length")
+        return ManualDefect(
+            defect_no=number,
+            cls=cls,
+            center_yd=float(decision["center_yd"]),
+            across_cm=float(decision["across_cm"] if decision.get("across_cm") is not None else self._mid_across()),
+            length_in=float(decision["length_in"]),
+            frame=frame,
+            note=note,
+        )
 
     def _defect_class(self, cls: str) -> str:
         resolved = self.taxonomy.resolve(str(cls))
@@ -477,17 +551,20 @@ class Runner:
         key: KeyFn,
         change: Callable[[str], str],
         *,
-        decision_for: tuple[str, dict[str, Any]] | None = None,
-        always: tuple[str, ...] = (),
+        decisions: Mapping[str, dict[str, Any]] | None = None,
     ) -> list[RunnerEvent]:
-        """One ``defect.upserted`` event for every defect whose view changed since it was last sent."""
+        """One ``defect.upserted`` event for every defect whose view changed since it was last sent.
+
+        A decided defect always gets an event (it carries the decision, which ``restore()`` replays).
+        """
+        decisions = decisions or {}
         events = []
         for no, view in self.views().items():
-            if self._emitted.get(no) == view and no not in always:
+            if self._emitted.get(no) == view and no not in decisions:
                 continue
             payload: dict[str, Any] = {"defect": view, "change": change(no)}
-            if decision_for and decision_for[0] == no:
-                payload["decision"] = decision_for[1]
+            if no in decisions:
+                payload["decision"] = decisions[no]
             events.append(RunnerEvent("defect.upserted", payload, key("defect.upserted", no)))
             self._emitted[no] = view
         return events
@@ -586,6 +663,16 @@ class Runner:
             "rejected": sum(1 for v in defects if v["status"] == "rejected"),
         }
 
+    def verdict_settled(self) -> bool:
+        """True when the defects still pending cannot change the verdict.
+
+        The confirmed-only score is the lowest the roll can get (every pending defect rejected), the
+        provisional score the highest (every pending defect confirmed). If both give the same verdict,
+        deciding the rest changes the points but not PASS/BORDERLINE/FAIL.
+        """
+        low, high = self.score(final=True), self.score(final=False)
+        return low is not None and high is not None and low.verdict == high.verdict
+
     def score_payload(self) -> dict[str, Any]:
         s = self.score(final=False)
         final = self.score(final=True)
@@ -603,6 +690,7 @@ class Runner:
             "confirmed_points": final.total_points if final else 0,
             "per_100_confirmed": round(final.per_100, p.per100_rounding) if final else None,
             "confirmed_verdict": final.verdict if final else None,
+            "verdict_settled": bool(s and final and s.verdict == final.verdict),
             "cells": {str(k): v for k, v in s.cells.items()} if s else {},
             "threshold": p.threshold_per_100,
             "borderline_below": p.borderline.below,
@@ -611,6 +699,7 @@ class Runner:
             if self.roll.declared_length_yd
             else None,
             "yards_inspected": round(self.yards_inspected, 3),
+            "at_frame": self.checkpoint,
             "coverage_pct": round(self.coverage() * 100, 1),
             "defects": counts["defects"],
             "pending": counts["pending"],

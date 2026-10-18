@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProviderBadge } from "@/components/badges";
 import { Button, inputClass } from "@/components/form";
 import { DefectCard, PointsMeter, YardTape } from "@/components/live/LivePanels";
-import { LiveVideo, type Capture, type LiveVideoHandle } from "@/components/live/LiveVideo";
+import { LiveVideo, type Capture, type LiveVideoHandle, type ViewBox } from "@/components/live/LiveVideo";
 import {
   api,
   DEFECT_CLASSES,
@@ -20,7 +20,7 @@ import {
   type ScoreSummary,
 } from "@/lib/api/client";
 import { errorDetail, useDefects, useInspection, useMe, usePlan, useTrack } from "@/lib/api/hooks";
-import { viewCentreYd } from "@/lib/live/geometry";
+import { defectBox, inView, YARD_CM } from "@/lib/live/geometry";
 
 /** The fields of a defect.upserted event the overlay needs to draw a box. */
 type LiveBox = Pick<
@@ -31,6 +31,11 @@ type LiveBox = Pick<
 const TICK_MS = 300; // how often the browser asks the server to process the frames played so far
 const MAX_CAPTURES = 8;
 const SPEEDS = [1, 2, 4];
+// The server works ahead of the video the inspector watches, like a camera mounted before the
+// inspection board: a defect is already known when its fabric reaches the view, so its box shows at
+// once even over a slow link. How far ahead follows the measured round-trip time.
+const AHEAD_MIN_S = 1;
+const AHEAD_MAX_S = 8;
 
 export default function LiveInspectionPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +46,14 @@ export default function LiveInspectionPage() {
   const { data: insp, refetch: refetchInsp } = useInspection(id);
   const { data: track, error: trackError } = useTrack(id);
   const { data: plan } = usePlan(id);
-  const { data: defects = [] } = useDefects(id);
+  const { data: fetched } = useDefects(id);
+  // Decisions still saving: the card keeps the inspector's choice even if the list is fetched again in
+  // the meantime (over a slow link the server answers with the old state for a few seconds).
+  const [edits, setEdits] = useState<ReadonlyMap<string, Partial<Defect>>>(new Map());
+  const defects = useMemo(
+    () => (fetched ?? []).map((d) => (edits.has(d.id) ? ({ ...d, ...edits.get(d.id) } as Defect) : d)),
+    [fetched, edits],
+  );
 
   const videoRef = useRef<LiveVideoHandle>(null);
   const frameRef = useRef(0);
@@ -51,8 +63,15 @@ export default function LiveInspectionPage() {
   const capturesRef = useRef<Capture[]>([]);
   const nextSampleRef = useRef(0);
   const drivingRef = useRef(false);
+  /** Start/resume pressed, the server has not answered yet. */
+  const startingRef = useRef(false);
   const [liveBoxes, setLiveBoxes] = useState<ReadonlyMap<string, LiveBox>>(new Map());
   const lastCaptureTopRef = useRef<number | null>(null);
+  const rateRef = useRef(1);
+  const latencyRef = useRef(0.5); // seconds per /advance round trip (moving average)
+  /** Scores the server computed ahead of the video: shown when the video reaches their frame. */
+  const heldScoresRef = useRef<ScoreSummary[]>([]);
+  const workAheadRef = useRef(true);
 
   const [frame, setFrame] = useState(0);
   const [score, setScore] = useState<ScoreSummary | null>(null);
@@ -61,6 +80,9 @@ export default function LiveInspectionPage() {
   const [ended, setEnded] = useState(false);
   const [checkpoint, setCheckpoint] = useState(-1);
   const [rate, setRate] = useState(1);
+  /** The video has been driven on this page: resume from where it shows, not from the server's frame. */
+  const [played, setPlayed] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rejectFor, setRejectFor] = useState<string | null>(null);
   const [reclassFor, setReclassFor] = useState<string | null>(null);
@@ -68,7 +90,9 @@ export default function LiveInspectionPage() {
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [manualCls, setManualCls] = useState<string>("hole");
-  const [manualLen, setManualLen] = useState("1");
+  /** The box drawn around a missed defect, and the frame it was drawn on. */
+  const [draft, setDraft] = useState<{ frame: number; box: ViewBox } | null>(null);
+  const [confirmAllAsk, setConfirmAllAsk] = useState(false);
 
   const canRun = hasPerm(me, "inspections.run");
   const canDecide = hasPerm(me, "defects.confirm");
@@ -90,8 +114,11 @@ export default function LiveInspectionPage() {
   // After a reload, show the fabric where the inspection stopped.
   const shownCheckpoint = useRef(false);
   useEffect(() => {
-    if (!track || !insp || shownCheckpoint.current || insp.checkpoint_frame < 0) return;
+    // Only for the snapshot the page opened with: later snapshots carry the server's checkpoint, which
+    // runs ahead of the video while it plays.
+    if (!track || !insp || shownCheckpoint.current) return;
     shownCheckpoint.current = true;
+    if (insp.checkpoint_frame < 0) return;
     const timer = setTimeout(() => videoRef.current?.seek(insp.checkpoint_frame), 300);
     return () => clearTimeout(timer);
   }, [track, insp]);
@@ -104,8 +131,14 @@ export default function LiveInspectionPage() {
       for (const ev of events) {
         if (ev.seq <= lastSeqRef.current) continue; // idempotent by seq
         lastSeqRef.current = ev.seq;
-        if (ev.type === "score.updated") setScore(ev.payload as unknown as ScoreSummary);
-        else if (ev.type === "defect.upserted") {
+        if (ev.type === "score.updated") {
+          const sc = ev.payload as unknown as ScoreSummary;
+          if (ev.actor.kind === "engine" && (sc.at_frame ?? -1) > frameRef.current) heldScoresRef.current.push(sc);
+          else {
+            heldScoresRef.current = []; // a decision rescored everything: older held scores are stale
+            setScore(sc);
+          }
+        } else if (ev.type === "defect.upserted") {
           defectsChanged = true;
           // The event already carries where the defect is: draw its box now, without waiting for the
           // defect list to be fetched again (that round trip took the defect out of view on a slow link).
@@ -139,17 +172,27 @@ export default function LiveInspectionPage() {
   }, []);
 
   // ------------------------------------------------------------------------- the advance loop
+  /** How many frames ahead of the video the server should work (0 for detectors that need the picture:
+   * they can only see frames the browser has shown). */
+  const aheadFrames = useCallback(() => {
+    if (!track || !workAheadRef.current) return 0;
+    const seconds = Math.min(AHEAD_MAX_S, AHEAD_MIN_S + 2 * latencyRef.current);
+    return Math.round(seconds * track.fps * rateRef.current);
+  }, [track]);
+
   const advance = useCallback(async () => {
     if (!drivingRef.current || inFlightRef.current || !track) return;
-    const until = Math.max(frameRef.current, checkpointRef.current);
+    const until = Math.min(Math.max(frameRef.current + aheadFrames(), checkpointRef.current), track.frame_count - 1);
     if (until <= checkpointRef.current && !capturesRef.current.length) return;
     inFlightRef.current = true;
     const captures = capturesRef.current.splice(0, MAX_CAPTURES);
+    const started = performance.now();
     try {
       const { data, error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/advance", {
         params: { path: { inspection_id: id } },
-        body: { until_frame: until, after_seq: lastSeqRef.current, captures },
+        body: { until_frame: until, after_seq: lastSeqRef.current, captures, takeover: false },
       });
+      latencyRef.current = 0.7 * latencyRef.current + 0.3 * ((performance.now() - started) / 1000);
       if (data) {
         checkpointRef.current = data.checkpoint_frame;
         setCheckpoint(data.checkpoint_frame);
@@ -170,18 +213,29 @@ export default function LiveInspectionPage() {
     } finally {
       inFlightRef.current = false;
     }
-  }, [id, track, applyEvents, stopDriving, refetchInsp, queryClient]);
+  }, [id, track, applyEvents, stopDriving, refetchInsp, queryClient, aheadFrames]);
 
   useEffect(() => {
     const timer = setInterval(() => void advance(), TICK_MS);
     return () => clearInterval(timer);
   }, [advance]);
 
-  // Re-render the tape and counters at ~5 Hz (the overlay itself is drawn on every video frame).
+  // Re-render the tape and counters at ~5 Hz (the overlay itself is drawn on every video frame), and
+  // show the scores the server computed ahead once the video reaches their frame.
   useEffect(() => {
-    const timer = setInterval(() => setFrame(frameRef.current), 200);
+    const timer = setInterval(() => {
+      setFrame(frameRef.current);
+      const held = heldScoresRef.current;
+      let due: ScoreSummary | undefined;
+      while (held.length && (held[0].at_frame ?? -1) <= frameRef.current) due = held.shift();
+      if (due) setScore(due);
+    }, 200);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (insp) workAheadRef.current = !insp.provider.requires_image;
+  }, [insp]);
 
   const onFrame = useCallback(
     (f: number) => {
@@ -211,37 +265,42 @@ export default function LiveInspectionPage() {
 
   // ------------------------------------------------------------------------- lifecycle
   async function begin(takeover = false) {
-    if (!insp || !track) return;
+    if (!insp || !track || startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
     setBusy(true);
     setError(null);
-    const action = insp.status === "created" ? "start" : "resume";
-    const opts = {
-      params: { path: { inspection_id: id }, query: { takeover } },
-      headers: { "Idempotency-Key": idempotencyKey() },
-    };
-    const res =
-      action === "start"
-        ? await api.POST("/api/v1/inspections/{inspection_id}/start", opts)
-        : await api.POST("/api/v1/inspections/{inspection_id}/resume", opts);
+    // Paused on this page: go on from the frame on screen (the server has already worked further ahead).
+    // After a reload or a power cut: from the server's checkpoint.
+    const from = Math.max(played ? frameRef.current : Math.min(insp.checkpoint_frame + 1, track.frame_count - 1), 0);
+    nextSampleRef.current = samples.findIndex((s) => s >= from);
+    if (nextSampleRef.current < 0) nextSampleRef.current = samples.length;
+    // One request starts (or resumes) the inspection and already processes the fabric ahead, so the
+    // video plays with its defect boxes from the first frame.
+    const until = Math.min(from + aheadFrames(), track.frame_count - 1);
+    const sent = performance.now();
+    const { data, error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/advance", {
+      params: { path: { inspection_id: id } },
+      body: { until_frame: until, after_seq: lastSeqRef.current, captures: [], start_key: idempotencyKey(), takeover },
+    });
+    latencyRef.current = (performance.now() - sent) / 1000;
+    startingRef.current = false;
+    setStarting(false);
     setBusy(false);
-    if (!res.data) {
-      setError(errorDetail(res.error));
+    if (!data) {
+      setError(errorDetail(err, response.status));
+      void refetchInsp();
       return;
     }
-    const snap = res.data;
-    queryClient.setQueryData(["inspection", id], snap);
-    checkpointRef.current = snap.checkpoint_frame;
-    setCheckpoint(snap.checkpoint_frame);
-    const from = Math.min(snap.checkpoint_frame + 1, track.frame_count - 1);
-    nextSampleRef.current = samples.findIndex((s) => s > snap.checkpoint_frame);
-    if (nextSampleRef.current < 0) nextSampleRef.current = samples.length;
-    if (videoRef.current) {
-      drivingRef.current = true;
-      setDriving(true);
-      setEnded(false);
-      await videoRef.current.playFrom(Math.max(from, 0), rate);
-    }
-    await pullEvents();
+    checkpointRef.current = data.checkpoint_frame;
+    setCheckpoint(data.checkpoint_frame);
+    applyEvents(data.events);
+    drivingRef.current = true;
+    setDriving(true);
+    setEnded(false);
+    setPlayed(true);
+    await videoRef.current?.playFrom(from, rate);
+    void refetchInsp();
   }
 
   async function pause() {
@@ -258,6 +317,9 @@ export default function LiveInspectionPage() {
     setEnded(true);
     setPlaying(false);
     if (track) frameRef.current = track.frame_count - 1;
+    const held = heldScoresRef.current;
+    if (held.length) setScore(held[held.length - 1]);
+    heldScoresRef.current = [];
     // Let the loop flush the last frames and captures.
     for (let i = 0; i < 20 && drivingRef.current && checkpointRef.current < (track?.frame_count ?? 0) - 1; i++) {
       await advance();
@@ -295,7 +357,16 @@ export default function LiveInspectionPage() {
   // ------------------------------------------------------------------------- inspector decisions
   // Decisions update the card at once (optimistic) and save in the background: over a slow link a
   // round trip takes seconds, and the inspector must be able to keep working through the queue.
-  const [savingIds, setSavingIds] = useState<ReadonlySet<string>>(new Set());
+  const setEditing = useCallback((ids: string[], change: Partial<Defect> | null) => {
+    setEdits((m) => {
+      const next = new Map(m);
+      for (const i of ids) {
+        if (change) next.set(i, change);
+        else next.delete(i);
+      }
+      return next;
+    });
+  }, []);
   const decide = useCallback(
     async (d: Defect, action: string, body: Record<string, unknown> = {}) => {
       const key = ["defects", id];
@@ -311,7 +382,7 @@ export default function LiveInspectionPage() {
                 : { status: "pending", reject_reason: null };
       await queryClient.cancelQueries({ queryKey: key });
       queryClient.setQueryData<Defect[]>(key, (old) => old?.map((x) => (x.id === d.id ? { ...x, ...optimistic } : x)));
-      setSavingIds((s) => new Set(s).add(d.id));
+      setEditing([d.id], optimistic);
 
       const opts = { params: { path: { defect_id: d.id } }, headers: { "Idempotency-Key": idempotencyKey() } };
       let res: { data?: Defect; error?: unknown; response: Response };
@@ -329,11 +400,7 @@ export default function LiveInspectionPage() {
       else if (action === "promote") res = await api.POST("/api/v1/defects/{defect_id}/promote", { ...opts, body: {} });
       else res = await api.POST("/api/v1/defects/{defect_id}/reopen", opts);
 
-      setSavingIds((s) => {
-        const next = new Set(s);
-        next.delete(d.id);
-        return next;
-      });
+      setEditing([d.id], null);
       if (res.data) {
         const saved = res.data;
         queryClient.setQueryData<Defect[]>(key, (old) => old?.map((x) => (x.id === saved.id ? saved : x)));
@@ -344,24 +411,83 @@ export default function LiveInspectionPage() {
       void queryClient.invalidateQueries({ queryKey: key });
       void pullEvents();
     },
-    [id, queryClient, pullEvents],
+    [id, queryClient, pullEvents, setEditing],
   );
 
+  // Missed defects: the video stops, the inspector drags a box around the defect on it. The box gives
+  // the exact yard, position and size, and a photo of that frame becomes the evidence (and a label for
+  // training the next model).
+  function openAddMissed() {
+    // The panel opens at once; the video stops at once; telling the server happens in the background.
+    setDraft(null);
+    setAddOpen(true);
+    const video = videoRef.current?.video;
+    if (driving) void pause();
+    else if (video && !video.paused) videoRef.current?.pause();
+  }
+
+  function closeAddMissed() {
+    setAddOpen(false);
+    setDraft(null);
+  }
+
   async function addManual() {
-    if (!track) return;
-    const { error: err } = await api.POST("/api/v1/inspections/{inspection_id}/defects", {
+    if (!draft) return;
+    setBusy(true);
+    const capture = await videoRef.current?.capture(draft.frame);
+    const { error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/defects", {
       params: { path: { inspection_id: id } },
       headers: { "Idempotency-Key": idempotencyKey() },
-      body: { cls: manualCls, center_yd: viewCentreYd(track, frame), length_in: Number(manualLen) },
+      body: { cls: manualCls, frame: draft.frame, bbox_px: draft.box, capture: capture ?? undefined },
     });
-    if (err) setError(errorDetail(err));
-    setAddOpen(false);
+    setBusy(false);
+    if (err) {
+      setError(errorDetail(err, response.status));
+      return;
+    }
+    closeAddMissed();
     await queryClient.invalidateQueries({ queryKey: ["defects", id] });
     await pullEvents();
   }
 
+  // Confirm every pending defect seen so far in one step (the inspector has rejected the false alarms).
+  async function confirmAll(upToYd: number | null) {
+    setConfirmAllAsk(false);
+    const key = ["defects", id];
+    const hit = (d: Defect) => d.kind === "defect" && d.status === "pending" && (upToYd === null || d.center_yd <= upToYd);
+    const ids = defects.filter(hit).map((d) => d.id);
+    setEditing(ids, { status: "confirmed", reject_reason: null });
+    await queryClient.cancelQueries({ queryKey: key });
+    queryClient.setQueryData<Defect[]>(key, (old) =>
+      old?.map((x) => (hit(x) ? { ...x, status: "confirmed", reject_reason: null } : x)),
+    );
+    const { error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/defects/confirm-pending", {
+      params: { path: { inspection_id: id } },
+      headers: { "Idempotency-Key": idempotencyKey() },
+      body: upToYd === null ? {} : { up_to_yd: upToYd },
+    });
+    setEditing(ids, null);
+    if (err) setError(errorDetail(err, response.status));
+    void queryClient.invalidateQueries({ queryKey: key });
+    void pullEvents();
+  }
+
   // ------------------------------------------------------------------------- queue and keys
-  const real = useMemo(() => defects.filter((d) => d.kind === "defect"), [defects]);
+  // The server works ahead of the video: list a defect once its fabric has reached the camera view on
+  // screen (the overlay draws every known defect, but only where it is in view). At the end of the
+  // roll, or once the inspection is completed, everything is listed.
+  const lastFrame = (track?.frame_count ?? 1) - 1;
+  const showAll = !track || insp?.status === "completed" || ended || (checkpoint >= lastFrame && frame >= lastFrame - 1);
+  const seen = useCallback(
+    (d: Defect) =>
+      showAll ||
+      d.origin === "manual" ||
+      d.status !== "pending" ||
+      (d.first_frame ?? 0) <= frame ||
+      (!!track && inView(defectBox(d, track, frame), track)),
+    [showAll, frame, track],
+  );
+  const real = useMemo(() => defects.filter((d) => d.kind === "defect" && seen(d)), [defects, seen]);
   // For the overlay: the fetched defects, plus boxes known from events that the list does not have yet.
   const overlay = useMemo(() => {
     const known = new Set(defects.map((d) => d.defect_no));
@@ -377,15 +503,18 @@ export default function LiveInspectionPage() {
     ],
     [real],
   );
-  const nondefects = defects.filter((d) => d.kind === "nondefect");
+  const nondefects = defects.filter((d) => d.kind === "nondefect" && seen(d));
   const pending = real.filter((d) => d.status === "pending").length;
   const selected = queue.find((d) => d.id === selectedId) ?? queue[0] ?? null;
 
   const togglePlay = useCallback(() => {
     const video = videoRef.current?.video;
-    if (!video || !track) return;
+    if (!video || !track || startingRef.current) return;
+    setAddOpen(false); // the video moves on: a box drawn on the old frame no longer fits
+    setDraft(null);
     const lastFrame = track.frame_count - 1;
-    const done = checkpointRef.current >= lastFrame || insp?.status === "completed";
+    // Done = the video has shown the whole roll (the server may have finished processing earlier).
+    const done = insp?.status === "completed" || (checkpointRef.current >= lastFrame && frameRef.current >= lastFrame - 1);
     if (done) {
       // Review replay after the roll has run: only the video plays again (with its boxes). The
       // inspection is not touched: no frames are processed, no photos taken.
@@ -405,6 +534,12 @@ export default function LiveInspectionPage() {
     function onKey(e: KeyboardEvent) {
       const el = e.target as HTMLElement;
       if (["INPUT", "SELECT", "TEXTAREA"].includes(el.tagName)) return;
+      if (e.key === "Escape") {
+        setAddOpen(false);
+        setDraft(null);
+        setConfirmAllAsk(false);
+        return;
+      }
       const i = selected ? queue.findIndex((d) => d.id === selected.id) : -1;
       if (e.key === " ") {
         e.preventDefault();
@@ -444,9 +579,23 @@ export default function LiveInspectionPage() {
   const status = insp.status;
   const open = ["created", "running", "paused", "interrupted"].includes(status);
   const stopped = track.state[frame] === "stopped";
-  const atEnd = checkpoint >= track.frame_count - 1;
+  const atEnd = checkpoint >= track.frame_count - 1 && (ended || frame >= track.frame_count - 2);
   const finished = atEnd || status === "completed";
   const leaseElsewhere = insp.lease_held_elsewhere && !driving;
+  // Where the inspector will continue: the fabric on screen (the server's checkpoint may be ahead of it).
+  const resumeYd = (played ? (track.bottom_yd[frame] ?? 0) : insp.checkpoint_yd).toFixed(2);
+  // Confirm-all covers what has passed the camera (up to the bottom of the view), or everything at the end.
+  const upToYd = finished ? null : (track.bottom_yd[frame] ?? 0);
+  const bulkCount = real.filter((d) => d.status === "pending" && (upToYd === null || d.center_yd <= upToYd)).length;
+  // Pending defects block the verdict only while they could still change it.
+  const settled = pending > 0 && !!score?.verdict_settled;
+  const draftInfo =
+    draft && track
+      ? {
+          yd: (track.roll_y_top_px[draft.frame] + (draft.box[1] + draft.box[3]) / 2) / track.px_per_cm / YARD_CM,
+          len: Math.max(draft.box[2] - draft.box[0], draft.box[3] - draft.box[1]) / track.px_per_cm / 2.54,
+        }
+      : null;
 
   return (
     <div className="space-y-3">
@@ -479,15 +628,17 @@ export default function LiveInspectionPage() {
               : status === "created"
                 ? ""
                 : status === "paused"
-                  ? t("live.pausedBanner", { yd: insp.checkpoint_yd.toFixed(2) })
+                  ? t("live.pausedBanner", { yd: resumeYd })
                   : t("live.resumeBanner")}
           </p>
           <Button onClick={() => void begin(leaseElsewhere)} disabled={busy} data-testid="start">
             {leaseElsewhere
               ? t("live.takeOver")
-              : status === "created"
+              : starting
+                ? t("live.starting")
+                : status === "created"
                 ? t("live.start")
-                : t("live.resumeButton", { yd: insp.checkpoint_yd.toFixed(2) })}
+                : t("live.resumeButton", { yd: resumeYd })}
           </Button>
         </div>
       )}
@@ -507,6 +658,9 @@ export default function LiveInspectionPage() {
                   selectedId={selected?.id ?? null}
                   onFrame={onFrame}
                   onEnded={() => void onEnded()}
+                  drawing={addOpen}
+                  draft={draft?.box ?? null}
+                  onDrawn={(box) => setDraft({ frame: frameRef.current, box })}
                 />
               ) : (
                 <p className="rounded bg-slate-100 p-6 text-slate-600">{t("live.videoMissing", { id: track.dataset_id })}</p>
@@ -535,7 +689,9 @@ export default function LiveInspectionPage() {
                   playing ? "bg-amber-600 hover:bg-amber-700" : "bg-green-700 hover:bg-green-800"
                 }`}
               >
-                {playing
+                {starting
+                  ? t("live.starting")
+                  : playing
                   ? `⏸ ${t("live.pause")}`
                   : finished && (ended || frame >= track.frame_count - 1)
                     ? `↻ ${t("live.playAgain")}`
@@ -549,6 +705,7 @@ export default function LiveInspectionPage() {
                 onChange={(e) => {
                   const r = Number(e.target.value);
                   setRate(r);
+                  rateRef.current = r;
                   videoRef.current?.setRate(r);
                 }}
                 className="rounded border border-slate-300 px-1 py-0.5"
@@ -567,15 +724,27 @@ export default function LiveInspectionPage() {
 
           {(ended || atEnd || status === "completed") && canRun && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-teal-300 bg-teal-50 px-4 py-3">
-              <p className="text-teal-900">
-                {t("live.ended")} {pending > 0 && t("live.pendingLeft", { n: pending })}
-              </p>
+              <div className="text-teal-900">
+                <p>
+                  {t("live.ended")} {pending > 0 && t("live.pendingLeft", { n: pending })}
+                </p>
+                {status === "completed" && pending > 0 && (
+                  <p className="text-sm" data-testid="settled-note">
+                    {settled
+                      ? t("live.settled", {
+                          n: pending,
+                          verdict: t(`verdicts.${score?.confirmed_verdict ?? "FAIL"}`),
+                        })
+                      : t("live.notSettled")}
+                  </p>
+                )}
+              </div>
               {status !== "completed" ? (
                 <Button onClick={() => void finish()} disabled={busy || !atEnd} data-testid="finish">
                   {t("live.finish")}
                 </Button>
               ) : (
-                <Button onClick={() => void computeVerdict()} disabled={busy || pending > 0} data-testid="compute-verdict">
+                <Button onClick={() => void computeVerdict()} disabled={busy || (pending > 0 && !settled)} data-testid="compute-verdict">
                   {t("live.computeVerdict")}
                 </Button>
               )}
@@ -586,42 +755,74 @@ export default function LiveInspectionPage() {
         <aside className="min-w-0 space-y-3">
           <PointsMeter score={score} />
           <section className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-semibold">{t("live.queue", { n: real.length })}</h2>
-              {canDecide && (status === "running" || status === "paused" || status === "completed" || driving) && (
+              {canDecide && track.video_url && (status === "running" || status === "paused" || status === "completed" || driving) && (
                 <button
                   type="button"
-                  onClick={() => setAddOpen(!addOpen)}
+                  onClick={() => (addOpen ? closeAddMissed() : openAddMissed())}
                   className="text-sm font-semibold text-brand-blue hover:underline"
+                  data-testid="add-missed"
                 >
                   + {t("live.addMissed")}
                 </button>
               )}
             </div>
+            {canDecide && bulkCount > 0 && !insp.finalized_at && (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-2 text-sm">
+                {confirmAllAsk ? (
+                  <div className="space-y-2">
+                    <p className="text-green-950">{t("live.confirmAllAsk", { n: bulkCount })}</p>
+                    <div className="flex gap-2">
+                      <Button onClick={() => void confirmAll(upToYd)} data-testid="confirm-all-yes">
+                        {t("live.confirmAllYes", { n: bulkCount })}
+                      </Button>
+                      <Button variant="secondary" onClick={() => setConfirmAllAsk(false)}>
+                        {t("live.cancel")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmAllAsk(true)}
+                    className="w-full text-left font-semibold text-green-800 hover:underline"
+                    data-testid="confirm-all"
+                  >
+                    ✓ {t("live.confirmAll", { n: bulkCount })}
+                  </button>
+                )}
+              </div>
+            )}
             {addOpen && (
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
-                <p className="text-xs text-slate-600">{t("live.addMissedHint", { yd: viewCentreYd(track, frame).toFixed(2) })}</p>
-                <div className="flex gap-2">
-                  <select value={manualCls} onChange={(e) => setManualCls(e.target.value)} className={inputClass}>
-                    {DEFECT_CLASSES.map((c) => (
-                      <option key={c} value={c}>
-                        {t(`cls.${c}`)}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    min={0.05}
-                    step="0.05"
-                    value={manualLen}
-                    onChange={(e) => setManualLen(e.target.value)}
-                    className={`${inputClass} w-24`}
-                    aria-label={t("live.lengthIn")}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={() => void addManual()}>{t("live.add")}</Button>
-                  <Button variant="secondary" onClick={() => setAddOpen(false)}>
+              <div className="space-y-2 rounded-lg border-2 border-amber-400 bg-amber-50 p-3" data-testid="add-missed-panel">
+                <p className="text-sm text-amber-950">
+                  {draftInfo
+                    ? t("live.drawnAt", { yd: draftInfo.yd.toFixed(2), len: draftInfo.len.toFixed(2) })
+                    : t("live.drawHint")}
+                </p>
+                <select
+                  value={manualCls}
+                  onChange={(e) => setManualCls(e.target.value)}
+                  className={inputClass}
+                  aria-label={t("live.type")}
+                >
+                  {DEFECT_CLASSES.map((c) => (
+                    <option key={c} value={c}>
+                      {t(`cls.${c}`)}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => void addManual()} disabled={!draft || busy} data-testid="add-missed-save">
+                    {t("live.add")}
+                  </Button>
+                  {draft && (
+                    <Button variant="secondary" onClick={() => setDraft(null)}>
+                      {t("live.redraw")}
+                    </Button>
+                  )}
+                  <Button variant="secondary" onClick={closeAddMissed}>
                     {t("live.cancel")}
                   </Button>
                 </div>
@@ -639,7 +840,7 @@ export default function LiveInspectionPage() {
                     onSelect={() => setSelectedId(d.id)}
                     decide={decide}
                     canDecide={canDecide && !insp.finalized_at}
-                    saving={savingIds.has(d.id)}
+                    saving={edits.has(d.id)}
                     rejectOpen={rejectFor === d.id}
                     setRejectOpen={(o) => setRejectFor(o ? d.id : null)}
                     reclassOpen={reclassFor === d.id}

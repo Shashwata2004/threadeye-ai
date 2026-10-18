@@ -309,3 +309,21 @@ After the sample roll and simulator arrived, the team sent:
 
 **Decisions taken on the way (asked and answered):** an empty `appears_frame` in `nuisance.csv` means
 "on the fabric from the start" (the simulator's own convention); `roll_preview.png` may be committed.
+
+---
+
+## #006: Inspector workload and missed defects (verbatim)
+- Date: 2026-10-16
+- Tool / model: Claude Code desktop · claude-opus-5-5
+- Prompted by: team lead
+
+> in this system there are multiple blind spots. if inspector have to manually give ok to every dispute, wouldnt it be a great hassle for him when it comes to large cloth with a huge defect? 2nd one is what if the ai detector misses any defect? can we select it manually?
+
+The assistant proposed (1) *confirm all pending* plus a verdict that may be computed while the
+undecided defects cannot change it, with confidence-based auto-accept deferred until our own model
+exists (M6), and (2) drawing a box on the paused video for a missed defect. The team replied:
+
+> yeah do that
+
+- Output: confirm-all-pending endpoint and button, verdict with *not reviewed* defects and their points
+  range, missed defects drawn on the video with their own evidence photo.

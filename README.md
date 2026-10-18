@@ -17,7 +17,9 @@ International AI Builders Congress 2026 · *Idea to Unicorn* · IndustrySphere A
 
 - **Live inspection:** scan a roll, the simulated camera plays, defect boxes move with the fabric, a yard
   tape, speed and running/stopped state, a live points meter; the inspector confirms, rejects (with a
-  reason) or changes the type of each defect in one click or key, and can add a missed defect
+  reason) or changes the type of each defect in one click or key, or rejects the false alarms and
+  confirms all the rest at once; a defect the detector missed is added by pausing and drawing a box
+  around it on the video (exact yard, size and points, with its own evidence photo)
 - **Verdict:** 4-point roll verdict (PASS / BORDERLINE / FAIL), supervisor decision with a reason, roll
   map, evidence photos, report PDF in English or Bangla, labelled SIMULATED with the detector's name
 - **Power-cut safe:** every step is an append-only event; a closed browser or restarted server resumes
@@ -58,7 +60,10 @@ check, PLAN.md Q2): get `roll_video.mp4` from the team and put it in `data/sampl
 2. `inspector` opens **Inspect a roll**, scans or types the roll code, picks the simulated roll and the
    detector preset (*realistic* makes mistakes to correct; *perfect* reproduces the answer key), and
    presses **Start**. Keys: Space play/pause · J/K next/previous · C confirm · X not a defect · T change type.
-3. At the end of the roll: **Finish roll**, decide every pending defect, **Compute verdict**.
+3. At the end of the roll: **Finish roll**, decide the pending defects (or **Confirm all pending**),
+   **Compute verdict**. Pending defects block the verdict only while they could still change it: when
+   the roll is PASS or FAIL whichever way they are decided, the verdict can be computed and they are
+   recorded as *not reviewed*, with the points range shown on the verdict page and in the report.
 4. `supervisor` records the decision on the verdict page (required for BORDERLINE). Report PDF: en/bn.
 
 Browser test of this whole flow (needs the stack running and Google Chrome):
