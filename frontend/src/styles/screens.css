@@ -1,0 +1,72 @@
+/*
+ * Fabric skin for the Benchmark, Mill scorecards, Change ledger and Admin screens (root class
+ * .te-screen, see components/screenKit.tsx). Builds on the variables in fabric.css and leaves that
+ * file untouched. Plain CSS (no Tailwind layer) so it sits on top of utility classes.
+ */
+
+/* Both themes: white boxes, grey table heads and borders take the linen palette. */
+.te-screen .bg-white {
+  background-color: var(--te-linen-card);
+}
+.te-screen .bg-slate-100 {
+  background-color: var(--te-head);
+}
+.te-screen .border-slate-100,
+.te-screen .border-slate-200 {
+  border-color: var(--te-card-border);
+}
+.te-screen .border-slate-300 {
+  border-color: var(--te-line);
+}
+.te-screen thead th {
+  color: var(--te-ink-soft);
+}
+
+/* Dark: the brand and status tints made for white are too dim on dark linen. */
+[data-theme="dark"] .te-screen .text-emerald-600,
+[data-theme="dark"] .te-screen .text-emerald-700 {
+  color: #7fdcb0;
+}
+[data-theme="dark"] .te-screen .text-red-600 {
+  color: #f19a8f;
+}
+[data-theme="dark"] .te-screen .text-brand-amber {
+  color: #f0c27a;
+}
+[data-theme="dark"] .te-screen .bg-brand-navy {
+  background-color: #6b8db3;
+}
+[data-theme="dark"] .te-screen .bg-brand-navy\/10 {
+  background-color: rgba(140, 184, 220, 0.16);
+}
+[data-theme="dark"] .te-screen .ring-brand-navy\/20 {
+  --tw-ring-color: rgba(140, 184, 220, 0.3);
+}
+[data-theme="dark"] .te-screen .bg-slate-400 {
+  background-color: #6e7178;
+}
+[data-theme="dark"] .te-screen .text-white {
+  color: #fff;
+}
+[data-theme="dark"] .te-screen .disabled\:bg-slate-100:disabled {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .te-screen option {
+  background-color: var(--te-linen-card);
+  color: var(--te-ink);
+}
+
+/* Stitched cards set their own background, border and shadow: keep the status tints and the
+ * highlighted (active) card that the screens ask for. */
+.te-screen .te-stitched.bg-emerald-500\/5 {
+  background-color: color-mix(in srgb, #10b981 9%, var(--te-linen-card));
+  border-color: rgba(16, 185, 129, 0.45);
+}
+.te-screen .te-stitched.bg-red-500\/5 {
+  background-color: color-mix(in srgb, #ef4444 9%, var(--te-linen-card));
+  border-color: rgba(239, 68, 68, 0.45);
+}
+.te-screen .te-stitched.border-brand-teal {
+  border-color: var(--color-brand-teal);
+  box-shadow: 0 0 0 2px rgba(18, 124, 113, 0.25), 0 4px 12px var(--te-card-drop);
+}
