@@ -99,6 +99,22 @@ if wfdd_in is not None:
     (EXT / "wfdd").mkdir(parents=True, exist_ok=True)
     (EXT / "wfdd" / "WFDD").symlink_to(wfdd_in)
 
+# Fabric Stain Dataset: a Kaggle dataset attached to this notebook. Its two folders both number from 1, so the
+# images (and their YOLO .txt labels) are linked flat as <folder>_<name> (fabricdata.sources.read_fabric_stain).
+stain_in = next((p.parent for p in Path("/kaggle/input").rglob("images") if (p / "stain").is_dir()), None)
+if stain_in is not None:
+    flat = EXT / "fabric_stain/flat"
+    flat.mkdir(parents=True, exist_ok=True)
+    for folder in ("stain", "defect_free"):
+        for img in sorted((stain_in / "images" / folder).iterdir()):
+            (flat / f"{folder}_{img.name}").symlink_to(img)
+            label = stain_in / "annotations" / folder / f"{img.stem}.txt"
+            if label.exists():
+                (flat / f"{folder}_{img.stem}.txt").symlink_to(label)
+    print("Fabric Stain:", len(list(flat.glob("*.txt"))), "labels", flush=True)
+else:
+    print("!! Fabric Stain dataset not attached: building without it", flush=True)
+
 # A look at the files whose details we have not seen yet (for the mapping notes).
 if (EXT / "zju_leaper").exists():
     zju_base = next((EXT / "zju_leaper").rglob("ImageSets")).parent

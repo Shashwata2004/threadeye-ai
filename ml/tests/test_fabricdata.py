@@ -109,3 +109,21 @@ def test_copies_across_sources_share_a_group_but_lookalikes_within_a_source_do_n
     g = {r.path.stem: r.group for r in recs}
     assert g["a"] == g["b"] and g["c"] == g["a"]  # c joins through b (cross-source), not through a
     assert g["d"] != g["a"] and g["e"] != g["a"] and g["z"] == "z"
+
+
+def test_fabric_stain_reader_keeps_both_folders_apart(tmp_path: Path) -> None:
+    flat = tmp_path / "flat"
+    flat.mkdir()
+    for name in ("stain_1", "stain_2", "stain_3", "defect_free_1"):
+        Image.new("RGB", (200, 100)).save(flat / f"{name}.jpg")
+    (flat / "stain_1.txt").write_text("0 0.5 0.5 0.2 0.4\n0 0.1 0.1 0.1 0.1\n")
+    (flat / "stain_2.txt").write_text("0 0.5 0.5 0.1 0.1\n")
+    (flat / "defect_free_1.txt").write_text("")
+    recs = {r.path.stem: r for r in sources.read_fabric_stain(tmp_path)}
+    assert len({r.key for r in recs.values()}) == 3
+    b = recs["stain_1"].boxes[0]
+    assert (b.x0, b.y0, b.x1, b.y1) == pytest.approx((80, 30, 120, 70))
+    assert map_class("fabric_stain", b.src_cls) == "stain"
+    assert "stain_3" not in recs  # a stain photo without labels is left out
+    assert recs["defect_free_1"].defect_free and recs["defect_free_1"].group != recs["stain_1"].group
+    assert recs["stain_1"].group == recs["stain_2"].group  # consecutive shots stay together

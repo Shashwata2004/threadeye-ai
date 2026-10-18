@@ -169,15 +169,47 @@ def read_fd_figshare(root: Path) -> Iterator[ImageRecord]:
     )
     for img in imgs:
         w, h = image_size(img)
-        boxes = []
-        label = img.parent.parent / "labels" / (img.stem + ".txt")
-        for line in label.read_text().splitlines() if label.exists() else []:
-            parts = line.split()
-            if len(parts) != 5:
-                continue
-            c, cx, cy, bw, bh = parts[0], *map(float, parts[1:])
-            boxes.append(Box((cx - bw / 2) * w, (cy - bh / 2) * h, (cx + bw / 2) * w, (cy + bh / 2) * h, src_cls=c))
-        yield ImageRecord("fd_figshare", img, w, h, boxes, group=groups[original_name(img.name)])
+        boxes = yolo_boxes(img.parent.parent / "labels" / (img.stem + ".txt"), w, h)
+        group = groups[original_name(img.name)]
+        yield ImageRecord("fd_figshare", img, w, h, boxes, group=group,
+                          force_split=FD_FORCED.get(group))
+
+
+def yolo_boxes(label: Path, w: int, h: int) -> list[Box]:
+    """YOLO label lines "class cx cy w h" (relative) → boxes in pixels; a missing file means no boxes."""
+    boxes = []
+    for line in label.read_text().splitlines() if label.exists() else []:
+        parts = line.split()
+        if len(parts) != 5:
+            continue
+        c, cx, cy, bw, bh = parts[0], *map(float, parts[1:])
+        boxes.append(Box((cx - bw / 2) * w, (cy - bh / 2) * h, (cx + bw / 2) * w, (cy + bh / 2) * h, src_cls=c))
+    return boxes
+
+
+def read_fabric_stain(root: Path) -> Iterator[ImageRecord]:
+    """Fabric Stain Dataset (University of Moratuwa; Kaggle priemshpathirana/fabric-stain-dataset, CC0): phone
+    photos, YOLO labels with one class (stain). The Kaggle layout is images/<stain|defect_free>/N.jpg; both
+    folders number from 1, so the build links them flat as <root>/flat/<folder>_N.<ext> (labels next to them as
+    .txt) to keep file names unique. Consecutive numbers are often the same stain shot again: groups of
+    FABRIC_STAIN_RUN."""
+    for img in sorted((root / "flat").iterdir()):
+        if img.suffix.lower() not in (".jpg", ".jpeg", ".png"):
+            continue
+        folder, num = img.stem.rsplit("_", 1)
+        w, h = image_size(img)
+        boxes = yolo_boxes(img.with_suffix(".txt"), w, h)
+        if folder == "stain" and not boxes:
+            continue  # a stain photo without labels would teach the stain as background
+        n = int(num) if num.isdigit() else 0
+        yield ImageRecord("fabric_stain", img, w, h, boxes, group=f"fabric_stain:{folder}:{n // FABRIC_STAIN_RUN}",
+                          defect_free=folder == "defect_free")
+
+
+FD_FORCED = {"fd:session1": "test", "fd:session6": "val"}
+"""FD Dataset has 7 photo sessions, most bigger than a 10 % test share, so the balanced split gave test none
+(and every oil photo went to train). Session 1 (125 photos: oil, cutting, crack) is test, session 6 (52) val."""
+FABRIC_STAIN_RUN = 4
 
 
 MORATUWA_MAX_BLOBS = 3
@@ -320,4 +352,5 @@ READERS: dict[str, Callable[[Path], Iterator[ImageRecord]]] = {
     "zju_leaper": read_zju_leaper,
     "raw_fabrid": read_raw_fabrid,
     "wfdd": read_wfdd,
+    "fabric_stain": read_fabric_stain,
 }

@@ -24,8 +24,23 @@ into the Kaggle/Colab training notebook), **needs a person** (account, form or p
 | DPFD-DET | in papers only | – | 4 classes | – | source not found |
 | Kaggle set (3,077 images, 9 classes) | not identified | – | – | – | needs the link |
 | WFDD (woven fabric defect detection) | Kaggle dataset `hodinhtrieu/the-woven-fabric-defect-detection-wfdd` | not stated | masks; 4 woven fabrics (grey, grid, yellow, pink flower); 241 defect images (types only for grey cloth), ~4,100 good | 0.7 GB | Kaggle (attached input) |
+| Fabric Stain Dataset (University of Moratuwa) | Kaggle dataset `priemshpathirana/fabric-stain-dataset` ([Dataset Ninja](https://datasetninja.com/fabric-stain-dataset)) | CC0 1.0 | YOLO boxes, one class (stain: ink, dirt, oil); 398 stain + 68 defect-free phone photos, cotton and polyester. Very likely the labelled version of the unlabelled Moratuwa "stain" folder (same count; that folder is not used) | 0.44 GB | Kaggle (attached input) |
 | ThreadEye simulator | `tools/simulator/` | ours | exact boxes for defects **and** non-defects (stickers, threads, wrinkles, hand, board) | unlimited | generated on demand |
 | ThreadEye app labels | inspector decisions | ours (factory consent needed) | confirmed / rejected (with reason) / drawn missed defects, with frames | grows with use | collected by the app |
+
+## Detector classes vs. the taxonomy (build v6)
+
+The detector learns 10 of the 12 taxonomy defects (`fabricdata/classes.py`):
+
+- **oil_stain → stain.** Only one source labels oil (FD Dataset, 207 boxes, all from two photo sessions); the
+  4-point score depends on size, not on what made the stain.
+- **selvage_defect is placed, not detected.** Public data has 9 examples (AITEX "cut selvage", now
+  other_defect). The app turns a broken / missing yarn or other defect inside the selvage band into a
+  selvage defect (`backend/threadeye/core/nondefect.py`, `selvage_class`); stains and holes keep their class.
+- FD Dataset sessions are pinned (`FD_FORCED`): session 1 → test, session 6 → val. Before, every session was
+  bigger than the 10 % test share and test had no FD photo at all.
+- Stain photos are shrunk to 1024 px (was 1600) before tiling: FabricSpotDefect alone had given a quarter of
+  all train boxes.
 
 ## What the downloaded sets really contain (checked 2026-10-18)
 

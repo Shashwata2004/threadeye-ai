@@ -178,7 +178,7 @@ class Runner:
         state = self.states.get(track.track_no, DefectState())
         box = track.box
         predicted = self.taxonomy.resolve(track.sightings[0].cls)
-        current = state.reclassified_to or self.taxonomy.resolve(track.cls)
+        current = state.reclassified_to or self.filter.selvage_class(self.taxonomy.resolve(track.cls), box)
         is_nondefect = bool(verdict.category) and not state.promoted
         best = track.best_sighting
         length = state.length_override_in or box.length_in

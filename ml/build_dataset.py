@@ -42,11 +42,14 @@ LICENCE = {
     "zju_leaper": "CC BY-NC-SA 4.0 (non-commercial)",
     "raw_fabrid": "CC BY 4.0",
     "wfdd": "WFDD (Kaggle mirror hodinhtrieu/the-woven-fabric-defect-detection-wfdd; licence not stated)",
+    "fabric_stain": "CC0 1.0 (Kaggle priemshpathirana/fabric-stain-dataset)",
 }
 NON_COMMERCIAL = {"zju_leaper"}
 """Left out with --commercial-only (a model for a product that is sold)."""
-MAX_SIDE = {"fabricspotdefect": 1600, "moratuwa": 1280}
-"""Phone photos are shrunk first (their defects are large); line-scan and loom images keep full size."""
+MAX_SIDE = {"fabricspotdefect": 1024, "fabric_stain": 1024, "moratuwa": 1280}
+"""Phone photos are shrunk first (their defects are large); line-scan and loom images keep full size.
+1024 for the stain photos: at 1600 FabricSpotDefect alone gave a quarter of all train boxes (each stain cut
+into several overlapping tiles), drowning the rarer classes."""
 MIN_BOX_PX = 2.0
 
 

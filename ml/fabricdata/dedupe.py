@@ -21,7 +21,7 @@ from PIL import Image
 
 from fabricdata.records import ImageRecord
 
-COPY_PRONE = {"aitex", "moratuwa", "fabricspotdefect", "fd_figshare", "garment_defects", "tianchi"}
+COPY_PRONE = {"aitex", "moratuwa", "fabricspotdefect", "fd_figshare", "garment_defects", "tianchi", "fabric_stain"}
 """Sources that compilations re-upload. ZJU-Leaper, RAW-FABRID and WFDD are not in any compilation, and
 their tens of thousands of plain-weave images share near-identical hashes: comparing them made the first
 full build run for hours (buckets of thousands of members, all pairs compared)."""

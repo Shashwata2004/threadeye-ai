@@ -7,11 +7,14 @@ and that region counts as background.
 
 from __future__ import annotations
 
-# The detector's classes, in a fixed order (COCO category ids are index + 1).
+# The detector's classes, in a fixed order (COCO category ids are index + 1). A subset of the taxonomy:
+#  - oil_stain is learned as stain: the 4-point score depends on size, not on what made the stain, and the
+#    public data has one small source of oil stains (FD Dataset) — too few to tell them apart reliably.
+#  - selvage_defect is placed, not detected: the app turns a yarn fault inside the selvage band into a
+#    selvage defect (backend/threadeye/core/nondefect.py). Public data has 9 selvage examples (AITEX).
 DEFECT_CLASSES = (
     "hole",
     "stain",
-    "oil_stain",
     "slub",
     "broken_yarn",
     "missing_yarn",
@@ -19,7 +22,6 @@ DEFECT_CLASSES = (
     "crease_mark",
     "contamination",
     "shade_bar",
-    "selvage_defect",
     "other_defect",
 )
 
@@ -37,7 +39,7 @@ SOURCE_CLASS_MAP: dict[str, dict[str, str | None]] = {
         "010": "broken_yarn",  # broken pick
         "016": "slub",  # weft curling
         "019": "slub",  # fuzzyball
-        "022": "selvage_defect",  # cut selvage
+        "022": "other_defect",  # cut selvage (placed as selvage_defect by the app)
         "023": "crease_mark",
         "025": "slub",  # warp ball
         "027": "knot",
@@ -46,9 +48,10 @@ SOURCE_CLASS_MAP: dict[str, dict[str, str | None]] = {
         "036": "missing_yarn",  # weft crack
     },
     "fabricspotdefect": {"spot": "stain"},
+    "fabric_stain": {"0": "stain"},
     "moratuwa": {"hole": "hole", "horizontal": "broken_yarn", "vertical": "broken_yarn"},
     # FD Dataset: Roboflow ids 0..3, checked visually: oil, hole, cutting, crack.
-    "fd_figshare": {"0": "oil_stain", "1": "hole", "2": "hole", "3": "hole"},
+    "fd_figshare": {"0": "stain", "1": "hole", "2": "hole", "3": "hole"},
     "garment_defects": {
         "Hole": "hole",
         "Color_defect": "stain",

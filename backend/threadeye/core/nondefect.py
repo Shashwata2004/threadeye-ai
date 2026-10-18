@@ -9,6 +9,9 @@ Rules, first match wins:
   b. the box lies outside the fabric                          → board
   c. a tiny hole inside the selvage band                      → pin_hole
   d. only ever seen with the hand in view                     → still a defect, flagged uncertain
+
+Selvage faults are placed, not recognised: a yarn fault the detector reports inside the selvage band is a
+selvage defect (``selvage_class``). Public data has too few selvage examples to teach a detector the class.
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from threadeye.core.dedupe import DefectTrack
+from threadeye.core.geometry import RollBox
 from threadeye.core.taxonomy import Taxonomy
 
 INCH_CM = 2.54
@@ -32,6 +36,8 @@ class NonDefectVerdict:
 @dataclass(frozen=True)
 class NonDefectConfig:
     pinhole_max_in: float = 0.3
+    selvage_faults: frozenset[str] = frozenset({"broken_yarn", "missing_yarn", "other_defect"})
+    """Detector classes that become selvage_defect inside the selvage band (stains and holes keep theirs)."""
 
 
 class NonDefectFilter:
@@ -47,6 +53,17 @@ class NonDefectFilter:
         self.selvage_band_cm = selvage_band_cm
         self.cfg = cfg or NonDefectConfig()
 
+    def in_selvage(self, box: RollBox) -> bool:
+        return box.across_end_cm <= self.selvage_band_cm or box.across_start_cm >= (
+            self.fabric_width_cm - self.selvage_band_cm
+        )
+
+    def selvage_class(self, cls: str, box: RollBox) -> str:
+        """The class to show for a detector defect: a yarn fault inside the selvage band is a selvage defect."""
+        if self.selvage_band_cm > 0 and cls in self.cfg.selvage_faults and self.in_selvage(box):
+            return "selvage_defect"
+        return cls
+
     def classify(self, track: DefectTrack) -> NonDefectVerdict:
         cls = self.taxonomy.resolve(track.cls)
         box = track.box
@@ -54,9 +71,7 @@ class NonDefectFilter:
             return NonDefectVerdict(cls, f"detector reported a non-defect: {cls}")
         if box.across_end_cm <= 0 or box.across_start_cm >= self.fabric_width_cm:
             return NonDefectVerdict("board", "outside the fabric edges (the board beside the fabric)")
-        in_selvage = box.across_end_cm <= self.selvage_band_cm or box.across_start_cm >= (
-            self.fabric_width_cm - self.selvage_band_cm
-        )
+        in_selvage = self.in_selvage(box)
         is_hole = cls in self.taxonomy.classes and self.taxonomy.classes[cls].is_hole
         if in_selvage and is_hole and box.length_in < self.cfg.pinhole_max_in:
             return NonDefectVerdict(

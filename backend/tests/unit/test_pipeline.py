@@ -194,6 +194,26 @@ def test_nondefect_rules(box: RollBox, cls: str, category: str | None) -> None:
     assert FILTER.classify(one_track(box, cls)).category == category
 
 
+@pytest.mark.parametrize(
+    ("box", "cls", "shown"),
+    [
+        (RollBox(10, 30, 0.2, 1.0), "broken_yarn", "selvage_defect"),  # yarn fault in the left band
+        (RollBox(10, 12, 149.0, 149.8), "other_defect", "selvage_defect"),  # right band
+        (RollBox(10, 12, 0.2, 1.0), "stain", "stain"),  # a stain stays a stain
+        (RollBox(10, 13, 0.4, 1.2), "hole", "hole"),  # holes keep their scoring
+        (RollBox(10, 30, 0.2, 3.0), "broken_yarn", "broken_yarn"),  # reaches into the body
+        (RollBox(10, 30, 50, 52), "missing_yarn", "missing_yarn"),
+    ],
+)
+def test_selvage_faults_are_placed_by_position(box: RollBox, cls: str, shown: str) -> None:
+    assert FILTER.selvage_class(cls, box) == shown
+
+
+def test_no_selvage_band_no_selvage_class() -> None:
+    f = NonDefectFilter(load_default_taxonomy(), fabric_width_cm=150, selvage_band_cm=0.0)
+    assert f.selvage_class("broken_yarn", RollBox(10, 30, 0.0, 0.0)) == "broken_yarn"
+
+
 def test_hand_only_sightings_stay_defects_but_are_flagged() -> None:
     v = FILTER.classify(one_track(RollBox(10, 12, 50, 52), "stain", hand=True))
     assert v.category is None and v.uncertain == "hand_in_view"
