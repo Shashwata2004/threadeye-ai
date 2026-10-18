@@ -24,6 +24,7 @@ SIZE = PARAMS.get("model", "s")  # nano | tiny | s | m
 EPOCHS = int(PARAMS.get("epochs", 30))
 BATCH = int(PARAMS.get("batch", 16))
 MAX_TRAIN = PARAMS.get("max_train_images")  # a smoke test sets a small number
+TRAIN_BUDGET_H = float(PARAMS.get("train_budget_h", 10.0))
 YOLOX_COMMIT = PARAMS.get("yolox_commit", "main")
 DEPTH_WIDTH = {"nano": (0.33, 0.25), "tiny": (0.33, 0.375), "s": (0.33, 0.50), "m": (0.67, 0.75)}
 WEIGHTS = {
@@ -89,7 +90,10 @@ for split in ("train", "val", "test"):
     (WORK / split).symlink_to(DATA / split / "images") if not (WORK / split).exists() else None
 train = json.loads((DATA / "train/annotations.json").read_text())
 if MAX_TRAIN:
-    keep = {im["id"] for im in train["images"][: int(MAX_TRAIN)]}
+    # A fixed random sample: the tiles are ordered by source, and the first N would be one or two sources only
+    # (the first smoke test trained on AITEX and stain photos and was tested on everything).
+    sample = sorted(train["images"], key=lambda im: hashlib.sha1(im["file_name"].encode()).hexdigest())
+    keep = {im["id"] for im in sample[: int(MAX_TRAIN)]}
     train = {**train, "images": [im for im in train["images"] if im["id"] in keep],
              "annotations": [a for a in train["annotations"] if a["image_id"] in keep]}
 (WORK / "annotations/train.json").write_text(json.dumps(repeat_factor_sampling(train)))
@@ -122,9 +126,13 @@ class Exp(MyExp):
         # Fabric: flips and 90° turns are natural (defects have no up/down); colour jitter for dyed fabric.
         self.flip_prob = 0.5
         self.degrees = 5.0
-        self.mosaic_prob = 1.0
-        self.mixup_prob = 0.5 if "{SIZE}" in ("s", "m") else 0.0
-        self.enable_mixup = "{SIZE}" in ("s", "m")
+        # YOLOX's default mosaic scale (0.1, 2) shrinks a tile up to 10x: a 20-px knot or a 3-px broken yarn
+        # disappears (the 6-epoch smoke test learned almost nothing). Keep defects near their real pixel size.
+        self.mosaic_prob = 0.5
+        self.mosaic_scale = (0.5, 1.5)
+        # Mixup lays one fabric over another: the blended weave looks like a defect itself.
+        self.mixup_prob = 0.0
+        self.enable_mixup = False
 
     def get_dataset(self, cache=False, cache_type="ram"):
         from yolox.data import COCODataset, TrainTransform
@@ -146,18 +154,57 @@ class Exp(MyExp):
 # its own checkpoints. These files come from this training run (and YOLOX's official weights), so the
 # full loader is acceptable here.
 env = f"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 PYTHONPATH={YOLOX}:$PYTHONPATH"
-sh(f"{env} {sys.executable} tools/train.py -f {exp} -d 1 -b {BATCH} --fp16 -o -c {weights}", cwd=YOLOX)
+# Kaggle stops a GPU session at 12 h and keeps nothing it had not written: training gets a time budget, after
+# which the best checkpoint so far (saved at every evaluation) is tested and exported as usual.
+try:
+    sh(f"timeout --signal=INT {TRAIN_BUDGET_H}h {env} {sys.executable} tools/train.py -f {exp} -d 1 -b {BATCH} "
+       f"--fp16 -o -c {weights}", cwd=YOLOX)
+except subprocess.CalledProcessError as exc:
+    if exc.returncode not in (124, 130) or not (YOLOX / "YOLOX_outputs" / f"threadeye_{SIZE}/best_ckpt.pth").exists():
+        raise
+    print(f"!! training stopped by the {TRAIN_BUDGET_H} h budget: using the best checkpoint so far", flush=True)
 run_dir = YOLOX / "YOLOX_outputs" / f"threadeye_{SIZE}"
 best = run_dir / "best_ckpt.pth"
 
 # ------------------------------------------------------------------------------------------- test
 sh(f"THREADEYE_EVAL_SPLIT=test {env} {sys.executable} tools/eval.py -f {exp} -c {best} -b {BATCH} -d 1 --conf 0.001 --fp16 "
    f"2>&1 | tee {TMP / 'test_eval.txt'}", cwd=YOLOX)
-sh(f"{env} {sys.executable} tools/export_onnx.py -f {exp} -c {best} --output-name {TMP / f'threadeye_{SIZE}.onnx'}",
-   cwd=YOLOX)
+# ------------------------------------------------------------------------------------------- ONNX
+# YOLOX's tools/export_onnx.py calls torch.onnx._export, which recent PyTorch removed. Our own export: raw head
+# output (no decoding in the graph: backend/threadeye/providers/local_model.py decodes), dynamic batch (the app
+# sends all tiles of a frame at once), the TorchScript exporter (dynamo=False), then a check that ONNX Runtime
+# gives the same output as PyTorch on a real test tile.
+onnx_path = TMP / f"threadeye_{SIZE}.onnx"
+export_py = TMP / "export_onnx.py"
+export_py.write_text(f'''
+import json, sys
+import cv2, numpy as np, onnxruntime as ort, torch
+from yolox.data import ValTransform
+from yolox.exp import get_exp
+
+exp = get_exp("{exp}", None)
+model = exp.get_model()
+model.load_state_dict(torch.load("{best}", map_location="cpu", weights_only=False)["model"])
+model.eval()
+model.head.decode_in_inference = False
+torch.onnx.export(model, torch.zeros(1, 3, 640, 640), "{onnx_path}", input_names=["images"], output_names=["output"],
+                  opset_version=17, dynamic_axes={{"images": {{0: "batch"}}, "output": {{0: "batch"}}}}, dynamo=False)
+
+test = json.load(open("{WORK / 'annotations/test.json'}"))
+name = next(i["file_name"] for i in test["images"] if any(a["image_id"] == i["id"] for a in test["annotations"]))
+img, _ = ValTransform(legacy=False)(cv2.imread("{DATA / 'test/images'}/" + name), None, (640, 640))
+x = np.stack([img, img]).astype(np.float32)
+with torch.no_grad():
+    ref = model(torch.from_numpy(x)).numpy()
+got = ort.InferenceSession("{onnx_path}", providers=["CPUExecutionProvider"]).run(None, {{"images": x}})[0]
+diff = float(np.abs(ref - got).max())
+print("onnx check:", name, got.shape, "max abs diff", diff, flush=True)
+sys.exit(0 if diff < 1e-3 else 1)
+''')
+sh(f"{env} {sys.executable} {export_py}", cwd=YOLOX)
 
 OUT.mkdir(parents=True, exist_ok=True)
-for f in (best, TMP / f"threadeye_{SIZE}.onnx", TMP / "test_eval.txt", run_dir / "train_log.txt"):
+for f in (best, onnx_path, TMP / "test_eval.txt", run_dir / "train_log.txt"):
     if f.exists():
         shutil.copy(f, OUT / f.name)
 (OUT / "model_info.json").write_text(json.dumps({
