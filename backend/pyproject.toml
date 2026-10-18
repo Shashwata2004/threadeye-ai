@@ -24,6 +24,8 @@ dependencies = [
 [project.optional-dependencies]
 # Edge-only: video decoding and future local inference (installed in the worker image from M1).
 vision = ["numpy>=2.0", "opencv-python-headless>=4.10"]
+# The trained detector (providers/local_model.py): ONNX Runtime on the CPU, plus the vision extra.
+onnx = ["onnxruntime>=1.18", "numpy>=2.0", "opencv-python-headless>=4.10"]
 
 [project.scripts]
 threadeye = "threadeye.cli:main"
@@ -68,7 +70,7 @@ plugins = ["pydantic.mypy"]
 exclude = ["alembic/versions/"]
 
 [[tool.mypy.overrides]]
-module = ["uharfbuzz.*", "fpdf.*", "importlinter.*"]
+module = ["uharfbuzz.*", "fpdf.*", "importlinter.*", "onnxruntime.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

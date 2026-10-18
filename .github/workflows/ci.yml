@@ -40,7 +40,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install uv==0.12.22
-      - run: uv sync --frozen --extra vision
+      - run: uv sync --frozen --extra vision --extra onnx
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Lint (ruff)
         run: uv run ruff check . && uv run ruff format --check .
