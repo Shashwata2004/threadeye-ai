@@ -37,8 +37,10 @@ set_env() {
 }
 
 prod_url() {  # the stable production domain of a linked project
-  local dir="$1" name="$2"
-  (cd "$dir" && vercel project inspect "$name" 2>&1) | grep -oE 'https://[a-z0-9-]+\.vercel\.app' | head -1
+  local dir="$1" name="$2" url
+  url="$( (cd "$dir" && vercel project inspect "$name" 2>&1) | grep -oE 'https://[a-z0-9-]+\.vercel\.app' | head -1 || true)"
+  # Newer CLIs no longer print the domain; a project's production alias is <name>.vercel.app.
+  echo "${url:-https://$name.vercel.app}"
 }
 
 build_api() {
