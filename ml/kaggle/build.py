@@ -135,6 +135,19 @@ print("RAW-FABRID categories:", raw_coco["categories"], "annotations:", len(raw_
 print("RAW-FABRID metadata:", next((EXT / "raw_fabrid").rglob("RAW_FABRID_HighRes_Metadata.csv")).read_text()[:800])
 sh("df -h /kaggle/tmp /kaggle/working | cat")
 
+# Non-defects (stickers, loose threads, wrinkles, hands) drawn on tiles of the sources above. Hands are cut
+# out of EgoHands (CC BY 4.0), a Kaggle dataset attached to this notebook; without it they are cartoon only.
+ego = next((p.parent for pat in ("*/_LABELLED_SAMPLES", "*/*/_LABELLED_SAMPLES", "*/*/*/_LABELLED_SAMPLES",
+                                  "*/*/*/*/_LABELLED_SAMPLES") for p in Path("/kaggle/input").glob(pat)), None)
+hands = EXT / "hand_cutouts"
+if ego is not None:
+    sh(f"{sys.executable} {CODE / 'scripts/egohands_cutouts.py'} '{ego}' '{hands}' --max 2000")
+else:
+    print("!! EgoHands not attached: cartoon hands only", flush=True)
+sh(" ".join([sys.executable, str(CODE / "synth_nuisance.py"), "--external", str(EXT), "--n",
+             str(PARAMS.get("synth_nuisance", 4000)), "--tianchi-images", str(EXT / "tianchi/images"),
+             *(["--hands", str(hands)] if ego is not None else [])]))
+
 caps = PARAMS.get("caps", [])
 sh(" ".join([sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT),
              "--tianchi-images", str(EXT / "tianchi/images"), *[f"--cap {c}" for c in caps]]))

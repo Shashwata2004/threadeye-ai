@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from PIL import Image  # noqa: E402
 
 from fabricdata import sources  # noqa: E402
-from fabricdata.classes import DEFECT_CLASSES, map_class  # noqa: E402
+from fabricdata.classes import DETECTOR_CLASSES, map_class  # noqa: E402
 from fabricdata.dedupe import COPY_PRONE, Fingerprint, fingerprint, merge_near_duplicates  # noqa: E402
 from fabricdata.records import Box, ImageRecord  # noqa: E402
 from fabricdata.split import SPLITS, assign_splits  # noqa: E402
@@ -43,6 +43,7 @@ LICENCE = {
     "raw_fabrid": "CC BY 4.0",
     "wfdd": "WFDD (Kaggle mirror hodinhtrieu/the-woven-fabric-defect-detection-wfdd; licence not stated)",
     "fabric_stain": "CC0 1.0 (Kaggle priemshpathirana/fabric-stain-dataset)",
+    "synth_nuisance": "ours (ml/synth_nuisance.py) on tiles of the sources above; hands from EgoHands (CC BY 4.0)",
 }
 NON_COMMERCIAL = {"zju_leaper"}
 """Left out with --commercial-only (a model for a product that is sold)."""
@@ -141,8 +142,8 @@ def keep_tiles(tiles: list[Tile], bg_ratio: float, seed: int) -> list[Tile]:
 
 
 def write(tiles: list[Tile], out: Path, external: Path) -> None:
-    cats = [{"id": i + 1, "name": c} for i, c in enumerate(DEFECT_CLASSES)]
-    cat_id = {c: i + 1 for i, c in enumerate(DEFECT_CLASSES)}
+    cats = [{"id": i + 1, "name": c} for i, c in enumerate(DETECTOR_CLASSES)]
+    cat_id = {c: i + 1 for i, c in enumerate(DETECTOR_CLASSES)}
     coco = {s: {"images": [], "annotations": [], "categories": cats} for s in SPLITS}
     by_image: dict[Path, list[Tile]] = defaultdict(list)
     for t in tiles:

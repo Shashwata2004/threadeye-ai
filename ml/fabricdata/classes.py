@@ -24,6 +24,9 @@ DEFECT_CLASSES = (
     "shade_bar",
     "other_defect",
 )
+NUISANCE_CLASSES = ("sticker", "loose_thread", "wrinkle", "hand")
+"""Non-defects the detector also learns (synth_nuisance.py): the app shows them grey and never scores them."""
+DETECTOR_CLASSES = DEFECT_CLASSES + NUISANCE_CLASSES
 
 SOURCE_CLASS_MAP: dict[str, dict[str, str | None]] = {
     # Sources without defect types: every defect is other_defect ("*" matches any name).
@@ -49,6 +52,8 @@ SOURCE_CLASS_MAP: dict[str, dict[str, str | None]] = {
     },
     "fabricspotdefect": {"spot": "stain"},
     "fabric_stain": {"0": "stain"},
+    # Already ThreadEye names (defects of the base tile + the nuisances drawn on it).
+    "synth_nuisance": {c: c for c in DEFECT_CLASSES + NUISANCE_CLASSES},
     "moratuwa": {"hole": "hole", "horizontal": "broken_yarn", "vertical": "broken_yarn"},
     # FD Dataset: Roboflow ids 0..3, checked visually: oil, hole, cutting, crack.
     "fd_figshare": {"0": "stain", "1": "hole", "2": "hole", "3": "hole"},
@@ -97,6 +102,6 @@ def map_class(source: str, src_cls: str) -> str | None:
     if table is None or src_cls not in table:
         raise UnmappedClass(f"{source}: class {src_cls!r} has no mapping (add it to SOURCE_CLASS_MAP)")
     cls = table[src_cls]
-    if cls is not None and cls not in DEFECT_CLASSES:
+    if cls is not None and cls not in DETECTOR_CLASSES:
         raise UnmappedClass(f"{source}: {src_cls!r} maps to unknown class {cls!r}")
     return cls

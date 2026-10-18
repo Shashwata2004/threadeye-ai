@@ -25,6 +25,7 @@ into the Kaggle/Colab training notebook), **needs a person** (account, form or p
 | Kaggle set (3,077 images, 9 classes) | not identified | – | – | – | needs the link |
 | WFDD (woven fabric defect detection) | Kaggle dataset `hodinhtrieu/the-woven-fabric-defect-detection-wfdd` | not stated | masks; 4 woven fabrics (grey, grid, yellow, pink flower); 241 defect images (types only for grey cloth), ~4,100 good | 0.7 GB | Kaggle (attached input) |
 | Fabric Stain Dataset (University of Moratuwa) | Kaggle dataset `priemshpathirana/fabric-stain-dataset` ([Dataset Ninja](https://datasetninja.com/fabric-stain-dataset)) | CC0 1.0 | YOLO boxes, one class (stain: ink, dirt, oil); 398 stain + 68 defect-free phone photos, cotton and polyester. Very likely the labelled version of the unlabelled Moratuwa "stain" folder (same count; that folder is not used) | 0.44 GB | Kaggle (attached input) |
+| EgoHands (Indiana University) | [vision.soic.indiana.edu/projects/egohands](http://vision.soic.indiana.edu/projects/egohands/); Kaggle mirror `himaniishah/egohands` | CC BY 4.0 (academic and commercial use, cite the paper) | 4,800 frames, 15,000+ hands with pixel polygons; only the camera wearer's hands that run off the frame edge are cut out (`scripts/egohands_cutouts.py`) | 1.3 GB | Kaggle (attached input) |
 | ThreadEye simulator | `tools/simulator/` | ours | exact boxes for defects **and** non-defects (stickers, threads, wrinkles, hand, board) | unlimited | generated on demand |
 | ThreadEye app labels | inspector decisions | ours (factory consent needed) | confirmed / rejected (with reason) / drawn missed defects, with frames | grows with use | collected by the app |
 
@@ -41,6 +42,16 @@ The detector learns 10 of the 12 taxonomy defects (`fabricdata/classes.py`):
   bigger than the 10 % test share and test had no FD photo at all.
 - Stain photos are shrunk to 1024 px (was 1600) before tiling: FabricSpotDefect alone had given a quarter of
   all train boxes.
+
+## Non-defects (build v8)
+
+`synth_nuisance.py` draws stickers, loose threads, handling wrinkles and hands onto tiles of the real sources
+(70 % defect-free, 30 % with defects whose boxes are kept and never covered, with a margin for shadows) and
+the detector learns them as four extra classes (`classes.NUISANCE_CLASSES`): the app shows them grey and never
+scores them (`backend/threadeye/core/nondefect.py`, rule a). Hands are real (EgoHands cutouts,
+colour-matched to the fabric's light, optional motion blur); 1 in 8 is drawn like the simulator's cartoon hand
+so the demo video is covered too. Each synthetic image keeps its base image's group, so it lands in the same
+split as its base. `--preview N` writes a contact sheet to check the drawings by eye.
 
 ## What the downloaded sets really contain (checked 2026-10-18)
 

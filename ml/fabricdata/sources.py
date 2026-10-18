@@ -344,6 +344,15 @@ def read_wfdd(root: Path) -> Iterator[ImageRecord]:
                               defect_free=True)
 
 
+def read_synth_nuisance(root: Path) -> Iterator[ImageRecord]:
+    """ml/synth_nuisance.py output: each image keeps its base image's group (and forced split)."""
+    groups = json.loads((root / "groups.json").read_text())
+    for r in read_coco("synth_nuisance", [root / "annotations.json"], lambda n: groups[n]["group"],
+                       image_dir_of=lambda ann: ann.parent / "images"):
+        r.force_split = groups[r.path.name]["force_split"]
+        yield r
+
+
 READERS: dict[str, Callable[[Path], Iterator[ImageRecord]]] = {
     "aitex": read_aitex,
     "fabricspotdefect": read_fabricspotdefect,
@@ -355,4 +364,5 @@ READERS: dict[str, Callable[[Path], Iterator[ImageRecord]]] = {
     "raw_fabrid": read_raw_fabrid,
     "wfdd": read_wfdd,
     "fabric_stain": read_fabric_stain,
+    "synth_nuisance": read_synth_nuisance,
 }

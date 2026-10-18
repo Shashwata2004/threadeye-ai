@@ -13,7 +13,14 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fabricdata import sources  # noqa: E402
-from fabricdata.classes import DEFECT_CLASSES, SOURCE_CLASS_MAP, UnmappedClass, map_class  # noqa: E402
+from fabricdata.classes import (  # noqa: E402
+    DEFECT_CLASSES,
+    DETECTOR_CLASSES,
+    NUISANCE_CLASSES,
+    SOURCE_CLASS_MAP,
+    UnmappedClass,
+    map_class,
+)
 from fabricdata.dedupe import fingerprint, merge_near_duplicates  # noqa: E402
 from fabricdata.records import Box, ImageRecord  # noqa: E402
 from fabricdata.split import assign_splits  # noqa: E402
@@ -22,13 +29,14 @@ from fabricdata.tiles import Window, clip, positions, windows  # noqa: E402
 TAXONOMY = Path(__file__).resolve().parents[2] / "backend/threadeye/data/taxonomy.yaml"
 
 
-def test_every_mapped_class_is_a_threadeye_defect() -> None:
+def test_every_mapped_class_is_a_threadeye_class() -> None:
     import yaml
 
-    ids = {d["id"] for d in yaml.safe_load(TAXONOMY.read_text())["defects"]}
-    assert set(DEFECT_CLASSES) <= ids
+    tax = yaml.safe_load(TAXONOMY.read_text())
+    assert set(DEFECT_CLASSES) <= {d["id"] for d in tax["defects"]}
+    assert set(NUISANCE_CLASSES) <= {d["id"] for d in tax["nondefects"]}
     for table in SOURCE_CLASS_MAP.values():
-        assert {c for c in table.values() if c is not None} <= set(DEFECT_CLASSES)
+        assert {c for c in table.values() if c is not None} <= set(DETECTOR_CLASSES)
     with pytest.raises(UnmappedClass):
         map_class("tianchi", "99")
     assert map_class("garment_defects", "Broken_button") is None
@@ -127,3 +135,24 @@ def test_fabric_stain_reader_keeps_both_folders_apart(tmp_path: Path) -> None:
     assert "stain_3" not in recs  # a stain photo without labels is left out
     assert recs["defect_free_1"].defect_free and recs["defect_free_1"].group != recs["stain_1"].group
     assert recs["stain_1"].group == recs["stain_2"].group  # consecutive shots stay together
+
+
+def test_nuisances_are_drawn_with_boxes_and_never_cover_a_defect() -> None:
+    from fabricdata import nuisance
+
+    rng = np.random.default_rng(3)
+    defect = (300.0, 300.0, 340.0, 340.0)
+    seen = set()
+    for _ in range(40):
+        img = np.full((640, 640, 3), 140.0, np.float32) + rng.normal(0, 8, (640, 640, 3)).astype(np.float32)
+        before = img[300:340, 300:340].copy()
+        drawn = nuisance.compose(img, rng, hands=[], keep_clear=[defect])
+        for d in drawn:
+            assert d.cls in NUISANCE_CLASSES
+            x0, y0, x1, y1 = d.box
+            assert 0 <= x0 < x1 <= 640 and 0 <= y0 < y1 <= 640
+            assert not nuisance.overlaps(nuisance._grow(d.box, nuisance.CLEAR_MARGIN), [defect])
+            seen.add(d.cls)
+        if not any(d.cls == "wrinkle" for d in drawn):  # a wrinkle may shade nearby cloth, nothing else may
+            assert np.array_equal(img[300:340, 300:340], before)
+    assert seen == set(NUISANCE_CLASSES)
