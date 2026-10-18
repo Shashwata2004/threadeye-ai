@@ -43,7 +43,8 @@ T0 = time.time()
 
 def sh(cmd: str, cwd: Path | None = None) -> None:
     print(f"[{time.time() - T0:6.0f}s] + {cmd[:200]}", flush=True)
-    subprocess.run(cmd, shell=True, check=True, cwd=cwd)
+    # pipefail: a failing step piped into tee must still fail the notebook.
+    subprocess.run(["bash", "-o", "pipefail", "-c", cmd], check=True, cwd=cwd)
 
 
 def repeat_factor_sampling(coco: dict, t: float = 0.1) -> dict:
@@ -114,6 +115,7 @@ class Exp(MyExp):
         self.input_size = self.test_size = (640, 640)
         self.max_epoch = {EPOCHS}
         self.no_aug_epochs = max(1, {EPOCHS} // 10)
+        self.warmup_epochs = min(5, max(1, {EPOCHS} // 10))
         self.eval_interval = max(1, {EPOCHS} // 10)
         self.data_num_workers = 4
         self.exp_name = "threadeye_{SIZE}"
@@ -140,7 +142,10 @@ class Exp(MyExp):
 ''')
 
 # ------------------------------------------------------------------------------------------- train
-env = f"PYTHONPATH={YOLOX}:$PYTHONPATH"
+# PyTorch >= 2.6 loads checkpoints with weights_only=True, which rejects the numpy scalar YOLOX stores in
+# its own checkpoints. These files come from this training run (and YOLOX's official weights), so the
+# full loader is acceptable here.
+env = f"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 PYTHONPATH={YOLOX}:$PYTHONPATH"
 sh(f"{env} {sys.executable} tools/train.py -f {exp} -d 1 -b {BATCH} --fp16 -o -c {weights}", cwd=YOLOX)
 run_dir = YOLOX / "YOLOX_outputs" / f"threadeye_{SIZE}"
 best = run_dir / "best_ckpt.pth"

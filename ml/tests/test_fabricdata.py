@@ -91,12 +91,14 @@ def test_split_keeps_groups_together_honours_forced_and_is_deterministic() -> No
 def test_copies_across_sources_share_a_group_but_lookalikes_within_a_source_do_not(tmp_path: Path) -> None:
     rng = np.random.default_rng(0)
     base = (rng.random((64, 128)) * 255).astype(np.uint8)
+    shifted = np.clip(base.astype(int) + 3, 0, 255).astype(np.uint8)
     files = {
-        "a": ("src1", base),
-        "b": ("src2", np.clip(base.astype(int) + 3, 0, 255).astype(np.uint8)),  # a re-upload of a
-        "c": ("src1", np.clip(base.astype(int) + 3, 0, 255).astype(np.uint8)),  # same look, same source
-        "d": ("src2", (rng.random((64, 128)) * 255).astype(np.uint8)),
-        "e": ("src2", np.asarray(Image.fromarray(base).resize((128, 128)))),  # different shape
+        "a": ("aitex", base),
+        "b": ("moratuwa", shifted),  # a re-upload of a in a compilation
+        "c": ("aitex", shifted),  # same look, same source
+        "d": ("moratuwa", (rng.random((64, 128)) * 255).astype(np.uint8)),
+        "e": ("moratuwa", np.asarray(Image.fromarray(base).resize((128, 128)))),  # different shape
+        "z": ("zju_leaper", shifted),  # not a copy-prone source: never compared
     }
     recs = []
     for name, (src, img) in files.items():
@@ -106,4 +108,4 @@ def test_copies_across_sources_share_a_group_but_lookalikes_within_a_source_do_n
     merge_near_duplicates(recs, [fingerprint(r.path) for r in recs])
     g = {r.path.stem: r.group for r in recs}
     assert g["a"] == g["b"] and g["c"] == g["a"]  # c joins through b (cross-source), not through a
-    assert g["d"] not in (g["a"],) and g["e"] != g["a"]
+    assert g["d"] != g["a"] and g["e"] != g["a"] and g["z"] == "z"

@@ -21,6 +21,13 @@ from PIL import Image
 
 from fabricdata.records import ImageRecord
 
+COPY_PRONE = {"aitex", "moratuwa", "fabricspotdefect", "fd_figshare", "garment_defects", "tianchi"}
+"""Sources that compilations re-upload. ZJU-Leaper, RAW-FABRID and WFDD are not in any compilation, and
+their tens of thousands of plain-weave images share near-identical hashes: comparing them made the first
+full build run for hours (buckets of thousands of members, all pairs compared)."""
+MAX_BUCKET = 5000
+"""A bucket bigger than this is a degenerate hash value (flat images), not a set of copies: skipped."""
+
 
 @dataclass(frozen=True)
 class Fingerprint:
@@ -75,13 +82,18 @@ def merge_near_duplicates(records: Sequence[ImageRecord], prints: Sequence[Finge
     uf = _UnionFind()
     for r in records:
         uf.find(r.group)
-    buckets: dict[tuple[int, int], list[int]] = defaultdict(list)
+    buckets: dict[tuple[int, int, int], list[int]] = defaultdict(list)
     for i, fp in enumerate(prints):
+        if records[i].source not in COPY_PRONE:
+            continue
+        shape = round(fp.aspect * 20)  # re-uploads keep the aspect ratio
         for c in range(4):
-            buckets[(c, (fp.h64 >> (16 * c)) & 0xFFFF)].append(i)
+            buckets[(shape, c, (fp.h64 >> (16 * c)) & 0xFFFF)].append(i)
     merges = 0
     seen: set[tuple[int, int]] = set()
     for members in buckets.values():
+        if len(members) > MAX_BUCKET:
+            continue
         for a_i, a in enumerate(members):
             for b in members[a_i + 1 :]:
                 if records[a].source == records[b].source or (a, b) in seen:

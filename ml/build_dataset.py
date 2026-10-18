@@ -27,7 +27,7 @@ from PIL import Image  # noqa: E402
 
 from fabricdata import sources  # noqa: E402
 from fabricdata.classes import DEFECT_CLASSES, map_class  # noqa: E402
-from fabricdata.dedupe import fingerprint, merge_near_duplicates  # noqa: E402
+from fabricdata.dedupe import COPY_PRONE, Fingerprint, fingerprint, merge_near_duplicates  # noqa: E402
 from fabricdata.records import Box, ImageRecord  # noqa: E402
 from fabricdata.split import SPLITS, assign_splits  # noqa: E402
 from fabricdata.tiles import Window, clip, scaled, windows  # noqa: E402
@@ -230,7 +230,8 @@ def main() -> None:
     records = apply_caps(present, args.cap, args.seed)
 
     print("grouping near-duplicates")
-    merges = merge_near_duplicates(records, [fingerprint(r.path) for r in records])
+    prints = [fingerprint(r.path) if r.source in COPY_PRONE else Fingerprint(0.0, 0, 0) for r in records]
+    merges = merge_near_duplicates(records, prints)
     print(f"  {merges} merges")
     split_of = assign_splits(records, seed=args.seed)
     tiles = keep_tiles(plan(records, split_of, args.tile, args.overlap), args.bg_ratio, args.seed)

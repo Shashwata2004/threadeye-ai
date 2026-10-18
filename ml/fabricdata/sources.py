@@ -288,7 +288,8 @@ def read_raw_fabrid(root: Path) -> Iterator[ImageRecord]:
 def read_wfdd(root: Path) -> Iterator[ImageRecord]:
     """WFDD (woven fabric defect detection; Kaggle mirror, licence not stated): <fabric>/test/<defect>/NNN.png
     with masks in <fabric>/ground_truth/<defect>/NNN_mask.png; train/good and test/good are defect-free."""
-    base = next(root.rglob("ground_truth")).parent.parent  # .../WFDD
+    # On Kaggle WFDD is a read-only input linked in as <root>/WFDD; Path.rglob does not follow symlinks.
+    base = (root / "WFDD").resolve() if (root / "WFDD").exists() else next(root.rglob("ground_truth")).parent.parent
     for fabric in sorted(p for p in base.iterdir() if p.is_dir()):
         for img in sorted((fabric / "test").glob("*/*.png")):
             defect = img.parent.name
