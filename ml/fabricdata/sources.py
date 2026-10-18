@@ -275,7 +275,9 @@ def read_zju_leaper(root: Path) -> Iterator[ImageRecord]:
     and a mask for defective images. Defect types are not labelled: every defect is ``defect``.
     The authors' own train/test lists are not used: their test lists hold most of the images, which would
     turn our test split into mostly ZJU (checked on the first Kaggle build); our group-aware split applies."""
-    base = next(root.rglob("ImageSets")).parent
+    # On Kaggle the mirror is a read-only input linked in as <root>/ZJU-Leaper; Path.rglob does not follow symlinks.
+    linked = root / "ZJU-Leaper"
+    base = linked.resolve() if linked.is_symlink() else next(root.rglob("ImageSets")).parent
     masks = base / "Annotations/masks"
     for xml in sorted((base / "Annotations/xmls").glob("*.xml")):
         t = ET.parse(xml).getroot()

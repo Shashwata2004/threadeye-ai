@@ -77,16 +77,24 @@ for ann in (EXT / "tianchi/images").glob("*/_annotations.coco.json"):
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy(ann, dest / ann.name)
 
-# ZJU-Leaper (Google Drive). Drive refuses a file that was fetched many times in a day ("many accesses"):
-# then the build goes on without ZJU-Leaper rather than failing.
-zju = EXT / "zju_leaper/ZJU-Leaper.7z"
-zju.parent.mkdir(parents=True, exist_ok=True)
-try:
-    sh(f"gdown --fuzzy 'https://drive.google.com/file/d/1zzoU3Aj21V62GWS8LBm217TsE5uFeMVB/view' -O '{zju}'")
-    un7z(zju, EXT / "zju_leaper")
-except subprocess.CalledProcessError:
-    print("!! ZJU-Leaper download refused by Google Drive: building without it", flush=True)
-    shutil.rmtree(EXT / "zju_leaper", ignore_errors=True)
+# ZJU-Leaper: preferably the unpacked Kaggle mirror attached to this notebook (bnhphan/zju-dataset), linked in.
+# Otherwise Google Drive, which refuses a file that was fetched many times in a day ("many accesses"): then
+# the build goes on without ZJU-Leaper rather than failing.
+zju_in = next((p.parent for pat in ("*/ImageSets", "*/*/ImageSets", "*/*/*/ImageSets", "*/*/*/*/ImageSets")
+               for p in Path("/kaggle/input").glob(pat)
+               if (p.parent / "Images").is_dir() and (p.parent / "Annotations/xmls").is_dir()), None)
+(EXT / "zju_leaper").mkdir(parents=True, exist_ok=True)
+if zju_in is not None:
+    (EXT / "zju_leaper" / "ZJU-Leaper").symlink_to(zju_in)
+    print("ZJU-Leaper from the Kaggle mirror:", zju_in, flush=True)
+else:
+    zju = EXT / "zju_leaper/ZJU-Leaper.7z"
+    try:
+        sh(f"gdown --fuzzy 'https://drive.google.com/file/d/1zzoU3Aj21V62GWS8LBm217TsE5uFeMVB/view' -O '{zju}'")
+        un7z(zju, EXT / "zju_leaper")
+    except subprocess.CalledProcessError:
+        print("!! ZJU-Leaper download refused by Google Drive: building without it", flush=True)
+        shutil.rmtree(EXT / "zju_leaper", ignore_errors=True)
 
 # RAW-FABRID (Mendeley): a zip inside the zip
 outer = fetch("https://data.mendeley.com/public-api/zip/db6g85xsyg/download/1", EXT / "raw_fabrid/outer.zip")
@@ -117,7 +125,7 @@ else:
 
 # A look at the files whose details we have not seen yet (for the mapping notes).
 if (EXT / "zju_leaper").exists():
-    zju_base = next((EXT / "zju_leaper").rglob("ImageSets")).parent
+    zju_base = zju_in or next((EXT / "zju_leaper").rglob("ImageSets")).parent
     defective = next(x for x in sorted((zju_base / "Annotations/xmls").glob("*.xml"))[::97]
                      if "<defective>1" in x.read_text())
     print("ZJU defective xml:", defective.read_text()[:800])
