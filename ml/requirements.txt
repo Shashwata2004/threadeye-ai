@@ -1,0 +1,6 @@
+# Data preparation and training helpers for the model track (not used by the app).
+numpy>=2.0
+pillow>=11.0
+scipy>=1.14
+pyyaml>=6.0
+pytest>=8.0

@@ -66,6 +66,27 @@ and thin, weft defects wide and flat, bars span the width). In these images the 
 | 19 | 磨痕 / 轧痕 / 修痕 / 烧毛痕 abrasion, crush, mend, singe marks | 470 | 57×989 | crease_mark |
 | 20 | 死皱 / 云织 / 双纬 / 双经 / 跳纱 / 筘路 / 纬纱不良 misc weave faults | 361 | 42×767 | other_defect |
 
+## Building the dataset
+
+```bash
+ml/.venv/bin/python ml/build_dataset.py --dry-run        # counts only
+ml/.venv/bin/python ml/build_dataset.py --out data/processed/threadeye_v1
+```
+
+`ml/fabricdata/`: one reader per source (`sources.py`), class mapping (`classes.py`), near-duplicate
+grouping (`dedupe.py`), group-aware split (`split.py`), tiling (`tiles.py`); tests in `ml/tests/`.
+Clean-up decided while checking the data by eye:
+
+- AITEX: 2 defect images have empty masks: left out (neither labelled nor clean). Fabric 02 → test.
+- Moratuwa: `_processed (3)` masks of some line defects are noise (dozens of specks, the defect missed):
+  images whose mask splits into more than 3 blobs are left out (56 of 143 kept: 45 hole, 11 line).
+- Garment: 2,468 files are 1,024 originals plus Roboflow's augmented copies; one copy per original is
+  kept (the one with the least black rotation border).
+- Train tiles without a defect are subsampled to 0.5 per defect tile; val/test keep every tile.
+
+Local build without Tianchi/ZJU/RAW-FABRID (2026-10-18): 9,880 tiles, dominated by `stain`
+(FabricSpotDefect); yarn classes come mainly from Tianchi, so balanced sampling is needed in training.
+
 ## Rules
 
 - **Split by source image** (and by fabric where known): an image, its crops and any augmented copy

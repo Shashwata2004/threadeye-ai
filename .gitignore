@@ -48,3 +48,7 @@ CLAUDE.md
 
 # Cloud profile (Supabase + Vercel): see .env.cloud.example
 .env.cloud
+
+# Model track: local environment and built datasets
+ml/.venv/
+data/processed/
