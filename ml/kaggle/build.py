@@ -77,11 +77,16 @@ for ann in (EXT / "tianchi/images").glob("*/_annotations.coco.json"):
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy(ann, dest / ann.name)
 
-# ZJU-Leaper (Google Drive)
+# ZJU-Leaper (Google Drive). Drive refuses a file that was fetched many times in a day ("many accesses"):
+# then the build goes on without ZJU-Leaper rather than failing.
 zju = EXT / "zju_leaper/ZJU-Leaper.7z"
 zju.parent.mkdir(parents=True, exist_ok=True)
-sh(f"gdown --fuzzy 'https://drive.google.com/file/d/1zzoU3Aj21V62GWS8LBm217TsE5uFeMVB/view' -O '{zju}'")
-un7z(zju, EXT / "zju_leaper")
+try:
+    sh(f"gdown --fuzzy 'https://drive.google.com/file/d/1zzoU3Aj21V62GWS8LBm217TsE5uFeMVB/view' -O '{zju}'")
+    un7z(zju, EXT / "zju_leaper")
+except subprocess.CalledProcessError:
+    print("!! ZJU-Leaper download refused by Google Drive: building without it", flush=True)
+    shutil.rmtree(EXT / "zju_leaper", ignore_errors=True)
 
 # RAW-FABRID (Mendeley): a zip inside the zip
 outer = fetch("https://data.mendeley.com/public-api/zip/db6g85xsyg/download/1", EXT / "raw_fabrid/outer.zip")
@@ -95,13 +100,12 @@ if wfdd_in is not None:
     (EXT / "wfdd" / "WFDD").symlink_to(wfdd_in)
 
 # A look at the files whose details we have not seen yet (for the mapping notes).
-zju_base = next((EXT / "zju_leaper").rglob("ImageSets")).parent
-defective = next(x for x in sorted((zju_base / "Annotations/xmls").glob("*.xml"))[::97]
-                 if "<defective>1" in x.read_text())
-print("ZJU defective xml:", defective.read_text()[:800])
-print("ZJU statistic.csv:", (zju_base / "statistic.csv").read_text()[:1500])
-sets = json.loads((zju_base / "ImageSets/total.json").read_text())
-print("ZJU total.json:", {k: {s: len(v) for s, v in d.items()} if isinstance(d, dict) else type(d).__name__ for k, d in sets.items()})
+if (EXT / "zju_leaper").exists():
+    zju_base = next((EXT / "zju_leaper").rglob("ImageSets")).parent
+    defective = next(x for x in sorted((zju_base / "Annotations/xmls").glob("*.xml"))[::97]
+                     if "<defective>1" in x.read_text())
+    print("ZJU defective xml:", defective.read_text()[:800])
+    print("ZJU statistic.csv:", (zju_base / "statistic.csv").read_text()[:1500])
 raw_coco = json.loads(next((EXT / "raw_fabrid").rglob("RAW_FABRID_HighRes_COCO.json")).read_text())
 print("RAW-FABRID categories:", raw_coco["categories"], "annotations:", len(raw_coco["annotations"]))
 print("RAW-FABRID metadata:", next((EXT / "raw_fabrid").rglob("RAW_FABRID_HighRes_Metadata.csv")).read_text()[:800])
