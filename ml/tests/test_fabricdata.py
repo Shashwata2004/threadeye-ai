@@ -156,3 +156,28 @@ def test_nuisances_are_drawn_with_boxes_and_never_cover_a_defect() -> None:
         if not any(d.cls == "wrinkle" for d in drawn):  # a wrinkle may shade nearby cloth, nothing else may
             assert np.array_equal(img[300:340, 300:340], before)
     assert seen == set(NUISANCE_CLASSES)
+
+
+def test_operating_point_counts_what_an_inspector_sees() -> None:
+    from fabricdata.operating import Det, Truth, choose_thresholds, report
+
+    truths = [Truth("a", "hole", (10, 10, 30, 30)), Truth("a", "broken_yarn", (100, 0, 104, 600)),
+              Truth("b", "stain", (50, 50, 90, 90)), Truth("b", "sticker", (300, 300, 340, 330))]
+    dets = [
+        Det("a", "hole", 0.9, (11, 11, 31, 29)),
+        Det("a", "hole", 0.8, (12, 10, 30, 30)),  # duplicate of the same hole: not a false alarm
+        Det("a", "broken_yarn", 0.6, (98, 200, 106, 260)),  # low IoU, centre inside: found
+        Det("b", "hole", 0.7, (52, 52, 88, 88)),  # the stain, called a hole: found, wrong class
+        Det("b", "stain", 0.5, (301, 301, 339, 329)),  # the sticker, called a stain
+        Det("c", "knot", 0.4, (5, 5, 15, 15)),  # nothing there
+        Det("c", "knot", 0.1, (50, 5, 60, 15)),  # below the knot threshold
+    ]
+    thr = {"hole": 0.3, "stain": 0.3, "broken_yarn": 0.3, "knot": 0.3, "sticker": 0.3}
+    r = report(dets, truths, thr, {"hole", "stain", "broken_yarn", "knot"}, lambda im: "src", ["a", "b", "c"])
+    assert r["defects"] == 3 and r["found_any_class"] == 1.0 and r["found_right_class"] == round(2 / 3, 4)
+    assert r["false_alarms"] == 2  # the sticker-as-stain and the empty knot
+    assert r["nondefects_called_defect"] == 1.0
+    assert r["per_class"]["hole"]["precision"] == 0.5  # the hole (its duplicate not counted) and the stain
+    assert r["per_source"]["src"]["tiles"] == 3
+    chosen = choose_thresholds(dets, truths, ["hole", "knot"])
+    assert chosen["hole"] >= 0.05 and chosen["knot"] == 0.3  # no knot in the truth: default

@@ -5,7 +5,9 @@ Config (``threadeye.providers.registry.create_provider("local_model", config)``)
   model_path       the exported ``threadeye_<size>.onnx`` (required)
   info_path        its ``model_info.json`` (classes, input size, training data); default: next to the model
   sha256           optional: refuse a model file whose SHA-256 differs (the file pinned on the model version)
-  score_threshold  0.30;  nms_iou  0.45;  overlap  0.2 (tile overlap, as in training);  threads  0 (= ORT default)
+  score_threshold  one threshold for every class; default: the per-class thresholds chosen on the val split
+                   (model_info.json "thresholds", ml/fabricdata/operating.py), else 0.30
+  nms_iou  0.45;  overlap  0.2 (tile overlap, as in training);  threads  0 (= ORT default)
   infer_scale      1.0: model pixels per view pixel (a scaled capture is resized to this first)
 
 A frame is the camera view (``FrameImage``; a browser capture may be scaled). It is cut into model-size tiles
@@ -121,6 +123,7 @@ class LocalModelDetector(DetectorProvider):
         self.classes: tuple[str, ...] = ()
         self.input_size: tuple[int, int] = (640, 640)
         self.score_threshold = float(self.config.get("score_threshold", 0.30))
+        self.class_thresholds: dict[str, float] = {}
         self.nms_iou = float(self.config.get("nms_iou", 0.45))
         self.overlap = float(self.config.get("overlap", 0.2))
         self.infer_scale = float(self.config.get("infer_scale", 1.0))
@@ -142,6 +145,8 @@ class LocalModelDetector(DetectorProvider):
         self.classes = tuple(info["classes"])
         self.input_size = (int(info["input"][0]), int(info["input"][1]))
         self._version = str(info.get("version") or f"yolox-{info.get('size', '?')}")
+        if "score_threshold" not in self.config:
+            self.class_thresholds = {str(k): float(v) for k, v in (info.get("thresholds") or {}).items()}
 
     @property
     def info(self) -> ProviderInfo:
@@ -163,6 +168,7 @@ class LocalModelDetector(DetectorProvider):
                     {
                         "model_sha256": self._model_sha or self.config.get("sha256"),
                         "score_threshold": self.score_threshold,
+                        "class_thresholds": self.class_thresholds,
                         "nms_iou": self.nms_iou,
                         "overlap": self.overlap,
                         "infer_scale": self.infer_scale,
@@ -221,12 +227,13 @@ class LocalModelDetector(DetectorProvider):
                 ratios.append(r)
         raw = self.run(np.stack(tiles))
         preds = decode(raw, size)
+        thr = np.array([self.class_thresholds.get(c, self.score_threshold) for c in self.classes], np.float32)
         all_boxes, all_scores, all_cls = [], [], []
         for p, (x0, y0), r in zip(preds, offsets, ratios, strict=True):
             cls_scores = p[:, 5:]
             cls = cls_scores.argmax(1)
             score = p[:, 4] * cls_scores[np.arange(len(cls)), cls]
-            ok = score >= self.score_threshold
+            ok = score >= thr[cls]
             if not ok.any():
                 continue
             cx, cy, bw, bh = (p[ok, i] for i in range(4))

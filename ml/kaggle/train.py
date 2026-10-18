@@ -167,8 +167,17 @@ run_dir = YOLOX / "YOLOX_outputs" / f"threadeye_{SIZE}"
 best = run_dir / "best_ckpt.pth"
 
 # ------------------------------------------------------------------------------------------- test
-sh(f"THREADEYE_EVAL_SPLIT=test {env} {sys.executable} tools/eval.py -f {exp} -c {best} -b {BATCH} -d 1 --conf 0.001 --fp16 "
-   f"2>&1 | tee {TMP / 'test_eval.txt'}", cwd=YOLOX)
+def kept(step: str, cmd: str, cwd: Path | None = None) -> None:
+    """A step after training: its failure is reported, and the model trained so far is still saved."""
+    try:
+        sh(cmd, cwd)
+    except subprocess.CalledProcessError as exc:
+        print(f"!! {step} failed (exit {exc.returncode}): model kept", flush=True)
+
+
+kept("test evaluation", f"THREADEYE_EVAL_SPLIT=test {env} {sys.executable} tools/eval.py -f {exp} -c {best} "
+     f"-b {BATCH} -d 1 --conf 0.001 --fp16 2>&1 | tee {TMP / 'test_eval.txt'}", YOLOX)
+
 # ------------------------------------------------------------------------------------------- ONNX
 # YOLOX's tools/export_onnx.py calls torch.onnx._export, which recent PyTorch removed. Our own export: raw head
 # output (no decoding in the graph: backend/threadeye/providers/local_model.py decodes), dynamic batch (the app
@@ -201,7 +210,81 @@ diff = float(np.abs(ref - got).max())
 print("onnx check:", name, got.shape, "max abs diff", diff, flush=True)
 sys.exit(0 if diff < 1e-3 else 1)
 ''')
-sh(f"{env} {sys.executable} {export_py}", cwd=YOLOX)
+kept("ONNX export", f"{env} {sys.executable} {export_py}", YOLOX)
+
+# ------------------------------------------------------------------------------- operating point
+# COCO AP averages over all thresholds; an inspector sees one. Per-class thresholds are chosen on val (best
+# F1) and the test numbers an inspector would see are counted at them (fabricdata/operating.py), per class
+# and per source. LocalModelDetector uses these thresholds (model_info.json "thresholds").
+dets_py = TMP / "dump_dets.py"
+dets_py.write_text(f'''
+import json
+import cv2, numpy as np, torch
+from yolox.data import ValTransform
+from yolox.exp import get_exp
+from yolox.utils import postprocess
+
+exp = get_exp("{exp}", None)
+model = exp.get_model()
+model.load_state_dict(torch.load("{best}", map_location="cpu", weights_only=False)["model"])
+model.cuda().eval().half()
+tf = ValTransform(legacy=False)
+for split in ("val", "test"):
+    names = [im["file_name"] for im in json.load(open(f"{WORK}/annotations/{{split}}.json"))["images"]]
+    out = []
+    for i in range(0, len(names), 32):
+        chunk, xs, ratios = names[i:i + 32], [], []
+        for n in chunk:
+            img = cv2.imread(f"{DATA}/{{split}}/images/{{n}}")
+            ratios.append(min(640 / img.shape[0], 640 / img.shape[1]))
+            xs.append(tf(img, None, (640, 640))[0])
+        with torch.no_grad():
+            res = postprocess(model(torch.from_numpy(np.stack(xs)).cuda().half()), exp.num_classes, 0.05, 0.45)
+        for n, r, p in zip(chunk, ratios, res):
+            if p is None:
+                continue
+            for x0, y0, x1, y1, obj, cc, c in p.float().cpu().numpy().tolist():
+                out.append([n, int(c), obj * cc, [x0 / r, y0 / r, x1 / r, y1 / r]])
+    json.dump(out, open(f"{TMP}/dets_{{split}}.json", "w"))
+    print(split, len(names), "tiles", len(out), "detections", flush=True)
+''')
+def operating_point() -> dict[str, float]:
+    sh(f"{env} {sys.executable} {dets_py}", cwd=YOLOX)
+    sys.path.insert(0, str(next(Path("/kaggle/input").rglob("fabricdata/operating.py")).parents[1]))
+    from fabricdata.classes import NUISANCE_CLASSES
+    from fabricdata.operating import Det, Truth, choose_thresholds, report
+
+    def load_split(split: str) -> tuple[list, list, list]:
+        coco = json.loads((WORK / f"annotations/{split}.json").read_text())
+        name_of = {im["id"]: im["file_name"] for im in coco["images"]}
+        cname = {c["id"]: c["name"] for c in coco["categories"]}
+        truths = [Truth(name_of[a["image_id"]], cname[a["category_id"]],
+                        (a["bbox"][0], a["bbox"][1], a["bbox"][0] + a["bbox"][2], a["bbox"][1] + a["bbox"][3]))
+                  for a in coco["annotations"]]
+        dets = [Det(n, class_names[c], s, tuple(b))
+                for n, c, s, b in json.loads((TMP / f"dets_{split}.json").read_text())]
+        return dets, truths, list(name_of.values())
+
+    val_dets, val_truths, _ = load_split("val")
+    thresholds = choose_thresholds(val_dets, val_truths, class_names)
+    test_dets, test_truths, test_images = load_split("test")
+    rep = report(test_dets, test_truths, thresholds, set(class_names) - set(NUISANCE_CLASSES),
+                 lambda name: name.split("__")[0], test_images)
+    rep["thresholds_from"] = "val split, best F1 per class"
+    print("thresholds:", thresholds)
+    print("test:", json.dumps({k: v for k, v in rep.items() if k not in ("per_class", "per_source")}))
+    print("per source:", json.dumps(rep["per_source"], indent=1))
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "test_report.json").write_text(json.dumps(rep, indent=1))
+    return thresholds
+
+
+# A failure here must not lose a 10-hour model: the checkpoint and ONNX are kept either way.
+try:
+    thresholds = operating_point()
+except Exception as exc:  # noqa: BLE001
+    print(f"!! operating point failed ({exc!r}): no thresholds, model kept", flush=True)
+    thresholds = {}
 
 OUT.mkdir(parents=True, exist_ok=True)
 for f in (best, onnx_path, TMP / "test_eval.txt", run_dir / "train_log.txt"):
@@ -209,7 +292,8 @@ for f in (best, onnx_path, TMP / "test_eval.txt", run_dir / "train_log.txt"):
         shutil.copy(f, OUT / f.name)
 (OUT / "model_info.json").write_text(json.dumps({
     "framework": "YOLOX (Apache-2.0)", "yolox_commit": commit, "size": SIZE, "epochs": EPOCHS, "batch": BATCH,
-    "input": [640, 640], "classes": class_names, "dataset_summary": json.loads((DATA / "summary.json").read_text()),
+    "input": [640, 640], "classes": class_names, "thresholds": thresholds,
+    "dataset_summary": json.loads((DATA / "summary.json").read_text()),
     "minutes": round((time.time() - T0) / 60, 1),
 }, indent=1))
 print(f"done in {(time.time() - T0) / 60:.1f} min")

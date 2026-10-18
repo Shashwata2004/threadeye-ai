@@ -36,10 +36,13 @@ def encode(raw: Any, box: tuple[float, float, float, float], cls: int, score: fl
 class FakeModel(LocalModelDetector):
     """Answers per tile offset: {(x0, y0): [(box in tile px, cls, score), ...]}."""
 
-    def __init__(self, tmp_path: Path, plan: dict[tuple[int, int], list[Any]], **cfg: Any) -> None:
+    def __init__(
+        self, tmp_path: Path, plan: dict[tuple[int, int], list[Any]], thresholds: dict | None = None, **cfg: Any
+    ) -> None:
         model = tmp_path / "threadeye_s.onnx"
         model.write_bytes(b"fake")
-        (tmp_path / "model_info.json").write_text(json.dumps({"classes": CLASSES, "input": [640, 640], "size": "s"}))
+        info = {"classes": CLASSES, "input": [640, 640], "size": "s", "thresholds": thresholds or {}}
+        (tmp_path / "model_info.json").write_text(json.dumps(info))
         super().__init__({"model_path": str(model), **cfg}, ctx=None)  # type: ignore[arg-type]
         self.plan = plan
         self.offsets: list[tuple[int, int]] = []
@@ -108,3 +111,11 @@ def test_model_file_hash_is_checked(tmp_path: Path) -> None:
     with pytest.raises(ProviderNotConfigured, match="SHA-256"):
         det.prepare(None)  # type: ignore[arg-type]
     assert det.info.classes == tuple(CLASSES)
+
+
+def test_per_class_thresholds_from_the_model_card(tmp_path: Path) -> None:
+    plan = {(0, 0): [((100, 100, 140, 140), 0, 0.5), ((300, 300, 340, 340), 1, 0.5)]}
+    det = FakeModel(tmp_path, plan, thresholds={"hole": 0.6, "stain": 0.4})
+    assert [c for _, c, _ in det.detect_array(np.zeros((640, 640, 3), np.uint8))] == ["stain"]
+    det = FakeModel(tmp_path, plan, thresholds={"hole": 0.6, "stain": 0.4}, score_threshold=0.45)
+    assert sorted(c for _, c, _ in det.detect_array(np.zeros((640, 640, 3), np.uint8))) == ["hole", "stain"]
