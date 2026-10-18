@@ -1,15 +1,19 @@
-"""Near-duplicate images across all sources (compilations re-upload AITEX, Moratuwa…): one group each.
+"""Copies of the same image in different sources (compilations re-upload AITEX, Moratuwa…): one group each.
 
-A 64-bit difference hash per image; images within ``max_bits`` of each other are merged into one group, so
-they can never be split between train and test. Candidate pairs come from 16-bit chunk buckets: with
-max_bits ≤ 3, two near-identical hashes always share at least one chunk exactly (pigeonhole), so the
-search stays fast for 100k images.
+Only pairs from *different* sources are compared: copies inside one source are grouped by its reader
+(Roboflow augmentations, photo sessions). Comparing plain fabrics within a source would merge different
+images that merely look alike (a 64-bit hash of a uniform weave is almost noise).
+
+Two images are copies when their aspect ratios agree (re-uploads keep the shape), their 64-bit difference
+hashes are within 3 bits and their 256-bit hashes within 12 bits. Candidates come from 16-bit chunk
+buckets of the 64-bit hash: within 3 bits, two hashes always share a chunk (pigeonhole).
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -18,11 +22,35 @@ from PIL import Image
 from fabricdata.records import ImageRecord
 
 
-def dhash(path: Path) -> int:
-    with Image.open(path) as im:
-        px = np.asarray(im.convert("L").resize((9, 8), Image.Resampling.BILINEAR), dtype=np.int16)
+@dataclass(frozen=True)
+class Fingerprint:
+    aspect: float
+    h64: int
+    h256: int
+
+
+def _dhash(gray: Image.Image, side: int) -> int:
+    px = np.asarray(gray.resize((side + 1, side), Image.Resampling.BILINEAR), dtype=np.int16)
     bits = (px[:, 1:] > px[:, :-1]).flatten()
     return int(sum(1 << i for i, b in enumerate(bits) if b))
+
+
+def fingerprint(path: Path) -> Fingerprint:
+    with Image.open(path) as im:
+        gray = im.convert("L")
+        return Fingerprint(im.width / max(im.height, 1), _dhash(gray, 8), _dhash(gray, 16))
+
+
+def dhash(path: Path) -> int:
+    return fingerprint(path).h64
+
+
+def same_image(a: Fingerprint, b: Fingerprint) -> bool:
+    return (
+        abs(a.aspect - b.aspect) <= 0.03 * max(a.aspect, b.aspect)
+        and (a.h64 ^ b.h64).bit_count() <= 3
+        and (a.h256 ^ b.h256).bit_count() <= 12
+    )
 
 
 class _UnionFind:
@@ -42,29 +70,24 @@ class _UnionFind:
             self.parent[max(ra, rb)] = min(ra, rb)
 
 
-def merge_near_duplicates(records: Sequence[ImageRecord], hashes: Sequence[int], max_bits: int = 3) -> int:
-    """Rewrite ``record.group`` so near-duplicates share one group. Returns the number of merges."""
-    if max_bits > 3:
-        raise ValueError("chunk buckets only guarantee recall for max_bits <= 3")
+def merge_near_duplicates(records: Sequence[ImageRecord], prints: Sequence[Fingerprint]) -> int:
+    """Rewrite ``record.group`` so cross-source copies share one group. Returns the number of merges."""
     uf = _UnionFind()
     for r in records:
         uf.find(r.group)
     buckets: dict[tuple[int, int], list[int]] = defaultdict(list)
-    for i, h in enumerate(hashes):
+    for i, fp in enumerate(prints):
         for c in range(4):
-            buckets[(c, (h >> (16 * c)) & 0xFFFF)].append(i)
+            buckets[(c, (fp.h64 >> (16 * c)) & 0xFFFF)].append(i)
     merges = 0
     seen: set[tuple[int, int]] = set()
     for members in buckets.values():
         for a_i, a in enumerate(members):
             for b in members[a_i + 1 :]:
-                pair = (a, b)
-                if pair in seen:
+                if records[a].source == records[b].source or (a, b) in seen:
                     continue
-                seen.add(pair)
-                if (hashes[a] ^ hashes[b]).bit_count() <= max_bits and uf.find(records[a].group) != uf.find(
-                    records[b].group
-                ):
+                seen.add((a, b))
+                if same_image(prints[a], prints[b]) and uf.find(records[a].group) != uf.find(records[b].group):
                     uf.union(records[a].group, records[b].group)
                     merges += 1
     for r in records:

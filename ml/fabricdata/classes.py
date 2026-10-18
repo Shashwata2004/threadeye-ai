@@ -24,6 +24,12 @@ DEFECT_CLASSES = (
 )
 
 SOURCE_CLASS_MAP: dict[str, dict[str, str | None]] = {
+    # Sources without defect types: every defect is other_defect ("*" matches any name).
+    "zju_leaper": {"*": "other_defect"},
+    "raw_fabrid": {"*": "other_defect"},
+    # WFDD: typed only for grey_cloth; the other fabrics say just "defect".
+    "wfdd": {"contaminated": "contamination", "flecked": "stain", "line": "broken_yarn", "string": "contamination",
+             "defect": "other_defect"},
     # AITEX: three-digit code in the file name (tools/simulator/make_roll_video.py AITEX_CODES).
     "aitex": {
         "002": "broken_yarn",  # broken end
@@ -83,6 +89,8 @@ class UnmappedClass(KeyError):
 
 def map_class(source: str, src_cls: str) -> str | None:
     table = SOURCE_CLASS_MAP.get(source)
+    if table is not None and src_cls not in table and "*" in table:
+        src_cls = "*"
     if table is None or src_cls not in table:
         raise UnmappedClass(f"{source}: class {src_cls!r} has no mapping (add it to SOURCE_CLASS_MAP)")
     cls = table[src_cls]

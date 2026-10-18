@@ -16,13 +16,14 @@ into the Kaggle/Colab training notebook), **needs a person** (account, form or p
 | Moratuwa defect + stain sets (via the Mendeley "Fabric Defects Dataset" compilation) | [Mendeley 663j22s43c](https://data.mendeley.com/datasets/663j22s43c/3) | CC BY 4.0 | hole / horizontal / vertical / lines with masks; 398 stain images (1920×1080, colour) | 595 MB of 2.24 GB (defect folders only, fetched as one byte range; the rest repeats AITEX and defect-free images) | downloaded |
 | FD Dataset (coloured fabrics) | [figshare 25546465](https://figshare.com/articles/dataset/FD_Dataset_7z/25546465) | CC BY 4.0 | detection; 720 images: oil, hole, cutting, crack | 191 MB | downloaded |
 | Garment "Fabric Defect" | [Mendeley y62b4pfyz2](https://data.mendeley.com/datasets/y62b4pfyz2/1) | CC BY 4.0 | boxes (YOLO); 2,468 images incl. augmented copies: hole, colour defect, foreign yarn (+ button / sewing classes that are garment defects, not roll defects) | 322 MB | downloaded |
-| ZJU-Leaper | [qaas.zju.edu.cn/zju-leaper](http://www.qaas.zju.edu.cn/zju-leaper/), Google Drive via bit.ly/zjuleaper | **not stated**: ask the authors | 98,777 images, 19 fabric patterns; masks, image labels and (setting 4) boxes | 6.26 GB (.7z) | cloud only; licence needs a person |
-| RAW-FABRID | [Mendeley db6g85xsyg](https://data.mendeley.com/datasets/db6g85xsyg/1) | CC BY 4.0 | boxes + polygons (COCO); 709 high-res greyscale line-scan images, **known scale 4 px/mm** | 4.13 GB (zip inside a zip: no partial download) | cloud only |
+| ZJU-Leaper | [qaas.zju.edu.cn/zju-leaper](http://www.qaas.zju.edu.cn/zju-leaper/), Google Drive via bit.ly/zjuleaper | **CC BY-NC-SA 4.0** (license.txt in the archive): non-commercial; left out with `--commercial-only` | 98,777 images, 19 fabric patterns; masks, image labels and (setting 4) boxes | 6.26 GB (.7z) | Kaggle |
+| RAW-FABRID | [Mendeley db6g85xsyg](https://data.mendeley.com/datasets/db6g85xsyg/1) | CC BY 4.0 | COCO boxes, one class `fabric_defect` (361 boxes); 709 line-scan images 1792×1024 at **4 px/mm**, 507 without defects; plus MVTec-style patches (19,165 good) for an anomaly model | 4.13 GB (zip inside a zip) | Kaggle |
 | Tianchi Guangdong 2019 cloth flaw, round 1 (Alibaba) | official: [tianchi.aliyun.com/dataset/79336](https://tianchi.aliyun.com/dataset/79336) (download needs Chinese student verification); used: Roboflow mirror `project-fv1es/yuantianchi` **version 3** (raw: auto-orient only, no resize, no augmentation) | uploader lists CC BY 4.0; the original Tianchi terms could not be read; cite as "Tianchi 2019 Guangdong cloth flaw data, via a Roboflow mirror" | COCO boxes, 20 classes, 9,523 boxes; 5,913 images 2446×1000; 25 % of boxes < 32×32 px, 2,573 longer than 600 px | 2.59 GB | annotations checked locally; images: Kaggle (export link from the Roboflow API, key in `data/external/tianchi_roboflow/.secrets`, git-ignored) |
 | TILDA | [Uni Freiburg](https://lmb.informatik.uni-freiburg.de/resources/datasets/tilda.en.html) | not stated | image-level class only (no boxes); 3,200 greyscale 768×512 | 1.2 GB | not usable for detection (clean-fabric negatives at most) |
 | Chenab Textiles | in papers only | private | 7 classes | – | needs a person (ask the company) |
 | DPFD-DET | in papers only | – | 4 classes | – | source not found |
 | Kaggle set (3,077 images, 9 classes) | not identified | – | – | – | needs the link |
+| WFDD (woven fabric defect detection) | Kaggle dataset `hodinhtrieu/the-woven-fabric-defect-detection-wfdd` | not stated | masks; 4 woven fabrics (grey, grid, yellow, pink flower); 241 defect images (types only for grey cloth), ~4,100 good | 0.7 GB | Kaggle (attached input) |
 | ThreadEye simulator | `tools/simulator/` | ours | exact boxes for defects **and** non-defects (stickers, threads, wrinkles, hand, board) | unlimited | generated on demand |
 | ThreadEye app labels | inspector decisions | ours (factory consent needed) | confirmed / rejected (with reason) / drawn missed defects, with frames | grows with use | collected by the app |
 
@@ -86,6 +87,17 @@ Clean-up decided while checking the data by eye:
 
 Local build without Tianchi/ZJU/RAW-FABRID (2026-10-18): 9,880 tiles, dominated by `stain`
 (FabricSpotDefect); yarn classes come mainly from Tianchi, so balanced sampling is needed in training.
+
+## Kaggle pipeline
+
+`ml/kaggle/explore.py` (layout of ZJU-Leaper and RAW-FABRID), `ml/kaggle/build.py` (downloads every source
+on Kaggle and runs the builder; output `threadeye_v1/`), `ml/kaggle/train.py` (YOLOX on GPU, test
+evaluation, ONNX export). Code and a private `params.json` (Tianchi export link, caps, training settings)
+go up as the private Kaggle dataset `threadeye-ml-code`.
+
+First Kaggle build (2026-10-18): 65k tiles, but ZJU-Leaper's own test lists hold most of its images, so
+our test split became ~80 % ZJU `other_defect`. Fixed: the authors' lists are ignored (our group split
+applies) and ZJU defect images are capped at 3,000 (8,000 clean kept).
 
 ## Rules
 

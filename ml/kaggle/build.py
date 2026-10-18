@@ -1,0 +1,114 @@
+"""Kaggle step 2: download every source, lay it out like data/external/ on the laptop, and build the
+dataset with ml/build_dataset.py into /kaggle/working/threadeye_v1 (kept as this notebook's output, which
+the training notebook reads).
+
+Inputs: the private dataset "threadeye-ml-code" (ml/ and params.json with the Tianchi export link).
+Internet on, no GPU needed.
+"""
+
+import json
+import shutil
+import subprocess
+import sys
+import time
+import zipfile
+from pathlib import Path
+
+CODE = next(Path("/kaggle/input").rglob("build_dataset.py")).parent  # .../ml
+PARAMS = json.loads(next(Path("/kaggle/input").rglob("params.json")).read_text())
+EXT = Path("/kaggle/tmp/external")
+OUT = Path("/kaggle/working/threadeye_v1")
+T0 = time.time()
+
+
+def sh(cmd: str) -> None:
+    print(f"[{time.time() - T0:6.0f}s] + {cmd[:160]}", flush=True)
+    subprocess.run(cmd, shell=True, check=True)
+
+
+def fetch(url: str, dest: Path) -> Path:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    sh(f"curl -sSL --retry 5 -A 'curl/8.5.0' -o '{dest}' '{url}'")
+    return dest
+
+
+def unzip(zf: Path, to: Path, members_prefix: str | None = None) -> None:
+    to.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(zf) as z:
+        names = [n for n in z.namelist() if members_prefix is None or n.startswith(members_prefix)]
+        z.extractall(to, names)
+    zf.unlink()
+
+
+def un7z(f: Path, to: Path) -> None:
+    sh(f"7z x -y -o'{to}' '{f}' > /dev/null")
+    f.unlink()
+
+
+sh(f"{sys.executable} -m pip -q install gdown")
+
+# AITEX: three .7z files
+for part in ("Defect_images", "Mask_images", "NODefect_images"):
+    un7z(fetch(f"https://www.aitex.es/wp-content/uploads/2019/07/{part}.7z", EXT / f"aitex/raw/{part}.7z"),
+         EXT / "aitex/extracted")
+
+# FabricSpotDefect (Mendeley)
+unzip(fetch("https://data.mendeley.com/public-api/zip/6574nhzm8x/download/1", EXT / "fabricspotdefect/raw.zip"),
+      EXT / "fabricspotdefect/extracted")
+
+# Moratuwa compilation (Mendeley): the defect folders and the defect-free folder
+unzip(fetch("https://data.mendeley.com/public-api/zip/663j22s43c/download/3", EXT / "moratuwa/raw.zip"),
+      EXT / "moratuwa/extracted", "Fabric Defects Dataset/Fabric Defect Dataset/")
+
+# FD Dataset (figshare)
+un7z(fetch("https://ndownloader.figshare.com/files/45460297", EXT / "fd_figshare/raw/FD_Dataset.7z"),
+     EXT / "fd_figshare/extracted")
+
+# Garment defects (Mendeley): a Roboflow COCO zip inside the Mendeley zip
+unzip(fetch("https://data.mendeley.com/public-api/zip/y62b4pfyz2/download/1", EXT / "garment_defects/raw.zip"),
+      EXT / "garment_defects/extracted")
+inner = next((EXT / "garment_defects/extracted").rglob("*.zip"))
+unzip(inner, EXT / "garment_defects/extracted/inner")
+
+# Tianchi 2019 Guangdong round 1 (Roboflow mirror, version 3 = raw images)
+unzip(fetch(PARAMS["tianchi_link"], EXT / "tianchi/raw.zip"), EXT / "tianchi/images")
+for ann in (EXT / "tianchi/images").glob("*/_annotations.coco.json"):
+    dest = EXT / "tianchi/annotations" / ann.parent.name
+    dest.mkdir(parents=True, exist_ok=True)
+    shutil.copy(ann, dest / ann.name)
+
+# ZJU-Leaper (Google Drive)
+zju = EXT / "zju_leaper/ZJU-Leaper.7z"
+zju.parent.mkdir(parents=True, exist_ok=True)
+sh(f"gdown --fuzzy 'https://drive.google.com/file/d/1zzoU3Aj21V62GWS8LBm217TsE5uFeMVB/view' -O '{zju}'")
+un7z(zju, EXT / "zju_leaper")
+
+# RAW-FABRID (Mendeley): a zip inside the zip
+outer = fetch("https://data.mendeley.com/public-api/zip/db6g85xsyg/download/1", EXT / "raw_fabrid/outer.zip")
+unzip(outer, EXT / "raw_fabrid/outer")
+unzip(next((EXT / "raw_fabrid/outer").rglob("*.zip")), EXT / "raw_fabrid")
+
+# WFDD: a Kaggle dataset attached to this notebook (read-only input), linked into the external layout.
+wfdd_in = next(Path("/kaggle/input").rglob("WFDD"), None)
+if wfdd_in is not None:
+    (EXT / "wfdd").mkdir(parents=True, exist_ok=True)
+    (EXT / "wfdd" / "WFDD").symlink_to(wfdd_in)
+
+# A look at the files whose details we have not seen yet (for the mapping notes).
+zju_base = next((EXT / "zju_leaper").rglob("ImageSets")).parent
+defective = next(x for x in sorted((zju_base / "Annotations/xmls").glob("*.xml"))[::97]
+                 if "<defective>1" in x.read_text())
+print("ZJU defective xml:", defective.read_text()[:800])
+print("ZJU statistic.csv:", (zju_base / "statistic.csv").read_text()[:1500])
+sets = json.loads((zju_base / "ImageSets/total.json").read_text())
+print("ZJU total.json:", {k: {s: len(v) for s, v in d.items()} if isinstance(d, dict) else type(d).__name__ for k, d in sets.items()})
+raw_coco = json.loads(next((EXT / "raw_fabrid").rglob("RAW_FABRID_HighRes_COCO.json")).read_text())
+print("RAW-FABRID categories:", raw_coco["categories"], "annotations:", len(raw_coco["annotations"]))
+print("RAW-FABRID metadata:", next((EXT / "raw_fabrid").rglob("RAW_FABRID_HighRes_Metadata.csv")).read_text()[:800])
+sh("df -h /kaggle/tmp /kaggle/working | cat")
+
+caps = PARAMS.get("caps", [])
+sh(" ".join([sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT),
+             "--tianchi-images", str(EXT / "tianchi/images"), *[f"--cap {c}" for c in caps]]))
+sh(f"du -sh {OUT} && ls {OUT}")
+print(f"done in {(time.time() - T0) / 60:.1f} min")

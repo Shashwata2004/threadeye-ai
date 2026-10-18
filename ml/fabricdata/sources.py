@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterator
 from datetime import datetime
 from pathlib import Path
@@ -206,6 +207,18 @@ def read_moratuwa(root: Path) -> Iterator[ImageRecord]:
             if not boxes or len(boxes) > MORATUWA_MAX_BLOBS:
                 continue  # an empty or noisy mask (dozens of specks, the defect itself missed): unreliable
             yield ImageRecord("moratuwa", img, w, h, boxes, group=f"moratuwa:{folder}:{moratuwa_base(img.stem)}")
+    yield from read_moratuwa_clean(root)
+
+
+def read_moratuwa_clean(root: Path) -> Iterator[ImageRecord]:
+    """The compilation's "defect free" folder (only downloaded on Kaggle; partly AITEX copies, which the
+    near-duplicate step merges with the AITEX originals)."""
+    clean = root / "extracted/Fabric Defects Dataset/Fabric Defect Dataset/defect free"
+    for img in sorted(clean.rglob("*")):
+        if img.suffix.lower() not in {".jpg", ".jpeg", ".png", ".bmp"}:
+            continue
+        w, h = image_size(img)
+        yield ImageRecord("moratuwa", img, w, h, [], group=f"moratuwa:clean:{moratuwa_base(img.stem)}", defect_free=True)
 
 
 def moratuwa_unlabelled(root: Path) -> dict[str, int]:
@@ -220,6 +233,82 @@ def moratuwa_unlabelled(root: Path) -> dict[str, int]:
     return out
 
 
+ZJU_GROUP_SPAN = 50
+"""ZJU-Leaper images are numbered in capture order per fabric pattern; neighbours may overlap, so runs of
+this many ids form one group."""
+
+
+def read_zju_leaper(root: Path) -> Iterator[ImageRecord]:
+    """ZJU-Leaper (CC BY-NC-SA 4.0): one xml per image (pattern, group, defective 0/1, boxes where given)
+    and a mask for defective images. Defect types are not labelled: every defect is ``defect``.
+    The authors' own train/test lists are not used: their test lists hold most of the images, which would
+    turn our test split into mostly ZJU (checked on the first Kaggle build); our group-aware split applies."""
+    base = next(root.rglob("ImageSets")).parent
+    masks = base / "Annotations/masks"
+    for xml in sorted((base / "Annotations/xmls").glob("*.xml")):
+        t = ET.parse(xml).getroot()
+        img = base / "Images" / (t.findtext("filename") or f"{xml.stem}.jpg")
+        defective = (t.findtext("defective") or "0").strip() == "1"
+        size = t.find("size")
+        if size is not None and size.findtext("width"):
+            w, h = int(float(size.findtext("width"))), int(float(size.findtext("height")))
+        else:
+            w, h = image_size(img)
+        boxes = [
+            Box(float(b.findtext("xmin")), float(b.findtext("ymin")), float(b.findtext("xmax")), float(b.findtext("ymax")),
+                src_cls="defect")
+            for b in t.iter("bndbox")
+        ]
+        mask = masks / f"{xml.stem}.png"
+        if defective and not boxes and mask.exists():
+            m = np.asarray(Image.open(mask).convert("L"))
+            boxes = [Box(*b, src_cls="defect") for b in mask_boxes(m)]
+        if defective and not boxes:
+            continue  # defective but no box or mask: unusable
+        pattern = t.findtext("pattern_id") or "?"
+        num = int(xml.stem) if xml.stem.isdigit() else 0
+        yield ImageRecord("zju_leaper", img, w, h, boxes, group=f"zju:{pattern}:{num // ZJU_GROUP_SPAN}",
+                          defect_free=not defective)
+
+
+def read_raw_fabrid(root: Path) -> Iterator[ImageRecord]:
+    """RAW-FABRID (CC BY 4.0): high-res line-scan images (4 px/mm) with COCO boxes; images without a box
+    are defect-free. Captures of one roll are numbered in order: runs of 20 form one group."""
+    ann = next(root.rglob("RAW_FABRID_HighRes_COCO.json"))
+
+    def group_of(name: str) -> str:
+        m = re.match(r"(Rollo[^_]+)_(\d+)_", name)
+        return f"raw:{m.group(1)}:{int(m.group(2)) // 20}" if m else f"raw:{name}"
+
+    for r in read_coco("raw_fabrid", [ann], group_of, image_dir_of=lambda a: a.parent / "images"):
+        r.defect_free = not r.boxes
+        yield r
+
+
+def read_wfdd(root: Path) -> Iterator[ImageRecord]:
+    """WFDD (woven fabric defect detection; Kaggle mirror, licence not stated): <fabric>/test/<defect>/NNN.png
+    with masks in <fabric>/ground_truth/<defect>/NNN_mask.png; train/good and test/good are defect-free."""
+    base = next(root.rglob("ground_truth")).parent.parent  # .../WFDD
+    for fabric in sorted(p for p in base.iterdir() if p.is_dir()):
+        for img in sorted((fabric / "test").glob("*/*.png")):
+            defect = img.parent.name
+            if defect == "good":
+                continue
+            mask_path = fabric / "ground_truth" / defect / f"{img.stem}_mask.png"
+            if not mask_path.exists():
+                continue
+            boxes = [Box(*b, src_cls=defect) for b in mask_boxes(np.asarray(Image.open(mask_path).convert("L")))]
+            if not boxes:
+                continue
+            w, h = image_size(img)
+            num = int(img.stem) if img.stem.isdigit() else 0
+            yield ImageRecord("wfdd", img, w, h, boxes, group=f"wfdd:{fabric.name}:{defect}:{num // 5}")
+        for img in sorted(fabric.glob("*/good/*.png")):
+            w, h = image_size(img)
+            yield ImageRecord("wfdd", img, w, h, [], group=f"wfdd:{fabric.name}:good:{img.parent.parent.name}:{img.stem}",
+                              defect_free=True)
+
+
 READERS: dict[str, Callable[[Path], Iterator[ImageRecord]]] = {
     "aitex": read_aitex,
     "fabricspotdefect": read_fabricspotdefect,
@@ -227,4 +316,7 @@ READERS: dict[str, Callable[[Path], Iterator[ImageRecord]]] = {
     "fd_figshare": read_fd_figshare,
     "garment_defects": read_garment_defects,
     "tianchi": read_tianchi,
+    "zju_leaper": read_zju_leaper,
+    "raw_fabrid": read_raw_fabrid,
+    "wfdd": read_wfdd,
 }

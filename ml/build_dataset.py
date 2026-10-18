@@ -27,7 +27,7 @@ from PIL import Image  # noqa: E402
 
 from fabricdata import sources  # noqa: E402
 from fabricdata.classes import DEFECT_CLASSES, map_class  # noqa: E402
-from fabricdata.dedupe import dhash, merge_near_duplicates  # noqa: E402
+from fabricdata.dedupe import fingerprint, merge_near_duplicates  # noqa: E402
 from fabricdata.records import Box, ImageRecord  # noqa: E402
 from fabricdata.split import SPLITS, assign_splits  # noqa: E402
 from fabricdata.tiles import Window, clip, scaled, windows  # noqa: E402
@@ -39,7 +39,12 @@ LICENCE = {
     "fd_figshare": "CC BY 4.0",
     "garment_defects": "CC BY 4.0",
     "tianchi": "Tianchi 2019 Guangdong data via a Roboflow mirror (uploader: CC BY 4.0)",
+    "zju_leaper": "CC BY-NC-SA 4.0 (non-commercial)",
+    "raw_fabrid": "CC BY 4.0",
+    "wfdd": "WFDD (Kaggle mirror hodinhtrieu/the-woven-fabric-defect-detection-wfdd; licence not stated)",
 }
+NON_COMMERCIAL = {"zju_leaper"}
+"""Left out with --commercial-only (a model for a product that is sold)."""
 MAX_SIDE = {"fabricspotdefect": 1600, "moratuwa": 1280}
 """Phone photos are shrunk first (their defects are large); line-scan and loom images keep full size."""
 MIN_BOX_PX = 2.0
@@ -82,6 +87,27 @@ def load(external: Path, wanted: list[str], tianchi_images: Path | None) -> tupl
         records += found
         print(f"  {name}: {len(found)} images, {sum(len(r.boxes) for r in found)} boxes")
     return records, dropped
+
+
+def apply_caps(records: list[ImageRecord], caps: list[str], seed: int) -> list[ImageRecord]:
+    """``--cap zju_leaper:clean=8000`` keeps a fixed, hash-chosen sample of that source's defect-free (or
+    ``defect``) images, so one huge source cannot drown the others."""
+    limits = {}
+    for c in caps:
+        key, n = c.split("=")
+        source, kind = key.split(":")
+        assert kind in ("clean", "defect"), c
+        limits[(source, kind)] = int(n)
+    pools: dict[tuple[str, str], list[ImageRecord]] = defaultdict(list)
+    for r in records:
+        pools[(r.source, "clean" if r.defect_free else "defect")].append(r)
+    out = []
+    for key, pool in pools.items():
+        if key in limits and len(pool) > limits[key]:
+            pool = sorted(pool, key=lambda r: hashlib.sha1(f"{seed}:{r.key}".encode()).hexdigest())[: limits[key]]
+            print(f"  {key[0]} {key[1]}: kept {limits[key]} of {len(pools[key])}")
+        out += pool
+    return out
 
 
 def plan(records: list[ImageRecord], split_of: dict[str, str], tile: int, overlap: float) -> list[Tile]:
@@ -164,7 +190,12 @@ def summary(records: list[ImageRecord], split_of: dict[str, str], tiles: list[Ti
     per_source = defaultdict(lambda: Counter())
     for r in records:
         per_source[r.source][split_of[r.key]] += 1
+    src_classes: dict[str, Counter] = defaultdict(Counter)
+    for r in records:
+        src_classes[r.source].update(f"{b.src_cls}->{b.cls}" for b in r.boxes)
     return {
+        "source_classes": {k: dict(v.most_common()) for k, v in src_classes.items()},
+        "clean_images_per_source": dict(Counter(r.source for r in records if r.defect_free)),
         "images_per_source_split": {k: dict(v) for k, v in per_source.items()},
         "groups": len({r.group for r in records}),
         "tiles": dict(Counter(t.split for t in tiles)),
@@ -185,18 +216,21 @@ def main() -> None:
     ap.add_argument("--bg-ratio", type=float, default=0.5)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--cap", action="append", default=[], help="SOURCE:clean=N or SOURCE:defect=N")
+    ap.add_argument("--commercial-only", action="store_true", help="leave out non-commercial sources")
     args = ap.parse_args()
 
     print("reading sources")
-    records, dropped = load(args.external, args.sources, args.tianchi_images)
+    wanted = [s for s in args.sources if not (args.commercial_only and s in NON_COMMERCIAL)]
+    records, dropped = load(args.external, wanted, args.tianchi_images)
     present = [r for r in records if r.path.exists()]
     missing = len(records) - len(present)
     if missing:
         print(f"  {missing} images listed but not on disk (e.g. Tianchi images on Kaggle): left out")
-    records = present
+    records = apply_caps(present, args.cap, args.seed)
 
     print("grouping near-duplicates")
-    merges = merge_near_duplicates(records, [dhash(r.path) for r in records])
+    merges = merge_near_duplicates(records, [fingerprint(r.path) for r in records])
     print(f"  {merges} merges")
     split_of = assign_splits(records, seed=args.seed)
     tiles = keep_tiles(plan(records, split_of, args.tile, args.overlap), args.bg_ratio, args.seed)

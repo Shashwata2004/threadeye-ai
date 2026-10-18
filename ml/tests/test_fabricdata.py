@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fabricdata import sources  # noqa: E402
 from fabricdata.classes import DEFECT_CLASSES, SOURCE_CLASS_MAP, UnmappedClass, map_class  # noqa: E402
-from fabricdata.dedupe import dhash, merge_near_duplicates  # noqa: E402
+from fabricdata.dedupe import fingerprint, merge_near_duplicates  # noqa: E402
 from fabricdata.records import Box, ImageRecord  # noqa: E402
 from fabricdata.split import assign_splits  # noqa: E402
 from fabricdata.tiles import Window, clip, positions, windows  # noqa: E402
@@ -88,15 +88,22 @@ def test_split_keeps_groups_together_honours_forced_and_is_deterministic() -> No
     assert 220 <= counts["train"] <= 260 and counts["val"] >= 20 and counts["test"] >= 20
 
 
-def test_near_duplicates_share_a_group(tmp_path: Path) -> None:
+def test_copies_across_sources_share_a_group_but_lookalikes_within_a_source_do_not(tmp_path: Path) -> None:
     rng = np.random.default_rng(0)
-    base = (rng.random((64, 64)) * 255).astype(np.uint8)
-    paths = []
-    for name, img in [("a", base), ("b", np.clip(base.astype(int) + 3, 0, 255).astype(np.uint8)),
-                      ("c", (rng.random((64, 64)) * 255).astype(np.uint8))]:
+    base = (rng.random((64, 128)) * 255).astype(np.uint8)
+    files = {
+        "a": ("src1", base),
+        "b": ("src2", np.clip(base.astype(int) + 3, 0, 255).astype(np.uint8)),  # a re-upload of a
+        "c": ("src1", np.clip(base.astype(int) + 3, 0, 255).astype(np.uint8)),  # same look, same source
+        "d": ("src2", (rng.random((64, 128)) * 255).astype(np.uint8)),
+        "e": ("src2", np.asarray(Image.fromarray(base).resize((128, 128)))),  # different shape
+    }
+    recs = []
+    for name, (src, img) in files.items():
         p = tmp_path / f"{name}.png"
         Image.fromarray(img).save(p)
-        paths.append(p)
-    recs = [ImageRecord("s", p, 64, 64, [], group=p.stem) for p in paths]
-    merges = merge_near_duplicates(recs, [dhash(p) for p in paths])
-    assert merges == 1 and recs[0].group == recs[1].group != recs[2].group
+        recs.append(ImageRecord(src, p, img.shape[1], img.shape[0], [], group=name))
+    merge_near_duplicates(recs, [fingerprint(r.path) for r in recs])
+    g = {r.path.stem: r.group for r in recs}
+    assert g["a"] == g["b"] and g["c"] == g["a"]  # c joins through b (cross-source), not through a
+    assert g["d"] not in (g["a"],) and g["e"] != g["a"]

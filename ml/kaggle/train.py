@@ -1,0 +1,163 @@
+"""Kaggle step 3 (GPU): train a YOLOX detector on threadeye_v1, evaluate on test, export ONNX.
+
+Inputs: the build notebook's output (threadeye_v1/) and the private dataset "threadeye-ml-code" (params.json
+"train" block: model size, epochs, batch). YOLOX (Apache-2.0) is cloned at a pinned commit and run from
+source; training starts from its COCO weights.
+
+Rare classes are shown more often with repeat-factor sampling (LVIS): an image whose rarest class appears
+in a fraction f of train images is repeated max(1, sqrt(t / f)) times, t = 0.1.
+"""
+
+import hashlib
+import json
+import math
+import os
+import shutil
+import subprocess
+import sys
+import time
+from collections import Counter
+from pathlib import Path
+
+PARAMS = json.loads(next(Path("/kaggle/input").rglob("params.json")).read_text()).get("train", {})
+SIZE = PARAMS.get("model", "s")  # nano | tiny | s | m
+EPOCHS = int(PARAMS.get("epochs", 30))
+BATCH = int(PARAMS.get("batch", 16))
+MAX_TRAIN = PARAMS.get("max_train_images")  # a smoke test sets a small number
+YOLOX_COMMIT = PARAMS.get("yolox_commit", "main")
+DEPTH_WIDTH = {"nano": (0.33, 0.25), "tiny": (0.33, 0.375), "s": (0.33, 0.50), "m": (0.67, 0.75)}
+WEIGHTS = {
+    "nano": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.pth",
+    "tiny": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.pth",
+    "s": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.pth",
+    "m": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_m.pth",
+}
+
+DATA = next(Path("/kaggle/input").rglob("threadeye_v1/summary.json")).parent
+TMP = Path("/kaggle/tmp")
+YOLOX = TMP / "YOLOX"
+WORK = TMP / "data"
+OUT = Path("/kaggle/working/model")
+T0 = time.time()
+
+
+def sh(cmd: str, cwd: Path | None = None) -> None:
+    print(f"[{time.time() - T0:6.0f}s] + {cmd[:200]}", flush=True)
+    subprocess.run(cmd, shell=True, check=True, cwd=cwd)
+
+
+def repeat_factor_sampling(coco: dict, t: float = 0.1) -> dict:
+    imgs = coco["images"]
+    cats_of: dict[int, set[int]] = {}
+    for a in coco["annotations"]:
+        cats_of.setdefault(a["image_id"], set()).add(a["category_id"])
+    n = len(imgs)
+    freq = Counter(c for cs in cats_of.values() for c in cs)
+    anns_of: dict[int, list[dict]] = {}
+    for a in coco["annotations"]:
+        anns_of.setdefault(a["image_id"], []).append(a)
+    out_imgs, out_anns, next_img, next_ann = [], [], 1, 1
+    repeats = Counter()
+    for im in imgs:
+        cs = cats_of.get(im["id"], set())
+        r = max([1.0] + [math.sqrt(t / (freq[c] / n)) for c in cs])
+        u = int(hashlib.sha1(im["file_name"].encode()).hexdigest()[:6], 16) / 0xFFFFFF  # fixed per file
+        k = int(r) + (1 if u < r - int(r) else 0)
+        repeats[k] += 1
+        for _ in range(max(k, 1)):
+            out_imgs.append({**im, "id": next_img})
+            for a in anns_of.get(im["id"], []):
+                out_anns.append({**a, "id": next_ann, "image_id": next_img})
+                next_ann += 1
+            next_img += 1
+    print("repeat factors:", dict(sorted(repeats.items())), "train images", n, "->", len(out_imgs))
+    return {**coco, "images": out_imgs, "annotations": out_anns}
+
+
+# ------------------------------------------------------------------------------------------- setup
+sh(f"git clone -q https://github.com/Megvii-BaseDetection/YOLOX.git {YOLOX}")
+sh(f"git checkout -q {YOLOX_COMMIT}", cwd=YOLOX)
+commit = subprocess.run("git rev-parse HEAD", shell=True, cwd=YOLOX, capture_output=True, text=True).stdout.strip()
+print("YOLOX commit", commit)
+sh(f"{sys.executable} -m pip -q install loguru tabulate pycocotools thop ninja onnx onnxruntime")
+weights = TMP / f"yolox_{SIZE}.pth"
+sh(f"curl -sSL -o {weights} {WEIGHTS[SIZE]}")
+
+(WORK / "annotations").mkdir(parents=True, exist_ok=True)
+for split in ("train", "val", "test"):
+    (WORK / split).symlink_to(DATA / split / "images") if not (WORK / split).exists() else None
+train = json.loads((DATA / "train/annotations.json").read_text())
+if MAX_TRAIN:
+    keep = {im["id"] for im in train["images"][: int(MAX_TRAIN)]}
+    train = {**train, "images": [im for im in train["images"] if im["id"] in keep],
+             "annotations": [a for a in train["annotations"] if a["image_id"] in keep]}
+(WORK / "annotations/train.json").write_text(json.dumps(repeat_factor_sampling(train)))
+for split in ("val", "test"):
+    shutil.copy(DATA / split / "annotations.json", WORK / f"annotations/{split}.json")
+num_classes = len(train["categories"])
+class_names = [c["name"] for c in sorted(train["categories"], key=lambda c: c["id"])]
+
+depth, width = DEPTH_WIDTH[SIZE]
+exp = TMP / "threadeye_exp.py"
+exp.write_text(f'''
+import os
+from yolox.exp import Exp as MyExp
+
+
+class Exp(MyExp):
+    def __init__(self):
+        super().__init__()
+        self.depth, self.width = {depth}, {width}
+        self.num_classes = {num_classes}
+        self.data_dir = "{WORK}"
+        self.train_ann, self.val_ann, self.test_ann = "train.json", "val.json", "test.json"
+        self.input_size = self.test_size = (640, 640)
+        self.max_epoch = {EPOCHS}
+        self.no_aug_epochs = max(1, {EPOCHS} // 10)
+        self.eval_interval = max(1, {EPOCHS} // 10)
+        self.data_num_workers = 4
+        self.exp_name = "threadeye_{SIZE}"
+        # Fabric: flips and 90° turns are natural (defects have no up/down); colour jitter for dyed fabric.
+        self.flip_prob = 0.5
+        self.degrees = 5.0
+        self.mosaic_prob = 1.0
+        self.mixup_prob = 0.5 if "{SIZE}" in ("s", "m") else 0.0
+        self.enable_mixup = "{SIZE}" in ("s", "m")
+
+    def get_dataset(self, cache=False, cache_type="ram"):
+        from yolox.data import COCODataset, TrainTransform
+        return COCODataset(data_dir=self.data_dir, json_file=self.train_ann, name="train",
+                           img_size=self.input_size,
+                           preproc=TrainTransform(max_labels=100, flip_prob=self.flip_prob, hsv_prob=self.hsv_prob))
+
+    def get_eval_dataset(self, **kwargs):
+        # YOLOX's --test mode writes a submission file without scoring it; THREADEYE_EVAL_SPLIT=test scores
+        # the test split through the normal evaluation instead.
+        from yolox.data import COCODataset, ValTransform
+        split = os.environ.get("THREADEYE_EVAL_SPLIT", "val")
+        return COCODataset(data_dir=self.data_dir, json_file=f"{{split}}.json", name=split, img_size=self.test_size,
+                           preproc=ValTransform(legacy=kwargs.get("legacy", False)))
+''')
+
+# ------------------------------------------------------------------------------------------- train
+env = f"PYTHONPATH={YOLOX}:$PYTHONPATH"
+sh(f"{env} {sys.executable} tools/train.py -f {exp} -d 1 -b {BATCH} --fp16 -o -c {weights}", cwd=YOLOX)
+run_dir = YOLOX / "YOLOX_outputs" / f"threadeye_{SIZE}"
+best = run_dir / "best_ckpt.pth"
+
+# ------------------------------------------------------------------------------------------- test
+sh(f"THREADEYE_EVAL_SPLIT=test {env} {sys.executable} tools/eval.py -f {exp} -c {best} -b {BATCH} -d 1 --conf 0.001 --fp16 "
+   f"2>&1 | tee {TMP / 'test_eval.txt'}", cwd=YOLOX)
+sh(f"{env} {sys.executable} tools/export_onnx.py -f {exp} -c {best} --output-name {TMP / f'threadeye_{SIZE}.onnx'}",
+   cwd=YOLOX)
+
+OUT.mkdir(parents=True, exist_ok=True)
+for f in (best, TMP / f"threadeye_{SIZE}.onnx", TMP / "test_eval.txt", run_dir / "train_log.txt"):
+    if f.exists():
+        shutil.copy(f, OUT / f.name)
+(OUT / "model_info.json").write_text(json.dumps({
+    "framework": "YOLOX (Apache-2.0)", "yolox_commit": commit, "size": SIZE, "epochs": EPOCHS, "batch": BATCH,
+    "input": [640, 640], "classes": class_names, "dataset_summary": json.loads((DATA / "summary.json").read_text()),
+    "minutes": round((time.time() - T0) / 60, 1),
+}, indent=1))
+print(f"done in {(time.time() - T0) / 60:.1f} min")
