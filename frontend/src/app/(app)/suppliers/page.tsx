@@ -18,7 +18,7 @@ import {
   useBi,
 } from "@/components/screenKit";
 
-// Sample scorecards (fictional mills) until the M5 scorecard endpoint exists.
+// Supplier scorecards: no data yet (the M5 scorecard endpoint fills MILLS).
 const FAIL_LIMIT = 40;
 const MONTHS = [
   { en: "May", bn: "মে" },
@@ -55,72 +55,9 @@ interface Mill {
   deliveries: Delivery[];
 }
 
-const MILLS: Mill[] = [
-  {
-    id: "mill-a",
-    name: "Sample Mill A (Shaoxing)",
-    acceptance: 0.789,
-    avgPts: 26.8,
-    claims: 3,
-    claimUsd: 10200,
-    shortage: 0.016,
-    trend: [22.4, 25.1, 31.6, 43.2, 28.9, 26.8],
-    mix: [
-      { en: "Shade variation", bn: "রঙের তারতম্য", share: 45 },
-      { en: "Oil stains", bn: "তেলের দাগ", share: 25 },
-      { en: "Broken yarn", bn: "ছেঁড়া সুতা", share: 20 },
-      { en: "Holes", bn: "ছিদ্র", share: 10 },
-    ],
-    deliveries: [
-      { challan: "CH-2026-1004", received: "2026-10-12", fabric: "Cotton twill 3/1", pass: 7, review: 2, fail: 1, avgPts: 24.6, shortageYd: 14.5, status: "review" },
-      { challan: "CH-2026-0988", received: "2026-09-28", fabric: "Poplin 40s", pass: 9, review: 1, fail: 0, avgPts: 18.2, shortageYd: 12.0, status: "accepted", claimUsd: 1200 },
-      { challan: "CH-2026-0941", received: "2026-08-19", fabric: "Cotton twill 3/1", pass: 4, review: 2, fail: 4, avgPts: 43.2, shortageYd: 22.8, status: "rejected", claimUsd: 6400 },
-      { challan: "CH-2026-0903", received: "2026-07-30", fabric: "Canvas 10 oz", pass: 6, review: 2, fail: 2, avgPts: 31.6, shortageYd: 9.4, status: "rejected", claimUsd: 2600 },
-    ],
-  },
-  {
-    id: "pacific",
-    name: "Pacific Denim Mills",
-    acceptance: 0.861,
-    avgPts: 19.7,
-    claims: 2,
-    claimUsd: 6100,
-    shortage: 0.011,
-    trend: [18.1, 20.4, 22.9, 19.5, 17.8, 19.7],
-    mix: [
-      { en: "Shade variation", bn: "রঙের তারতম্য", share: 38 },
-      { en: "Slubs", bn: "স্লাব", share: 27 },
-      { en: "Broken yarn", bn: "ছেঁড়া সুতা", share: 21 },
-      { en: "Oil stains", bn: "তেলের দাগ", share: 14 },
-    ],
-    deliveries: [
-      { challan: "CH-2026-1011", received: "2026-10-14", fabric: "Denim 12 oz", pass: 11, review: 1, fail: 0, avgPts: 16.9, shortageYd: 2.1, status: "accepted" },
-      { challan: "CH-2026-0972", received: "2026-09-21", fabric: "Stretch denim 10 oz", pass: 8, review: 2, fail: 2, avgPts: 27.3, shortageYd: 11.0, status: "rejected", claimUsd: 4200 },
-      { challan: "CH-2026-0930", received: "2026-08-09", fabric: "Denim 12 oz", pass: 10, review: 1, fail: 1, avgPts: 22.9, shortageYd: 8.2, status: "rejected", claimUsd: 1900 },
-    ],
-  },
-  {
-    id: "bengal",
-    name: "Bengal Knit Fabrics",
-    acceptance: 0.912,
-    avgPts: 15.9,
-    claims: 1,
-    claimUsd: 2100,
-    shortage: 0.008,
-    trend: [17.2, 16.4, 14.8, 15.1, 16.6, 15.9],
-    mix: [
-      { en: "Holes", bn: "ছিদ্র", share: 41 },
-      { en: "Needle lines", bn: "সুইয়ের দাগ", share: 29 },
-      { en: "Oil stains", bn: "তেলের দাগ", share: 18 },
-      { en: "Shade variation", bn: "রঙের তারতম্য", share: 12 },
-    ],
-    deliveries: [
-      { challan: "CH-2026-1009", received: "2026-10-10", fabric: "Single jersey 160 gsm", pass: 14, review: 1, fail: 0, avgPts: 14.2, shortageYd: 0.0, status: "accepted" },
-      { challan: "CH-2026-0961", received: "2026-09-15", fabric: "Pique 220 gsm", pass: 12, review: 2, fail: 1, avgPts: 19.8, shortageYd: 6.5, status: "rejected", claimUsd: 2100 },
-      { challan: "CH-2026-0919", received: "2026-08-02", fabric: "Rib 1x1", pass: 13, review: 1, fail: 0, avgPts: 15.1, shortageYd: 1.2, status: "accepted" },
-    ],
-  },
-];
+// Filled from the scorecard endpoint (M5): one entry per mill, computed from its inspected deliveries.
+const MILLS: Mill[] = [];
+const NONE = "—";
 
 const MIX_COLORS = ["bg-brand-navy", "bg-brand-teal", "bg-amber-500", "bg-red-500"];
 
@@ -137,16 +74,18 @@ export default function SuppliersPage() {
   const selected = MILLS.find((m) => m.id === millId);
   const view = useMemo(() => {
     if (selected) return selected;
-    // All mills: roll-weighted where it matters, plain average for the trend.
+    if (!MILLS.length) return null;
+    // All mills: weighted by inspected rolls.
     const rolls = (m: Mill) => m.deliveries.reduce((s, d) => s + d.pass + d.review + d.fail, 0);
-    const total = MILLS.reduce((s, m) => s + rolls(m), 0);
+    const total = MILLS.reduce((s, m) => s + rolls(m), 0) || 1;
+    const weighted = (f: (m: Mill) => number) => MILLS.reduce((s, m) => s + f(m) * rolls(m), 0) / total;
     return {
-      acceptance: 0.846,
-      avgPts: 21.4,
+      acceptance: weighted((m) => m.acceptance),
+      avgPts: weighted((m) => m.avgPts),
       claims: MILLS.reduce((s, m) => s + m.claims, 0),
       claimUsd: MILLS.reduce((s, m) => s + m.claimUsd, 0),
-      shortage: 0.012,
-      trend: MONTHS.map((_, i) => MILLS.reduce((s, m) => s + m.trend[i] * rolls(m), 0) / total),
+      shortage: weighted((m) => m.shortage),
+      trend: MONTHS.map((_, i) => weighted((m) => m.trend[i])),
       mix: null,
     };
   }, [selected]);
@@ -171,7 +110,7 @@ export default function SuppliersPage() {
 
   return (
     <div className={`${screenRoot} space-y-5`}>
-      <PageHeader title={t("nav.suppliers")} subtitle={t("placeholder.suppliers")} />
+      <PageHeader title={t("nav.suppliers")} subtitle={t("placeholder.suppliers")} sample={false} />
 
       <Card className="flex flex-wrap items-end gap-3">
         <label className="min-w-56 flex-1 text-sm">
@@ -200,25 +139,25 @@ export default function SuppliersPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label={bi("Mill acceptance rate", "মিলের গ্রহণযোগ্যতার হার")}
-          value={pct(view.acceptance)}
+          value={view ? pct(view.acceptance) : NONE}
           sub={bi("Rolls accepted", "গৃহীত রোল")}
-          tone={view.acceptance >= 0.85 ? "emerald" : "amber"}
+          tone={view && view.acceptance < 0.85 ? "amber" : "emerald"}
         />
         <KpiCard
           label={bi("Avg points / 100 sq yd", "গড় পয়েন্ট / ১০০ বর্গগজ")}
-          value={<span className="font-mono">{view.avgPts.toFixed(1)}</span>}
+          value={<span className="font-mono">{view ? view.avgPts.toFixed(1) : NONE}</span>}
           sub={bi(`Fail limit ${FAIL_LIMIT} pts`, `ফেল সীমা ${FAIL_LIMIT} পয়েন্ট`)}
-          tone={view.avgPts >= FAIL_LIMIT ? "red" : "navy"}
+          tone={view && view.avgPts >= FAIL_LIMIT ? "red" : "navy"}
         />
         <KpiCard
           label={bi("Defect claims raised", "উত্থাপিত ক্লেইম")}
-          value={`$${view.claimUsd.toLocaleString("en-US")}`}
-          sub={bi(`Across ${view.claims} claims`, `${view.claims}টি ক্লেইমে`)}
+          value={view ? `$${view.claimUsd.toLocaleString("en-US")}` : NONE}
+          sub={view ? bi(`Across ${view.claims} claims`, `${view.claims}টি ক্লেইমে`) : bi("No claims yet", "এখনো কোনো ক্লেইম নেই")}
           tone="red"
         />
         <KpiCard
           label={bi("Avg yardage shortage", "গড় গজ ঘাটতি")}
-          value={pct(view.shortage)}
+          value={view ? pct(view.shortage) : NONE}
           sub={bi("Declared vs measured", "ঘোষিত বনাম মাপা")}
           tone="amber"
         />
@@ -239,18 +178,23 @@ export default function SuppliersPage() {
               </span>
             </div>
             <div className="flex h-full items-end justify-around gap-2">
-              {view.trend.map((v, i) => (
-                <div key={MONTHS[i].en} className="flex h-full w-full max-w-12 flex-col items-center justify-end">
-                  <span className="mb-1 font-mono text-xs text-slate-600">{v.toFixed(1)}</span>
-                  <div
-                    className={`w-full rounded-t transition-all duration-500 ${
-                      v >= FAIL_LIMIT ? "bg-red-500" : v >= 28 ? "bg-amber-500" : "bg-emerald-500"
-                    }`}
-                    style={{ height: `${(Math.min(v, chartMax) / chartMax) * 100}%` }}
-                    title={`${bi(MONTHS[i].en, MONTHS[i].bn)}: ${v.toFixed(1)}`}
-                  />
-                </div>
-              ))}
+              {MONTHS.map((month, i) => {
+                const v = view ? view.trend[i] : null;
+                return (
+                  <div key={month.en} className="flex h-full w-full max-w-12 flex-col items-center justify-end">
+                    <span className="mb-1 font-mono text-xs text-slate-600">{v !== null ? v.toFixed(1) : NONE}</span>
+                    {v !== null && (
+                      <div
+                        className={`w-full rounded-t transition-all duration-500 ${
+                          v >= FAIL_LIMIT ? "bg-red-500" : v >= 28 ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
+                        style={{ height: `${(Math.min(v, chartMax) / chartMax) * 100}%` }}
+                        title={`${bi(month.en, month.bn)}: ${v.toFixed(1)}`}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
           <div className="mt-1 flex justify-around pl-1 text-xs text-slate-500">
@@ -266,7 +210,7 @@ export default function SuppliersPage() {
           <CardTitle hint={bi("Where this mill's defect points come from.", "এই মিলের ত্রুটি কোথা থেকে আসে।")}>
             {bi("Defect mix", "ত্রুটির ধরন")}
           </CardTitle>
-          {view.mix ? (
+          {view?.mix ? (
             <>
               <div className="flex h-7 overflow-hidden rounded">
                 {view.mix.map((x, i) => (
@@ -283,6 +227,10 @@ export default function SuppliersPage() {
                 ))}
               </ul>
             </>
+          ) : !MILLS.length ? (
+            <p className="text-sm text-slate-500">
+              {bi("No inspected deliveries yet: the mix appears once rolls from a mill are inspected.", "এখনো কোনো চালান পরিদর্শন হয়নি: কোনো মিলের রোল পরিদর্শন হলে এখানে দেখাবে।")}
+            </p>
           ) : (
             <ul className="space-y-3">
               {MILLS.map((m) => (
@@ -313,7 +261,11 @@ export default function SuppliersPage() {
           </div>
         )}
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-500">{bi("No deliveries match your search.", "আপনার খোঁজের সাথে কোনো চালান মেলেনি।")}</p>
+          <p className="text-sm text-slate-500">
+            {MILLS.length
+              ? bi("No deliveries match your search.", "আপনার খোঁজের সাথে কোনো চালান মেলেনি।")
+              : bi("No deliveries yet.", "এখনো কোনো চালান নেই।")}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">

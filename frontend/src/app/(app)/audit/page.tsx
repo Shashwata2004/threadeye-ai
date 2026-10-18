@@ -10,63 +10,7 @@ import { Card, PageHeader, Pill, ViewOnlyNote, inputCls, primaryBtn, screenRoot,
 
 type Row = AuditEntry & { actor_name?: string };
 
-// Roles without audit.read see a sample chain instead of the live one (the API would refuse them).
-const SAMPLE_TOTAL = 286;
-const SAMPLE_SPEC: [string, string, string, string, string, Record<string, unknown> | null, Record<string, unknown> | null][] = [
-  ["auth.login", "admin", "Demo Admin", "user", "u-admin", null, { ip: "10.0.4.12" }],
-  ["challan.new", "store_incharge", "Rahim Store", "lot", "CH-2026-1011", null, { mill: "Pacific Denim Mills", rolls: 12 }],
-  ["inspection.start", "inspector", "Floor Inspector", "roll", "TE-000001", null, { machine: "SI-01", status: "running" }],
-  ["defect.confirm", "inspector", "Floor Inspector", "roll", "TE-000001", { status: "pending" }, { status: "confirmed", class: "slub", points: 1 }],
-  ["defect.confirm", "inspector", "Floor Inspector", "roll", "TE-000001", { status: "pending" }, { status: "rejected", reason: "sticker" }],
-  ["inspection.pause", "inspector", "Floor Inspector", "roll", "TE-000001", { status: "running" }, { status: "paused", at_yd: 11.37 }],
-  ["auth.login", "qc_supervisor", "QC Supervisor", "user", "u-qc", null, { ip: "10.0.4.20" }],
-  ["inspection.approve", "qc_supervisor", "QC Supervisor", "roll", "TE-000002", { verdict: null }, { verdict: "pass", points_per_100: 18.4 }],
-  ["verdict.override", "qc_supervisor", "QC Supervisor", "roll", "TE-000003", { verdict: "fail", points_per_100: 41.2 }, { verdict: "borderline", note: "Shade within buyer tolerance" }],
-  ["defect.confirm", "qc_supervisor", "QC Supervisor", "roll", "TE-000004", { class: "stain" }, { class: "oil_stain", points: 2 }],
-  ["challan.new", "store_incharge", "Rahim Store", "lot", "CH-2026-1012", null, { mill: "Bengal Knit Fabrics", rolls: 15 }],
-  ["inspection.approve", "qc_supervisor", "QC Supervisor", "roll", "TE-000004", { verdict: null }, { verdict: "fail", points_per_100: 46.0 }],
-  ["system.backup", "system", "System", "database", "nightly", null, { ok: true, size_mb: 182 }],
-  ["auth.login", "inspector", "Floor Inspector", "user", "u-insp", null, { ip: "10.0.4.31" }],
-  ["inspection.start", "inspector", "Floor Inspector", "roll", "TE-000005", null, { machine: "SI-02", status: "running" }],
-  ["defect.confirm", "inspector", "Floor Inspector", "roll", "TE-000005", { status: "pending" }, { status: "confirmed", class: "hole", points: 4 }],
-  ["inspection.approve", "qc_supervisor", "QC Supervisor", "roll", "TE-000005", { verdict: null }, { verdict: "pass", points_per_100: 12.9 }],
-  ["user.update", "admin", "Demo Admin", "user", "u-cut", { role: "inspector" }, { role: "cutting_master" }],
-  ["auth.login", "admin", "Demo Admin", "user", "u-admin", null, { ip: "10.0.4.12" }],
-  ["challan.new", "store_incharge", "Rahim Store", "lot", "CH-2026-1013", null, { mill: "Sample Mill A (Shaoxing)", rolls: 10 }],
-  ["inspection.start", "inspector", "Floor Inspector", "roll", "TE-000006", null, { machine: "SI-01", status: "running" }],
-  ["defect.confirm", "inspector", "Floor Inspector", "roll", "TE-000006", { status: "pending" }, { status: "confirmed", class: "crease_mark", points: 2 }],
-  ["verdict.override", "admin", "Demo Admin", "roll", "TE-000006", { verdict: "borderline" }, { verdict: "pass", note: "Re-measured width" }],
-  ["auth.login", "qc_supervisor", "QC Supervisor", "user", "u-qc", null, { ip: "10.0.4.20" }],
-];
-
-function fakeHash(seed: string): string {
-  let out = "";
-  let h = 0x811c9dc5;
-  for (let round = 0; out.length < 64; round++) {
-    for (const c of `${seed}#${round}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-    out += (h >>> 0).toString(16).padStart(8, "0");
-  }
-  return out.slice(0, 64);
-}
-
-function sampleRows(): Row[] {
-  const start = new Date("2026-10-16T08:05:00").getTime();
-  const firstId = SAMPLE_TOTAL - SAMPLE_SPEC.length + 1;
-  return SAMPLE_SPEC.map(([action, role, name, type, entity, before, after], i) => ({
-    id: firstId + i,
-    at: new Date(start + i * 23 * 60_000).toISOString(),
-    actor_user_id: role === "system" ? null : `u-${role}`,
-    actor_role: role,
-    actor_name: name,
-    action,
-    entity_type: type,
-    entity_id: entity,
-    before,
-    after,
-    ip: role === "system" ? null : "10.0.4.12",
-    hash: fakeHash(`${firstId + i}${action}${entity}`),
-  })).reverse();
-}
+// Roles without audit.read see no entries: the API refuses them the ledger.
 
 const ROLE_TONE: Record<string, "navy" | "teal" | "amber" | "slate" | "emerald"> = {
   admin: "navy",
@@ -114,8 +58,8 @@ export default function AuditPage() {
     return m;
   }, [users, me]);
 
-  const rows: Row[] = useMemo(() => (live ? (liveRows ?? []) : sampleRows()), [live, liveRows]);
-  const total = live ? rows.length : SAMPLE_TOTAL;
+  const rows: Row[] = useMemo(() => (live ? (liveRows ?? []) : []), [live, liveRows]);
+  const total = rows.length;
 
   const [roleFilter, setRoleFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
@@ -171,7 +115,14 @@ export default function AuditPage() {
         );
       } else {
         await minWait;
-        setVerify({ phase: "done", ok: true, checked: SAMPLE_TOTAL, total: SAMPLE_TOTAL, at: new Date() });
+        setVerify({
+          phase: "done",
+          ok: false,
+          checked: 0,
+          total: 0,
+          at: new Date(),
+          reason: bi("Your role cannot read the ledger, so it cannot be verified here.", "আপনার ভূমিকায় লেজার দেখা যায় না, তাই এখানে যাচাই করা যাবে না।"),
+        });
       }
     } finally {
       window.clearInterval(ticker);
@@ -185,13 +136,13 @@ export default function AuditPage() {
 
   return (
     <div className={`${screenRoot} space-y-4`}>
-      <PageHeader title={t("title")} subtitle={t("subtitle")} sample={!live} />
+      <PageHeader title={t("title")} subtitle={t("subtitle")} sample={false} />
 
       {!live && (
         <ViewOnlyNote>
           {bi(
-            "Your role cannot read the live ledger, so this is a sample chain showing how it works.",
-            "আপনার ভূমিকায় আসল লেজার দেখা যায় না, তাই এটি কীভাবে কাজ করে তা দেখাতে একটি নমুনা চেইন।",
+            "Your role cannot read the change ledger. Ask an admin or management user.",
+            "আপনার ভূমিকায় পরিবর্তনের খাতা দেখা যায় না। অ্যাডমিন বা ম্যানেজমেন্টকে বলুন।",
           )}
         </ViewOnlyNote>
       )}

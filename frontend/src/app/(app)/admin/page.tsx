@@ -18,7 +18,7 @@ import {
   useBi,
 } from "@/components/screenKit";
 
-// Sample settings until the M4 admin endpoints are wired here. Changes stay in this browser tab.
+// Plant settings: no data yet (the M4 admin endpoints fill the lists below). Edits stay in this tab.
 type TabId = "users" | "machines" | "profiles" | "detectors";
 
 interface UserRow {
@@ -31,20 +31,24 @@ interface UserRow {
   active: boolean;
 }
 
-const USERS: UserRow[] = [
-  { name: "Demo Admin", username: "admin", role: "admin", shift: "General", lang: "en", digits: "latin", active: true },
-  { name: "QC Supervisor", username: "qc", role: "qc_supervisor", shift: "A", lang: "en", digits: "latin", active: true },
-  { name: "Floor Inspector", username: "inspector", role: "inspector", shift: "A", lang: "bn", digits: "bangla", active: true },
-  { name: "Merchandiser", username: "merch", role: "merchandiser", shift: "General", lang: "en", digits: "latin", active: true },
-  { name: "Cutting Master", username: "cutting", role: "cutting_master", shift: "B", lang: "bn", digits: "bangla", active: true },
-];
+// Filled from the users endpoint (M4).
+const USERS: UserRow[] = [];
 
 const ROLES: Role[] = ["inspector", "qc_supervisor", "store_incharge", "cutting_master", "merchandiser", "management", "admin"];
 
-const MACHINES = [
-  { code: "SI-01", nameEn: "Inspection Machine 1", nameBn: "ইন্সপেকশন মেশিন ১", pxPerCm: 37.8, viewPx: 1920, source: "sample_roll (simulated video)", calibrated: "2026-10-14", status: "online" as const },
-  { code: "SI-02", nameEn: "Inspection Machine 2", nameBn: "ইন্সপেকশন মেশিন ২", pxPerCm: 36.9, viewPx: 1920, source: "USB camera /dev/video0", calibrated: "2026-09-30", status: "calibration_due" as const },
-];
+interface MachineRow {
+  code: string;
+  nameEn: string;
+  nameBn: string;
+  pxPerCm: number;
+  viewPx: number;
+  source: string;
+  calibrated: string;
+  status: "online" | "calibration_due";
+}
+
+// Filled from the machines endpoint (M4).
+const MACHINES: MachineRow[] = [];
 
 interface Profile {
   id: string;
@@ -58,32 +62,12 @@ interface Profile {
   failPts: number;
 }
 
+// The system's default 4-point rules (backend default rule profile); buyer profiles come from the
+// rule-profiles endpoint (M4) and are added to this list.
 const PROFILES: Profile[] = [
   {
-    id: "hm",
-    name: "H&M Standard 4-Point v1",
-    buyerEn: "Sample Buyer (fictional brand)",
-    buyerBn: "নমুনা বায়ার (কাল্পনিক ব্র্যান্ড)",
-    lengthBands: [[3, 1], [6, 2], [9, 3], [Infinity, 4]],
-    holeBands: [[1, 2], [Infinity, 4]],
-    continuousIn: 36,
-    selvageIn: 1.0,
-    failPts: 40,
-  },
-  {
-    id: "zara",
-    name: "Zara Strict Twills",
-    buyerEn: "Sample Buyer B (fictional brand)",
-    buyerBn: "নমুনা বায়ার বি (কাল্পনিক ব্র্যান্ড)",
-    lengthBands: [[3, 1], [6, 2], [9, 3], [Infinity, 4]],
-    holeBands: [[1, 2], [Infinity, 4]],
-    continuousIn: 24,
-    selvageIn: 0.5,
-    failPts: 28,
-  },
-  {
     id: "default",
-    name: "Default Parity Profile",
+    name: "Default 4-point profile",
     buyerEn: "Any buyer without its own profile",
     buyerBn: "নিজস্ব প্রোফাইল নেই এমন যেকোনো বায়ার",
     lengthBands: [[3, 1], [6, 2], [9, 3], [Infinity, 4]],
@@ -101,7 +85,7 @@ const DETECTORS = [
     descEn: "Replays the answer key with realistic mistakes. Used for demos and the benchmark.",
     descBn: "বাস্তবসম্মত ভুলসহ উত্তর-চাবি চালায়। ডেমো ও বেঞ্চমার্কে ব্যবহৃত।",
     state: "active" as const,
-    details: [["Mode", "realistic"], ["Seed", "42"], ["Latency", "~40 ms / frame"]],
+    details: [["Mode", "—"], ["Seed", "—"], ["Latency", "—"]],
   },
   {
     nameEn: "Local Model (ONNX, CPU)",
@@ -109,7 +93,7 @@ const DETECTORS = [
     descEn: "Runs on the factory edge box with no internet. Model file not installed on this server.",
     descBn: "ইন্টারনেট ছাড়া ফ্যাক্টরির এজ বক্সে চলে। এই সার্ভারে মডেল ফাইল নেই।",
     state: "ready" as const,
-    details: [["Runtime", "onnxruntime 1.x"], ["Device", "CPU"], ["Model", "—"]],
+    details: [["Runtime", "—"], ["Device", "CPU"], ["Model", "—"]],
   },
   {
     nameEn: "External API",
@@ -153,7 +137,7 @@ export default function AdminPage() {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<UserRow>({ name: "", username: "", role: "inspector", shift: "A", lang: "bn", digits: "bangla", active: true });
 
-  const [profileId, setProfileId] = useState("hm");
+  const [profileId, setProfileId] = useState("default");
   const profile = PROFILES.find((p) => p.id === profileId) ?? PROFILES[0];
   const [defects, setDefects] = useState<TestDefect[]>([
     { kind: "length", inches: 2.5, selvage: false },
@@ -184,7 +168,7 @@ export default function AdminPage() {
 
   return (
     <div className={`${screenRoot} space-y-4`}>
-      <PageHeader title={t("nav.admin")} subtitle={t("placeholder.admin")} />
+      <PageHeader title={t("nav.admin")} subtitle={t("placeholder.admin")} sample={false} />
 
       {!canManage && (
         <ViewOnlyNote>
@@ -285,6 +269,13 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
+                {!users.length && (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-4 text-center text-sm text-slate-500">
+                      {bi("No accounts loaded yet.", "এখনো কোনো অ্যাকাউন্ট লোড হয়নি।")}
+                    </td>
+                  </tr>
+                )}
                 {users.map((u, i) => (
                   <tr key={u.username} className="border-t border-slate-100">
                     <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{u.name}</td>
@@ -316,6 +307,11 @@ export default function AdminPage() {
 
       {tab === "machines" && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {!MACHINES.length && (
+            <Card>
+              <p className="text-sm text-slate-500">{bi("No machines loaded yet.", "এখনো কোনো মেশিন লোড হয়নি।")}</p>
+            </Card>
+          )}
           {MACHINES.map((m) => (
             <Card key={m.code}>
               <div className="mb-3 flex items-start justify-between gap-2">
