@@ -174,14 +174,18 @@ start = f"-c {weights}"
 
 
 def db_url() -> str | None:
-    """The ThreadEye database (Supabase) from the Kaggle secret THREADEYE_DATABASE_URL, or None."""
+    """The ThreadEye database (Supabase): the Kaggle secret THREADEYE_DATABASE_URL, or, because Kaggle's secret
+    service does not answer runs pushed with the CLI, the file threadeye_db_url.txt in the private code dataset
+    (never in git). None: no copies."""
     try:
         from kaggle_secrets import UserSecretsClient
 
-        return UserSecretsClient().get_secret("THREADEYE_DATABASE_URL").replace("postgresql+psycopg://", "postgresql://")
+        url = UserSecretsClient().get_secret("THREADEYE_DATABASE_URL")
     except Exception as exc:  # noqa: BLE001
-        print(f"no THREADEYE_DATABASE_URL secret ({exc!r:.120})", flush=True)
-        return None
+        found = next(Path("/kaggle/input").rglob("threadeye_db_url.txt"), None)
+        url = found.read_text().strip() if found else ""
+        print(f"database URL from {'the code dataset' if url else 'nowhere'} (secret: {exc!r:.80})", flush=True)
+    return url.replace("postgresql+psycopg://", "postgresql://") or None
 
 
 DB_URL = db_url()
