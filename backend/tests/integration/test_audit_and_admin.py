@@ -90,7 +90,10 @@ def test_system_status_reports_worker_and_simulated_provider(client: TestClient)
 
     providers = {p["provider_id"]: p for p in client.get("/api/v1/providers").json()}
     assert providers["simulated"]["active"] is True and providers["simulated"]["is_simulated"] is True
-    assert providers["local_model"]["availability"] == "stub"
+    # The trained model can be chosen (THREADEYE_DETECTOR_PROVIDER=local_model) but is not the active one here.
+    assert providers["local_model"]["availability"] == "available" and providers["local_model"]["active"] is False
+    assert providers["local_model"]["is_simulated"] is False
+    assert providers["api"]["availability"] == "stub"
 
 
 def test_migrations_match_models(migrated_db: str) -> None:
