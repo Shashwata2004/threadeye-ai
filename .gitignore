@@ -32,6 +32,7 @@ data/generated/
 data/ci_roll/
 data/external/
 data/model/
+data/training_checkpoints/
 backend/out/
 build/
 .vercel/

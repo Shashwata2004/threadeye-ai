@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from collections import Counter
 from pathlib import Path
@@ -193,6 +194,58 @@ def note(line: str) -> None:
     (RUNS / "RUN_STATUS.txt").write_text("\n".join(status) + "\n")
 
 
+# A copy of every new checkpoint goes to the ThreadEye database (Supabase) while training runs: if the session
+# then hangs or is killed (Kaggle saves no output for those), the model trained so far is still there.
+# Needs the Kaggle secret THREADEYE_DATABASE_URL (Add-ons > Secrets); without it the run goes on without copies.
+UPLOAD_KEY = f"models/training/yolox_{SIZE}"
+
+
+def checkpoint_uploader(stop: threading.Event) -> None:
+    try:
+        from kaggle_secrets import UserSecretsClient
+
+        url = UserSecretsClient().get_secret("THREADEYE_DATABASE_URL")
+    except Exception as exc:  # noqa: BLE001
+        print(f"checkpoint copies to Supabase: off ({exc!r:.120})", flush=True)
+        return
+    url = url.replace("postgresql+psycopg://", "postgresql://")
+    subprocess.run([sys.executable, "-m", "pip", "-q", "install", "psycopg[binary]"], check=False)
+    import psycopg
+
+    seen: dict[str, float] = {}
+
+    def upload_new() -> None:
+        for name in ("best_ckpt.pth", "last_epoch_ckpt.pth"):
+            f = run_dir / name
+            if not f.exists():
+                continue
+            mtime = f.stat().st_mtime
+            if seen.get(name) == mtime or time.time() - mtime < 20:  # unchanged, or still being written
+                continue
+            data = f.read_bytes()
+            key = f"{UPLOAD_KEY}/{name}"
+            try:
+                with psycopg.connect(url, autocommit=True, prepare_threshold=None) as conn:
+                    conn.execute("SET statement_timeout = '10min'")
+                    conn.execute(
+                        "INSERT INTO threadeye.blobs (key, data, sha256, size, content_type) VALUES (%s, %s, %s, %s, %s) "
+                        "ON CONFLICT (key) DO UPDATE SET data = excluded.data, sha256 = excluded.sha256, "
+                        "size = excluded.size, content_type = excluded.content_type, created_at = now()",
+                        (key, data, hashlib.sha256(data).hexdigest(), len(data), "application/octet-stream"),
+                    )
+                seen[name] = mtime
+                print(f"checkpoint copy: {name} ({len(data) / 1e6:.0f} MB) -> Supabase {key}", flush=True)
+            except Exception as exc:  # noqa: BLE001
+                print(f"checkpoint copy of {name} failed: {exc!r:.200}", flush=True)
+
+    while not stop.wait(90):
+        upload_new()
+    upload_new()
+
+
+stop_uploads = threading.Event()
+uploader = threading.Thread(target=checkpoint_uploader, args=(stop_uploads,), daemon=True)
+uploader.start()
 try:
     # The variables come first: "timeout VAR=x cmd" would try to run "VAR=x" as the command.
     sh(f"{env} timeout --signal=INT {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} -d {DEVICES} "
@@ -200,6 +253,8 @@ try:
     note("training: finished all epochs")
 except subprocess.CalledProcessError as exc:
     note(f"training: stopped (exit {exc.returncode}; 124 = the {TRAIN_BUDGET_H} h budget)")
+stop_uploads.set()
+uploader.join(timeout=600)
 if not best.exists():
     # YOLOX writes best_ckpt.pth only when an evaluation beats the previous best: a short or failed run may
     # have none. The newest checkpoint is then the model.

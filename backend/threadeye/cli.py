@@ -255,6 +255,33 @@ def _fetch_demo_assets(args: argparse.Namespace) -> int:
     return missing
 
 
+def _fetch_training_checkpoints(args: argparse.Namespace) -> int:
+    """Cloud profile: download the checkpoint copies a Kaggle training session sent to Supabase."""
+    from sqlalchemy import select
+
+    from threadeye.db.models import Blob
+    from threadeye.db.session import get_sessionmaker
+    from threadeye.settings import get_settings
+
+    if not get_settings().is_cloud:
+        print("fetch-training-checkpoints reads Supabase: use the cloud profile (.env.cloud)")
+        return 1
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    with get_sessionmaker()() as db:
+        rows = db.execute(select(Blob.key, Blob.size, Blob.created_at).where(Blob.key.like("models/training/%"))).all()
+        for key, size, at in rows:
+            path = out / key.removeprefix("models/training/")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            blob = db.get(Blob, key)
+            assert blob is not None
+            path.write_bytes(blob.data)
+            print(f"  {path} ({size / 1e6:.0f} MB, sent {at:%Y-%m-%d %H:%M} UTC)")
+    if not rows:
+        print("  no checkpoint copies in Supabase")
+    return 0
+
+
 def _spike_pdf(args: argparse.Namespace) -> int:
     from threadeye.reports.spike import build_spike_pdf
 
@@ -313,6 +340,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--data", default="../data")
     p.add_argument("--model-dir", default="../data/model")
     p.set_defaults(fn=_fetch_demo_assets)
+
+    p = sub.add_parser("fetch-training-checkpoints", help="cloud: download checkpoints a Kaggle session sent")
+    p.add_argument("--out", default="../data/training_checkpoints")
+    p.set_defaults(fn=_fetch_training_checkpoints)
 
     p = sub.add_parser("spike-pdf", help="render the Bangla shaping spike PDF")
     p.add_argument("output", nargs="?", default="out/spike_bangla.pdf")
