@@ -170,6 +170,91 @@ def _upload_video(args: argparse.Namespace) -> int:
     return 0
 
 
+MODEL_KEY = "models/current"
+MODEL_FILES = ("model_info.json", "test_report.json")
+
+
+def _upload_model(args: argparse.Namespace) -> int:
+    """Cloud profile: keep the trained detector (ONNX + model card) in Supabase for the demo laptops."""
+    from sqlalchemy import delete, text
+
+    from threadeye.db.models import Blob
+    from threadeye.db.session import get_sessionmaker
+    from threadeye.services import storage
+    from threadeye.settings import get_settings
+
+    if not get_settings().is_cloud:
+        print("upload-model is for the cloud profile: run `make cloud-upload-model`")
+        return 1
+    directory = Path(args.directory)
+    onnx = sorted(directory.glob("threadeye_*.onnx"))
+    if len(onnx) != 1 or not all((directory / f).is_file() for f in MODEL_FILES):
+        print(f"{directory} needs one threadeye_*.onnx and {', '.join(MODEL_FILES)}")
+        return 1
+    with get_sessionmaker()() as db:
+        db.execute(text("SET LOCAL statement_timeout = '15min'"))
+        db.execute(delete(Blob).where(Blob.key.like(f"{MODEL_KEY}/%")))
+        for f in (onnx[0], *(directory / n for n in MODEL_FILES)):
+            data = f.read_bytes()
+            sha = storage.put(db, f"{MODEL_KEY}/{f.name}", data, content_type="application/octet-stream")
+            print(f"  {f.name}: {len(data) / 1e6:.1f} MB, sha256 {sha[:16]}")
+        db.commit()
+    print(f"uploaded the model in {directory} as {MODEL_KEY}/")
+    return 0
+
+
+def _fetch_demo_assets(args: argparse.Namespace) -> int:
+    """Cloud profile: download what git does not carry (roll videos, the trained model) to this machine.
+    Files already here with the same SHA-256 are kept."""
+    import hashlib
+    import os
+
+    from sqlalchemy import select
+
+    from threadeye.db.models import Blob
+    from threadeye.db.session import get_sessionmaker
+    from threadeye.services import storage
+    from threadeye.settings import get_settings
+
+    if not get_settings().is_cloud:
+        print("fetch-demo-assets reads Supabase: use the cloud profile (.env.cloud)")
+        return 1
+
+    def same(path: Path, sha: str) -> bool:
+        return path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == sha
+
+    def write(path: Path, data: bytes) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(path.suffix + ".part")
+        tmp.write_bytes(data)
+        os.replace(tmp, path)
+
+    data_dir, model_dir = Path(args.data), Path(args.model_dir)
+    wanted: dict[str, Path] = {}
+    for meta in sorted(data_dir.glob("*/roll_meta.json")):
+        wanted[storage.video_key(meta.parent.name)] = meta.parent / "roll_video.mp4"
+    missing = 0
+    with get_sessionmaker()() as db:
+        rows = db.execute(select(Blob.key, Blob.sha256).where(Blob.key.like(f"{MODEL_KEY}/%"))).all()
+        for key, _ in rows:
+            wanted[key] = model_dir / key.rsplit("/", 1)[1]
+        shas = dict(db.execute(select(Blob.key, Blob.sha256).where(Blob.key.in_(list(wanted)))).all())
+        for key, path in wanted.items():
+            if key not in shas:
+                if key.startswith("datasets/"):
+                    print(f"  {path}: not in Supabase (fine if this roll has no video)")
+                continue
+            if same(path, shas[key]):
+                print(f"  {path}: up to date")
+                continue
+            write(path, storage.get(db, key))
+            print(f"  {path}: downloaded ({path.stat().st_size / 1e6:.1f} MB)")
+    if not rows:
+        print("  no trained model in Supabase yet (run `make cloud-upload-model` on the training laptop)")
+        missing = 1
+    return missing
+
+
 def _spike_pdf(args: argparse.Namespace) -> int:
     from threadeye.reports.spike import build_spike_pdf
 
@@ -219,6 +304,15 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("upload-video", help="cloud: store a simulated roll's video in Supabase")
     p.add_argument("directory")
     p.set_defaults(fn=_upload_video)
+
+    p = sub.add_parser("upload-model", help="cloud: store the trained model (ONNX + model card) in Supabase")
+    p.add_argument("directory")
+    p.set_defaults(fn=_upload_model)
+
+    p = sub.add_parser("fetch-demo-assets", help="cloud: download roll videos and the trained model to this machine")
+    p.add_argument("--data", default="../data")
+    p.add_argument("--model-dir", default="../data/model")
+    p.set_defaults(fn=_fetch_demo_assets)
 
     p = sub.add_parser("spike-pdf", help="render the Bangla shaping spike PDF")
     p.add_argument("output", nargs="?", default="out/spike_bangla.pdf")

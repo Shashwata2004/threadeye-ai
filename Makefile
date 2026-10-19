@@ -23,7 +23,8 @@ TEST_DATABASE_URL ?= postgresql+psycopg://threadeye:threadeye@localhost:$(TEST_D
 
 .PHONY: help env up down logs ps build test test-db test-db-stop test-backend test-frontend lint check \
         openapi openapi-check verify-offline spike-pdf validate-sample micro-fixture save-images \
-        cloud-env cloud-migrate cloud-seed cloud-check cloud-setup cloud-sql cloud-upload-video cloud-run
+        cloud-env cloud-migrate cloud-seed cloud-check cloud-setup cloud-sql cloud-upload-video cloud-run \
+        cloud-upload-model demo
 
 help: ## list commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk -F ':.*?## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -120,6 +121,13 @@ cloud-upload-video: ## store data/sample_roll/roll_video.mp4 in Supabase (for th
 
 cloud-run: ## run the app on this machine against Supabase → http://localhost:3000
 	./scripts/run_cloud.sh
+
+cloud-upload-model: ## store the trained model (MODEL=dir with threadeye_s.onnx + model card) in Supabase
+	@python3 scripts/check_cloud_env.py $(CLOUD_ENV)
+	$(cloud_run) $(THREADEYE) upload-model $(abspath $(MODEL))
+
+demo: ## the competition demo: trained model + Supabase → http://localhost:3000
+	./scripts/run_demo.sh
 
 cloud-sql: ## print the setup SQL to paste into the Supabase SQL editor (no password needed)
 	@python3 scripts/check_cloud_env.py $(CLOUD_ENV)

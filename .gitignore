@@ -31,6 +31,7 @@ storage/
 data/generated/
 data/ci_roll/
 data/external/
+data/model/
 backend/out/
 build/
 .vercel/

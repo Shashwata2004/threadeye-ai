@@ -20,6 +20,12 @@ set -a
 . "$ENV_FILE"
 set +a
 
+# The trained detector instead of the simulated one (scripts/run_demo.sh sets this).
+if [ -n "${DEMO_MODEL_DIR:-}" ]; then
+  export THREADEYE_DETECTOR_PROVIDER=local_model
+  export THREADEYE_MODEL_DIR="$DEMO_MODEL_DIR"
+fi
+
 # Local overrides: the browser talks plain HTTP here, and Next.js proxies /api to the API,
 # so requests stay same-origin.
 export THREADEYE_COOKIE_SECURE=false

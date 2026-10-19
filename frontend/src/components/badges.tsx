@@ -11,7 +11,13 @@ import { useHealth } from "@/lib/api/hooks";
 export function ModeBanner() {
   const t = useTranslations("mode");
   const { data } = useHealth();
-  if (data && !data.simulated_mode) return null;
+  // The trained detector is real AI, but the camera is still the simulator's video: say both.
+  if (data && !data.simulated_mode)
+    return (
+      <div role="status" data-testid="real-model-banner" className="w-full bg-teal-700 px-4 py-1.5 text-center text-sm font-bold text-white">
+        {t("realModelBanner")}
+      </div>
+    );
   return (
     <div
       role="status"

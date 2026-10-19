@@ -9,7 +9,8 @@
     "sampleData": "Sample data",
     "provider": "Detector: {name}",
     "edge": "Edge box (offline)",
-    "cloud": "Cloud demo"
+    "cloud": "Cloud demo",
+    "realModelBanner": "REAL AI: ThreadEye's trained detector · the camera video comes from the simulator"
   },
   "nav": {
     "dashboard": "Dashboard",
