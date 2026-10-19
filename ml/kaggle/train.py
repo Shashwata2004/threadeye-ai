@@ -25,6 +25,9 @@ EPOCHS = int(PARAMS.get("epochs", 30))
 BATCH = int(PARAMS.get("batch", 16))
 MAX_TRAIN = PARAMS.get("max_train_images")  # a smoke test sets a small number
 TRAIN_BUDGET_H = float(PARAMS.get("train_budget_h", 10.0))
+RESUME = PARAMS.get("resume", "auto")
+"""Continue from the last epoch of a previous session attached as an input (the other training notebook:
+threadeye-train and threadeye-train-2 take turns). "auto": resume whenever such a checkpoint is attached."""
 YOLOX_COMMIT = PARAMS.get("yolox_commit", "main")
 DEPTH_WIDTH = {"nano": (0.33, 0.25), "tiny": (0.33, 0.375), "s": (0.33, 0.50), "m": (0.67, 0.75)}
 WEIGHTS = {
@@ -39,6 +42,9 @@ TMP = Path("/kaggle/tmp")
 YOLOX = TMP / "YOLOX"
 WORK = TMP / "data"
 OUT = Path("/kaggle/working/model")
+RUNS = Path("/kaggle/working/runs")
+"""YOLOX writes its checkpoints here, in the notebook's saved output, at every epoch: whatever happens later
+in the session (a hang, Kaggle's 12-hour limit), the epochs trained so far are kept and can be resumed."""
 T0 = time.time()
 
 
@@ -123,6 +129,7 @@ class Exp(MyExp):
         self.eval_interval = max(1, {EPOCHS} // 10)
         self.data_num_workers = 4
         self.exp_name = "threadeye_{SIZE}"
+        self.output_dir = "{RUNS}"
         # Fabric: flips and 90° turns are natural (defects have no up/down); colour jitter for dyed fabric.
         self.flip_prob = 0.5
         self.degrees = 5.0
@@ -156,16 +163,52 @@ class Exp(MyExp):
 env = f"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 PYTHONPATH={YOLOX}:$PYTHONPATH"
 # Kaggle stops a GPU session at 12 h and keeps nothing it had not written: training gets a time budget, after
 # which the best checkpoint so far (saved at every evaluation) is tested and exported as usual.
+run_dir = RUNS / f"threadeye_{SIZE}"
+best = run_dir / "best_ckpt.pth"
+run_dir.mkdir(parents=True, exist_ok=True)
+start = f"-c {weights}"
+prev = sorted(Path("/kaggle/input").rglob("last_epoch_ckpt.pth"), key=lambda p: p.stat().st_mtime)
+if RESUME is True and not prev:
+    raise SystemExit("resume: no last_epoch_ckpt.pth in the inputs (attach the previous session's output)")
+if prev and RESUME:
+    # The previous session's output: its last epoch continues here with the optimizer and learning-rate
+    # schedule as they were; its best checkpoint stays the one to beat.
+    shutil.copy(prev[-1], run_dir / "resume_from.pth")
+    if (prev[-1].parent / "best_ckpt.pth").exists():
+        shutil.copy(prev[-1].parent / "best_ckpt.pth", best)
+    start = f"--resume -c {run_dir / 'resume_from.pth'}"
+    print("resuming from", prev[-1], flush=True)
+gpus = len(subprocess.run("nvidia-smi -L", shell=True, capture_output=True, text=True).stdout.strip().splitlines())
+DEVICES = int(PARAMS.get("devices", max(1, gpus)))
+print(f"GPUs: {gpus}, training on {DEVICES}, total batch {BATCH}", flush=True)
+# Kaggle keeps a session's output only when the script ends without an error: from here on nothing may
+# raise. Each step that fails is reported (RUN_STATUS.txt) and the run goes on with what it has.
+status: list[str] = []
+
+
+def note(line: str) -> None:
+    print(("!! " if line.startswith("FAILED") else "") + line, flush=True)
+    status.append(line)
+    RUNS.mkdir(parents=True, exist_ok=True)
+    (RUNS / "RUN_STATUS.txt").write_text("\n".join(status) + "\n")
+
+
 try:
     # The variables come first: "timeout VAR=x cmd" would try to run "VAR=x" as the command.
-    sh(f"{env} timeout --signal=INT {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} -d 1 -b {BATCH} "
-       f"--fp16 -o -c {weights}", cwd=YOLOX)
+    sh(f"{env} timeout --signal=INT {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} -d {DEVICES} "
+       f"-b {BATCH} --fp16 -o {start}", cwd=YOLOX)
+    note("training: finished all epochs")
 except subprocess.CalledProcessError as exc:
-    if exc.returncode not in (124, 130) or not (YOLOX / "YOLOX_outputs" / f"threadeye_{SIZE}/best_ckpt.pth").exists():
-        raise
-    print(f"!! training stopped by the {TRAIN_BUDGET_H} h budget: using the best checkpoint so far", flush=True)
-run_dir = YOLOX / "YOLOX_outputs" / f"threadeye_{SIZE}"
-best = run_dir / "best_ckpt.pth"
+    note(f"training: stopped (exit {exc.returncode}; 124 = the {TRAIN_BUDGET_H} h budget)")
+if not best.exists():
+    # YOLOX writes best_ckpt.pth only when an evaluation beats the previous best: a short or failed run may
+    # have none. The newest checkpoint is then the model.
+    fallback = next((run_dir / n for n in ("latest_ckpt.pth", "last_epoch_ckpt.pth") if (run_dir / n).exists()), None)
+    if fallback is None:
+        note("FAILED: no checkpoint at all, nothing to evaluate")
+        sys.exit(0)
+    shutil.copy(fallback, best)
+    note(f"no best checkpoint: using {fallback.name}")
 
 # ------------------------------------------------------------------------------------------- test
 def kept(step: str, cmd: str, cwd: Path | None = None) -> None:
@@ -173,7 +216,7 @@ def kept(step: str, cmd: str, cwd: Path | None = None) -> None:
     try:
         sh(cmd, cwd)
     except subprocess.CalledProcessError as exc:
-        print(f"!! {step} failed (exit {exc.returncode}): model kept", flush=True)
+        note(f"FAILED: {step} (exit {exc.returncode}); model kept")
 
 
 kept("test evaluation", f"THREADEYE_EVAL_SPLIT=test {env} {sys.executable} tools/eval.py -f {exp} -c {best} "
@@ -284,7 +327,7 @@ def operating_point() -> dict[str, float]:
 try:
     thresholds = operating_point()
 except Exception as exc:  # noqa: BLE001
-    print(f"!! operating point failed ({exc!r}): no thresholds, model kept", flush=True)
+    note(f"FAILED: operating point ({exc!r}); no thresholds, model kept")
     thresholds = {}
 
 OUT.mkdir(parents=True, exist_ok=True)
@@ -293,7 +336,7 @@ for f in (best, onnx_path, TMP / "test_eval.txt", run_dir / "train_log.txt"):
         shutil.copy(f, OUT / f.name)
 (OUT / "model_info.json").write_text(json.dumps({
     "framework": "YOLOX (Apache-2.0)", "yolox_commit": commit, "size": SIZE, "epochs": EPOCHS, "batch": BATCH,
-    "input": [640, 640], "classes": class_names, "thresholds": thresholds,
+    "input": [640, 640], "classes": class_names, "thresholds": thresholds, "run_status": status,
     "dataset_summary": json.loads((DATA / "summary.json").read_text()),
     "minutes": round((time.time() - T0) / 60, 1),
 }, indent=1))
