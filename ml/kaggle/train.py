@@ -232,9 +232,9 @@ prev = sorted([*Path("/kaggle/input").rglob("latest_ckpt.pth"), *Path("/kaggle/i
               key=lambda p: p.stat().st_mtime)
 if RESUME:
     if prev:
+        # Only the newest checkpoint: an earlier session's best_ckpt.pth is not copied, it would be an older
+        # model than the one this session ends with (session 2 tested session 1's model again because of it).
         shutil.copy(prev[-1], resume_from)
-        if (prev[-1].parent / "best_ckpt.pth").exists():
-            shutil.copy(prev[-1].parent / "best_ckpt.pth", best)
         print("resuming from the attached", prev[-1], flush=True)
     elif from_supabase("latest_ckpt.pth", resume_from):
         print("resuming from Supabase", f"{UPLOAD_KEY}/latest_ckpt.pth", flush=True)
@@ -312,15 +312,16 @@ except subprocess.CalledProcessError as exc:
     subprocess.run("pkill -9 -f tools/train.py", shell=True, check=False)
 stop_uploads.set()
 uploader.join(timeout=600)
-if not best.exists():
-    # YOLOX writes best_ckpt.pth only when an evaluation beats the previous best: a short or failed run may
-    # have none. The newest checkpoint is then the model.
-    fallback = next((run_dir / n for n in ("latest_ckpt.pth", "last_epoch_ckpt.pth") if (run_dir / n).exists()), None)
-    if fallback is None:
-        note("FAILED: no checkpoint at all, nothing to evaluate")
-        sys.exit(0)
-    shutil.copy(fallback, best)
-    note(f"no best checkpoint: using {fallback.name}")
+# Training evaluates nothing, so the model of this session is its newest checkpoint (latest_ckpt.pth, written at
+# the end of every epoch); best_ckpt.pth is only used when there is no newer one.
+ckpts = [run_dir / n for n in ("latest_ckpt.pth", "last_epoch_ckpt.pth", "best_ckpt.pth") if (run_dir / n).exists()]
+if not ckpts:
+    note("FAILED: no checkpoint at all, nothing to evaluate")
+    sys.exit(0)
+newest = max(ckpts, key=lambda c: c.stat().st_mtime)
+if newest != best:
+    shutil.copy(newest, best)
+note(f"model under test: {newest.name}")
 
 # ------------------------------------------------------------------------------------------- test
 def kept(step: str, cmd: str, cwd: Path | None = None) -> None:
