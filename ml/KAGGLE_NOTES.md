@@ -24,6 +24,10 @@ Checked 2026-10-19. Every line says where it comes from:
   (14.63 h → 12.50 h, then 13.11 h → 1.11 h).
 - [doc] "Free GPU availability is limited: in busy times, you might be placed in a queue." No queue
   position or waiting time is shown anywhere. [measured] Waits of 15 min to over 2 hours for T4 x2.
+- [measured, cause unknown] Twice on 2026-10-19 a run waited QUEUED (70 min, then 13 min) while an earlier
+  cancelled run was still CANCEL_ACKNOWLEDGED; cancelling the queued run and pushing again started it within
+  a minute both times. So a long QUEUED is not always a GPU shortage. Rule: queued for over ~10 minutes →
+  cancel it in the UI and push again.
 - [ui] At most **2 batch GPU sessions** per account at once, queued ones included ("Maximum batch GPU
   session count of 2 reached").
 - [doc] The same notebook can have several batch sessions at once; Kaggle advises cancelling outdated ones.
