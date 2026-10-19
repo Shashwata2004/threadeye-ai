@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from threadeye.settings import get_settings
-from threadeye.sources.simulated_roll import TrackFrameSource
+from threadeye.sources.simulated_roll import TrackFrameSource, VideoFileSource
 
 DATASET_ID = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,63}$")
 # First match wins: a small web preview (scripts/make_web_preview.py) before the full-size video.
@@ -109,3 +109,9 @@ def _source(path: str, mtime: float) -> TrackFrameSource:
 def track_source(info: DatasetInfo) -> TrackFrameSource:
     """Parsed positions of a roll, cached until frames.csv changes."""
     return _source(str(info.path), (info.path / "frames.csv").stat().st_mtime)
+
+
+def video_source(info: DatasetInfo) -> VideoFileSource:
+    """A roll whose frames are decoded here (for detectors that look at the image). One per runner:
+    it reads the video sequentially and keeps its position."""
+    return VideoFileSource(info.path)

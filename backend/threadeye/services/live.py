@@ -16,19 +16,22 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
 import threading
 import uuid
 from collections import OrderedDict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import event, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from threadeye.core.providers import ProviderContext
+from threadeye.core.providers import ProviderContext, ProviderNotConfigured
 from threadeye.core.runner import DecisionError, RollSpec, Runner, RunnerEvent
 from threadeye.core.scoring.profile import RuleProfile
 from threadeye.db import audit
@@ -116,8 +119,11 @@ def build_runner(db: Session, insp: Inspection) -> Runner:
         snap.get("config") or {},
         ProviderContext(seed=int((snap.get("config") or {}).get("seed", 0)), extras={"dataset_dir": str(info.path)}),
     )
+    # A detector that looks at the picture gets the roll video decoded here; the simulated one only
+    # needs the positions (its answers come from the answer key).
+    source = datasets.video_source(info) if snap["info"].get("requires_image") else datasets.track_source(info)
     return Runner(
-        datasets.track_source(info),
+        source,
         provider,
         RuleProfile(**profile_row.rules),
         roll_spec(insp, roll, info),
@@ -174,15 +180,53 @@ def _cmd_key(insp: Inspection, idem: str) -> Callable[[str, str], str]:
     return lambda type_, no: f"{insp.id}:cmd:{idem}:{type_}{':' + no if no else ''}"
 
 
+def _local_model_config() -> dict[str, Any]:
+    """The trained detector in THREADEYE_MODEL_DIR, pinned by the SHA-256 of its ONNX file."""
+    root = Path(get_settings().model_dir) if get_settings().model_dir else None
+    models = sorted(root.glob("threadeye_*.onnx")) if root and root.is_dir() else []
+    if not models:
+        raise InspectionError(
+            409, "no trained model installed: set THREADEYE_MODEL_DIR to the folder with threadeye_s.onnx"
+        )
+    model = models[0]
+    return {"model_path": str(model), "info_path": str(model.with_name("model_info.json")), "sha256": _sha256(model)}
+
+
+@lru_cache(maxsize=4)
+def _sha256_cached(path: str, mtime: float, size: int) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _sha256(path: Path) -> str:
+    st = path.stat()
+    return _sha256_cached(str(path), st.st_mtime, st.st_size)
+
+
 def provider_snapshot(preset: str) -> dict[str, Any]:
-    if preset not in PRESETS:
-        raise InspectionError(422, f"unknown simulated preset {preset!r}")
-    config = dict(PRESETS[preset])
-    spec = REGISTRY["simulated"]
-    info = create_provider("simulated", config).info
+    """The detector pinned on a new inspection: the trained model when THREADEYE_DETECTOR_PROVIDER is
+    local_model, otherwise the simulated detector with the given imperfection preset."""
+    if get_settings().detector_provider == "local_model":
+        config = _local_model_config()
+        spec = REGISTRY["local_model"]
+        try:
+            info = create_provider("local_model", config).info
+        except ProviderNotConfigured as exc:
+            raise InspectionError(409, str(exc)) from exc
+        preset_out: str | None = None
+    else:
+        if preset not in PRESETS:
+            raise InspectionError(422, f"unknown simulated preset {preset!r}")
+        config = dict(PRESETS[preset])
+        spec = REGISTRY["simulated"]
+        info = create_provider("simulated", config).info
+        preset_out = preset
     return {
         "provider_id": spec.provider_id,
-        "preset": preset,
+        "preset": preset_out,
         "config": config,
         "info": {
             "provider_id": info.provider_id,

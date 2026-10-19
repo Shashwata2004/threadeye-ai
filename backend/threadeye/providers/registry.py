@@ -42,9 +42,9 @@ REGISTRY: Mapping[str, ProviderSpec] = {
         "ThreadEye local model (ONNX, CPU)",
         "local_model",
         False,
-        "stub",
+        "available",
         "M6",
-        "Our own trained model, from the training track (M4 to M6).",
+        "Our own trained detector (YOLOX-S, ONNX Runtime on the CPU). Needs the model files in THREADEYE_MODEL_DIR.",
         LocalModelDetector,
     ),
     "api": ProviderSpec(
