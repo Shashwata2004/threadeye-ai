@@ -303,11 +303,13 @@ uploader = threading.Thread(target=checkpoint_uploader, args=(stop_uploads,), da
 uploader.start()
 try:
     # The variables come first: "timeout VAR=x cmd" would try to run "VAR=x" as the command.
-    sh(f"{env} timeout --signal=INT {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} -d {DEVICES} "
+    sh(f"{env} timeout --signal=INT --kill-after=5m {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} -d {DEVICES} "
        f"-b {BATCH} --fp16 -o {start}", cwd=YOLOX)
     note("training: finished all epochs")
 except subprocess.CalledProcessError as exc:
-    note(f"training: stopped (exit {exc.returncode}; 124 = the {TRAIN_BUDGET_H} h budget)")
+    note(f"training: stopped (exit {exc.returncode}; 124 = the {TRAIN_BUDGET_H} h budget, 137 = killed after it)")
+    # A rank stuck in a GPU collective ignores the interrupt and keeps its GPU memory: clear it before testing.
+    subprocess.run("pkill -9 -f tools/train.py", shell=True, check=False)
 stop_uploads.set()
 uploader.join(timeout=600)
 if not best.exists():
