@@ -128,9 +128,8 @@ class Exp(MyExp):
         self.max_epoch = {EPOCHS}
         self.no_aug_epochs = max(1, {EPOCHS} // 10)
         self.warmup_epochs = min(5, max(1, {EPOCHS} // 10))
-        # No evaluation inside training: two sessions hung right after an in-training evaluation (one at the
-        # barrier after it). Each session evaluates once at its end instead (val operating point + test).
-        self.eval_interval = {EVAL_INTERVAL or 10 ** 6}
+        # No evaluation inside training: two-GPU sessions hung at the barrier right after an in-training
+        # evaluation. Each session evaluates once at its end instead (val operating point + test).
         self.data_num_workers = 4
         self.exp_name = "threadeye_{SIZE}"
         self.output_dir = "{RUNS}"
@@ -144,6 +143,16 @@ class Exp(MyExp):
         # Mixup lays one fabric over another: the blended weave looks like a defect itself.
         self.mixup_prob = 0.0
         self.enable_mixup = False
+
+    # YOLOX's trainer sets exp.eval_interval = 1 when the last no-augmentation epochs begin; that switched the
+    # evaluation back on and a session hung after it. The interval is fixed here and the trainer's write ignored.
+    @property
+    def eval_interval(self):
+        return {EVAL_INTERVAL or 10 ** 6}
+
+    @eval_interval.setter
+    def eval_interval(self, value):
+        pass
 
     def get_dataset(self, cache=False, cache_type="ram"):
         from yolox.data import COCODataset, TrainTransform
