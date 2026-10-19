@@ -65,3 +65,26 @@ Checked 2026-10-19. Every line says where it comes from:
     the session is stuck; cancel it instead of waiting.
   - Only one dependent notebook per input; cancel stuck runs at once, they block notebooks that read
     their output.
+
+## Other free GPUs (checked 2026-10-19)
+
+Google Colab, free tier:
+- [doc: research.google.com/colaboratory/faq.html] "notebooks can run for at most 12 hours, depending on
+  availability and your usage patterns"; limits "can vary over time" and are not published; GPU types
+  "vary over time"; idle runtimes time out; VMs are deleted when idle or at the maximum lifetime.
+- [doc] Not allowed on the free tier: remote SSH or desktops, and "bypassing the notebook UI". So a run is
+  started and watched in the browser; the CLI cannot drive it.
+- [doc] Background execution (keeps running with the browser closed) is Colab Pro+ only.
+- [reported, not official] T4 GPU, 2 vCPUs, ~12 GB RAM, ~60–100 GB disk; ~90 min idle timeout; GPU often
+  refused at busy hours or after heavy use.
+- For us: one T4 and 2 vCPUs (Kaggle: two T4s, 4 vCPUs), so slower; checkpoints must go to Google Drive
+  to survive a disconnect; the dataset is fetched from Kaggle in every session.
+
+Modal: [doc: modal.com/pricing] Starter plan "$30 / month free credits"; T4 $0.000164/s (~$0.59/h), L4
+~$0.80/h, A10 ~$1.10/h; 10 GPUs at once. [reported, not official] the free credits need a payment
+method on the account. Fully scriptable from a terminal (`modal run`), live logs.
+
+Lightning AI: [reported, not official] one free Studio with restarts every 4 hours; credit amount and
+GPU types could not be confirmed.
+
+Hugging Face: free Spaces are CPU only; ZeroGPU is for short calls (minutes), not training.
