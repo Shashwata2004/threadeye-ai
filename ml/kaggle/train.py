@@ -26,6 +26,7 @@ EPOCHS = int(PARAMS.get("epochs", 30))
 BATCH = int(PARAMS.get("batch", 16))
 MAX_TRAIN = PARAMS.get("max_train_images")  # a smoke test sets a small number
 TRAIN_BUDGET_H = float(PARAMS.get("train_budget_h", 10.0))
+EVAL_INTERVAL = int(PARAMS.get("eval_interval", 0))  # 0: no evaluation during training
 RESUME = PARAMS.get("resume", "auto")
 """Continue from the last epoch of a previous session attached as an input (the other training notebook:
 threadeye-train and threadeye-train-2 take turns). "auto": resume whenever such a checkpoint is attached."""
@@ -127,7 +128,9 @@ class Exp(MyExp):
         self.max_epoch = {EPOCHS}
         self.no_aug_epochs = max(1, {EPOCHS} // 10)
         self.warmup_epochs = min(5, max(1, {EPOCHS} // 10))
-        self.eval_interval = max(1, {EPOCHS} // 10)
+        # No evaluation inside training: two sessions hung right after an in-training evaluation (one at the
+        # barrier after it). Each session evaluates once at its end instead (val operating point + test).
+        self.eval_interval = {EVAL_INTERVAL or 10 ** 6}
         self.data_num_workers = 4
         self.exp_name = "threadeye_{SIZE}"
         self.output_dir = "{RUNS}"
@@ -163,22 +166,67 @@ class Exp(MyExp):
 # full loader is acceptable here.
 env = f"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 PYTHONPATH={YOLOX}:$PYTHONPATH"
 # Kaggle stops a GPU session at 12 h and keeps nothing it had not written: training gets a time budget, after
-# which the best checkpoint so far (saved at every evaluation) is tested and exported as usual.
+# which the newest checkpoint is tested and exported as usual.
 run_dir = RUNS / f"threadeye_{SIZE}"
 best = run_dir / "best_ckpt.pth"
 run_dir.mkdir(parents=True, exist_ok=True)
 start = f"-c {weights}"
-prev = sorted(Path("/kaggle/input").rglob("last_epoch_ckpt.pth"), key=lambda p: p.stat().st_mtime)
-if RESUME is True and not prev:
-    raise SystemExit("resume: no last_epoch_ckpt.pth in the inputs (attach the previous session's output)")
-if prev and RESUME:
-    # The previous session's output: its last epoch continues here with the optimizer and learning-rate
-    # schedule as they were; its best checkpoint stays the one to beat.
-    shutil.copy(prev[-1], run_dir / "resume_from.pth")
-    if (prev[-1].parent / "best_ckpt.pth").exists():
-        shutil.copy(prev[-1].parent / "best_ckpt.pth", best)
-    start = f"--resume -c {run_dir / 'resume_from.pth'}"
-    print("resuming from", prev[-1], flush=True)
+
+
+def db_url() -> str | None:
+    """The ThreadEye database (Supabase) from the Kaggle secret THREADEYE_DATABASE_URL, or None."""
+    try:
+        from kaggle_secrets import UserSecretsClient
+
+        return UserSecretsClient().get_secret("THREADEYE_DATABASE_URL").replace("postgresql+psycopg://", "postgresql://")
+    except Exception as exc:  # noqa: BLE001
+        print(f"no THREADEYE_DATABASE_URL secret ({exc!r:.120})", flush=True)
+        return None
+
+
+DB_URL = db_url()
+if DB_URL:
+    subprocess.run([sys.executable, "-m", "pip", "-q", "install", "psycopg[binary]"], check=False)
+UPLOAD_KEY = f"models/training/yolox_{SIZE}"
+
+
+def from_supabase(name: str, dest: Path) -> bool:
+    """Download a checkpoint copy a previous session sent to the database."""
+    if not DB_URL:
+        return False
+    try:
+        import psycopg
+
+        with psycopg.connect(DB_URL, autocommit=True, prepare_threshold=None) as conn:
+            row = conn.execute("SELECT data FROM threadeye.blobs WHERE key = %s", (f"{UPLOAD_KEY}/{name}",)).fetchone()
+        if row is None:
+            return False
+        dest.write_bytes(bytes(row[0]))
+        return True
+    except Exception as exc:  # noqa: BLE001
+        print(f"could not fetch {name} from Supabase: {exc!r:.200}", flush=True)
+        return False
+
+
+# Resume from the newest checkpoint of an earlier session: the other training notebook's output if attached
+# (latest_ckpt.pth is written every epoch), otherwise the copy that session sent to Supabase (survives a
+# hung or cancelled session, whose output Kaggle does not keep). The optimizer and learning-rate schedule
+# continue as they were.
+resume_from = run_dir / "resume_from.pth"
+prev = sorted([*Path("/kaggle/input").rglob("latest_ckpt.pth"), *Path("/kaggle/input").rglob("last_epoch_ckpt.pth")],
+              key=lambda p: p.stat().st_mtime)
+if RESUME:
+    if prev:
+        shutil.copy(prev[-1], resume_from)
+        if (prev[-1].parent / "best_ckpt.pth").exists():
+            shutil.copy(prev[-1].parent / "best_ckpt.pth", best)
+        print("resuming from the attached", prev[-1], flush=True)
+    elif from_supabase("latest_ckpt.pth", resume_from):
+        print("resuming from Supabase", f"{UPLOAD_KEY}/latest_ckpt.pth", flush=True)
+    elif RESUME is True:
+        raise SystemExit("resume: no checkpoint attached and none in Supabase")
+if resume_from.exists():
+    start = f"--resume -c {resume_from}"
 gpus = len(subprocess.run("nvidia-smi -L", shell=True, capture_output=True, text=True).stdout.strip().splitlines())
 DEVICES = int(PARAMS.get("devices", max(1, gpus)))
 print(f"GPUs: {gpus}, training on {DEVICES}, total batch {BATCH}", flush=True)
@@ -197,25 +245,17 @@ def note(line: str) -> None:
 # A copy of every new checkpoint goes to the ThreadEye database (Supabase) while training runs: if the session
 # then hangs or is killed (Kaggle saves no output for those), the model trained so far is still there.
 # Needs the Kaggle secret THREADEYE_DATABASE_URL (Add-ons > Secrets); without it the run goes on without copies.
-UPLOAD_KEY = f"models/training/yolox_{SIZE}"
-
-
 def checkpoint_uploader(stop: threading.Event) -> None:
-    try:
-        from kaggle_secrets import UserSecretsClient
-
-        url = UserSecretsClient().get_secret("THREADEYE_DATABASE_URL")
-    except Exception as exc:  # noqa: BLE001
-        print(f"checkpoint copies to Supabase: off ({exc!r:.120})", flush=True)
+    if not DB_URL:
+        print("checkpoint copies to Supabase: off", flush=True)
         return
-    url = url.replace("postgresql+psycopg://", "postgresql://")
-    subprocess.run([sys.executable, "-m", "pip", "-q", "install", "psycopg[binary]"], check=False)
     import psycopg
 
+    url = DB_URL
     seen: dict[str, float] = {}
 
     def upload_new() -> None:
-        for name in ("best_ckpt.pth", "last_epoch_ckpt.pth"):
+        for name in ("latest_ckpt.pth", "best_ckpt.pth"):
             f = run_dir / name
             if not f.exists():
                 continue
