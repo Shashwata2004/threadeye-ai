@@ -60,3 +60,47 @@ class AuditVerifyOut(ApiModel):
     checked: int
     first_bad_id: int | None
     reason: str | None
+
+
+class ClassResultOut(ApiModel):
+    cls: str
+    nondefect: bool
+    """A non-defect class (sticker, loose thread, wrinkle, hand): the app shows it grey, never scores it."""
+    threshold: float
+    truth: int
+    recall: float | None
+    precision: float | None
+
+
+class SourceResultOut(ApiModel):
+    source: str
+    tiles: int
+    defects: int
+    found_any_class: float | None
+    found_right_class: float | None
+    false_alarms_per_100_tiles: float
+
+
+class ModelEvaluationOut(ApiModel):
+    """The trained detector measured on the held-out test split (never seen in training)."""
+
+    model: str
+    framework: str
+    epochs: int
+    train_minutes: float | None
+    classes: list[str]
+    matching: str
+    thresholds_from: str
+    tiles: int
+    defects: int
+    found_any_class: float | None
+    found_right_class: float | None
+    defect_boxes: int
+    precision: float | None
+    """Share of defect boxes on a real defect (duplicates of a found defect not counted)."""
+    false_alarms: int
+    false_alarms_per_100_tiles: float
+    nondefects: int
+    nondefects_called_defect: float | None
+    per_class: list[ClassResultOut]
+    per_source: list[SourceResultOut]

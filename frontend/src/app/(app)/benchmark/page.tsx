@@ -1,275 +1,220 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import {
-  Card,
-  CardTitle,
-  Field,
-  KpiCard,
-  PageHeader,
-  inputCls,
-  pct,
-  primaryBtn,
-  screenRoot,
-  useBi,
-} from "@/components/screenKit";
+import { Card, CardTitle, KpiCard, PageHeader, pct, screenRoot, useBi } from "@/components/screenKit";
+import { useModelEvaluation } from "@/lib/api/hooks";
 
-// An evaluation run: the detector scored on a held-out split (the ThreadEye test split, see
-// ml/DATASETS.md). Nothing is measured yet: results come from the trained model's test evaluation.
-export type EvaluationResult = {
-  dataset: string;
-  split: "test" | "val";
-  provider: string;
-  at: string;
-  precision: number;
-  recall: number;
-  faPerYard: number;
-  iou: number;
-  /** Raw detections → after de-duplication → after the non-defect filter → confirmed by the inspector. */
-  funnel: [number, number, number, number];
-  classes: { id: string; support: number; p: number; r: number; confusion: string | null }[];
-  nuisance: { id: string; n: number }[];
+// The trained detector scored on the held-out test split (ml/kaggle/train.py → test_report.json; the
+// matching rule and the per-class thresholds are in ml/fabricdata/operating.py). Every figure is measured:
+// with no evaluated model the screen shows "—".
+
+/** Where the test tiles come from (ml/DATASETS.md). */
+const SOURCES: Record<string, { en: string; bn: string }> = {
+  aitex: { en: "AITEX (Spain, loom camera)", bn: "AITEX (স্পেন, তাঁতের ক্যামেরা)" },
+  tianchi: { en: "Tianchi (China, cloth flaws)", bn: "Tianchi (চীন, কাপড়ের ত্রুটি)" },
+  zju_leaper: { en: "ZJU-Leaper (patterned fabric)", bn: "ZJU-Leaper (নকশাদার কাপড়)" },
+  raw_fabrid: { en: "RAW-FABRID (line-scan)", bn: "RAW-FABRID (লাইন-স্ক্যান)" },
+  wfdd: { en: "WFDD (woven fabric)", bn: "WFDD (বোনা কাপড়)" },
+  fabricspotdefect: { en: "FabricSpotDefect (stains, Bangladesh)", bn: "FabricSpotDefect (দাগ, বাংলাদেশ)" },
+  fabric_stain: { en: "Fabric Stain (Sri Lanka)", bn: "Fabric Stain (শ্রীলঙ্কা)" },
+  moratuwa: { en: "Moratuwa (holes, lines)", bn: "Moratuwa (ফুটো, রেখা)" },
+  fd_figshare: { en: "FD Dataset (coloured fabric)", bn: "FD Dataset (রঙিন কাপড়)" },
+  garment_defects: { en: "Garment fabric", bn: "গার্মেন্টের কাপড়" },
+  synth_nuisance: { en: "Stickers, threads, wrinkles, hands", bn: "স্টিকার, সুতা, ভাঁজ, হাত" },
 };
 
-const DATASETS: { id: string; en: string; bn: string }[] = [];
-
-const PROVIDERS = [
-  { id: "sim", en: "Simulated detector", bn: "সিমুলেটেড ডিটেক্টর", ready: true },
-  { id: "onnx", en: "ThreadEye Local ONNX (not configured)", bn: "ThreadEye লোকাল ONNX (কনফিগার হয়নি)", ready: false },
-  { id: "ext", en: "External API (not configured)", bn: "এক্সটার্নাল API (কনফিগার হয়নি)", ready: false },
-] as const;
-
-/** The detector's classes (backend/threadeye/data/taxonomy.yaml) and the non-defect categories. */
-const DEFECT_CLASSES = [
-  "hole", "stain", "oil_stain", "slub", "broken_yarn", "missing_yarn",
-  "knot", "crease_mark", "contamination", "shade_bar", "selvage_defect", "other_defect",
-] as const;
-const NUISANCE = [
-  { id: "loose_thread", color: "bg-brand-navy" },
-  { id: "sticker", color: "bg-brand-teal" },
-  { id: "wrinkle", color: "bg-amber-500" },
-  { id: "pin_hole", color: "bg-red-500" },
-  { id: "hand", color: "bg-violet-500" },
-  { id: "board", color: "bg-slate-400" },
-] as const;
-
 const NONE = "—";
+const share = (x: number | null | undefined, digits = 1) => (x === null || x === undefined ? NONE : pct(x, digits));
+const toneFor = (x: number | null | undefined) => (x === null || x === undefined ? "" : x < 0.7 ? "text-brand-amber" : "text-emerald-700");
 
 export default function BenchmarkPage() {
   const t = useTranslations();
   const bi = useBi();
+  const { data: ev, isLoading, isError } = useModelEvaluation();
 
-  const [dataset, setDataset] = useState<string>(DATASETS[0]?.id ?? "");
-  const [split, setSplit] = useState<"test" | "val">("test");
-  const [provider, setProvider] = useState<string>("sim");
-  const [seed, setSeed] = useState(0);
-
-  // No run yet: every figure shows "—" until an evaluation result is loaded here.
-  const result = null as EvaluationResult | null;
-  const f1 = result && result.precision + result.recall > 0
-    ? (2 * result.precision * result.recall) / (result.precision + result.recall)
-    : null;
-  const funnel = result?.funnel ?? null;
-  const funnelMax = funnel?.[0] || 1;
-  const nuisanceCount = (id: string) => result?.nuisance.find((x) => x.id === id)?.n ?? null;
-  const nuisanceTotal = result?.nuisance.reduce((s, x) => s + x.n, 0) ?? 0;
-  const classRow = (id: string) => result?.classes.find((c) => c.id === id) ?? null;
-
-  const funnelSteps = [
-    bi("Raw detections", "কাঁচা শনাক্তকরণ"),
-    bi("After deduplication", "ডুপ্লিকেট বাদের পর"),
-    bi("After non-defect filtering", "অ-ত্রুটি ফিল্টারের পর"),
-    bi("Confirmed by inspector", "ইন্সপেক্টর নিশ্চিত করেছেন"),
-  ];
-  const funnelColors = ["bg-slate-400", "bg-brand-navy", "bg-brand-teal", "bg-emerald-500"];
+  const defects = ev?.per_class.filter((c) => !c.nondefect) ?? [];
+  const nondefects = ev?.per_class.filter((c) => c.nondefect) ?? [];
+  const sources = [...(ev?.per_source ?? [])].sort((a, b) => b.tiles - a.tiles);
 
   return (
     <div className={`${screenRoot} space-y-5`}>
-      <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-brand-amber">
-        {bi(
-          "No evaluation yet: results appear here once the detector has been trained and scored on the held-out test split.",
-          "এখনো কোনো মূল্যায়ন হয়নি: ডিটেক্টর ট্রেন করে আলাদা রাখা test ভাগে মাপার পর ফলাফল এখানে দেখাবে।",
-        )}
-      </p>
+      {!ev && (
+        <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-brand-amber">
+          {isLoading
+            ? bi("Loading the model's evaluation…", "মডেলের মূল্যায়ন আসছে…")
+            : isError
+              ? bi("The evaluation could not be loaded.", "মূল্যায়ন আনা যায়নি।")
+              : bi(
+                  "No evaluation yet: results appear here once the detector has been trained and scored on the held-out test split.",
+                  "এখনো কোনো মূল্যায়ন হয়নি: ডিটেক্টর ট্রেন করে আলাদা রাখা test ভাগে মাপার পর ফলাফল এখানে দেখাবে।",
+                )}
+        </p>
+      )}
 
       <PageHeader title={t("nav.benchmark")} subtitle={t("placeholder.benchmark")} sample={false} />
 
       <Card>
-        <CardTitle hint={bi("Choose what to score against the answer key.", "কোন ডেটা উত্তর-চাবির সাথে মেলানো হবে তা বাছুন।")}>
-          {bi("Benchmark run", "বেঞ্চমার্ক রান")}
+        <CardTitle
+          hint={bi(
+            "Measured on test tiles the model never saw in training; per-class thresholds were chosen on the separate val split.",
+            "ট্রেনিংয়ে কখনো না দেখা test টুকরোয় মাপা; প্রতিটি শ্রেণির সীমা আলাদা val ভাগ থেকে বাছা।",
+          )}
+        >
+          {bi("Model under test", "পরীক্ষিত মডেল")}
         </CardTitle>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_2fr_1fr_auto] lg:items-end">
-          <Field label={bi("Dataset", "ডেটাসেট")}>
-            <select className={inputCls} value={dataset} onChange={(e) => setDataset(e.target.value)} disabled={!DATASETS.length}>
-              {!DATASETS.length && <option value="">{bi("No evaluated dataset yet", "এখনো কোনো মূল্যায়িত ডেটাসেট নেই")}</option>}
-              {DATASETS.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {bi(d.en, d.bn)}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={bi("Split", "বিভাজন")}>
-            <select className={inputCls} value={split} onChange={(e) => setSplit(e.target.value as "test" | "val")}>
-              <option value="test">test</option>
-              <option value="val">val</option>
-            </select>
-          </Field>
-          <Field label={bi("Provider", "প্রোভাইডার")}>
-            <select className={inputCls} value={provider} onChange={(e) => setProvider(e.target.value)}>
-              {PROVIDERS.map((p) => (
-                <option key={p.id} value={p.id} disabled={!p.ready}>
-                  {bi(p.en, p.bn)}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={bi("Seed", "সিড")}>
-            <input
-              type="number"
-              className={`${inputCls} font-mono`}
-              value={seed}
-              min={0}
-              onChange={(e) => setSeed(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-            />
-          </Field>
-          <button
-            type="button"
-            className={primaryBtn}
-            disabled
-            title={bi("Runs arrive with the trained model's test evaluation.", "ট্রেন করা মডেলের test মূল্যায়নের সাথে রান আসবে।")}
-          >
-            {bi("Run evaluation", "মূল্যায়ন চালান")}
-          </button>
-        </div>
-        <p className="mt-3 text-xs text-slate-500">
-          {result
-            ? `${bi("Showing", "দেখানো হচ্ছে")}: ${result.dataset} · ${result.split} · ${result.provider} · ${result.at}`
-            : bi("No run to show yet.", "দেখানোর মতো কোনো রান এখনো নেই।")}
-        </p>
+        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-xs text-slate-500">{bi("Detector", "ডিটেক্টর")}</dt>
+            <dd className="font-semibold text-slate-800">{ev ? ev.model : NONE}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">{bi("Training", "ট্রেনিং")}</dt>
+            <dd className="font-mono text-slate-800">
+              {ev ? `${ev.epochs} ${bi("epochs", "epoch")}${ev.train_minutes ? ` · ${(ev.train_minutes / 60).toFixed(1)} h` : ""}` : NONE}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">{bi("Test split", "test ভাগ")}</dt>
+            <dd className="font-mono text-slate-800">
+              {ev ? `${ev.tiles.toLocaleString()} ${bi("tiles", "টুকরো")} · ${ev.defects.toLocaleString()} ${bi("defects", "ত্রুটি")}` : NONE}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">{bi("Classes", "শ্রেণি")}</dt>
+            <dd className="font-mono text-slate-800">{ev ? `${defects.length} + ${nondefects.length} ${bi("non-defect", "অ-ত্রুটি")}` : NONE}</dd>
+          </div>
+        </dl>
+        {ev && (
+          <p className="mt-3 text-xs text-slate-500" title={ev.matching}>
+            {bi(
+              "A defect counts as found when a box of the same class overlaps it (IoU ≥ 0.3) or has its centre inside it; repeat boxes on a found defect are not counted.",
+              "একই শ্রেণির বাক্স ত্রুটির সাথে মিললে (IoU ≥ ০.৩) বা বাক্সের কেন্দ্র ত্রুটির ভেতরে পড়লে ত্রুটিটা ধরা পড়েছে ধরা হয়; একই ত্রুটিতে বাড়তি বাক্স গোনা হয় না।",
+            )}
+          </p>
+        )}
       </Card>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <KpiCard label={bi("Precision", "প্রিসিশন")} value={result ? pct(result.precision) : NONE} sub={bi("Flags that were real", "সত্যি ত্রুটি ছিল")} tone="teal" />
-        <KpiCard label={bi("Recall", "রিকল")} value={result ? pct(result.recall) : NONE} sub={bi("Real defects found", "পাওয়া আসল ত্রুটি")} tone="teal" />
-        <KpiCard label={bi("F1-score", "F1-স্কোর")} value={f1 !== null ? pct(f1) : NONE} sub={bi("Balance of both", "দুটির ভারসাম্য")} />
+        <KpiCard label={bi("Defects found", "ত্রুটি ধরা পড়েছে")} value={share(ev?.found_any_class)} sub={bi("Real defects flagged", "আসল ত্রুটির কত ভাগ")} tone="teal" />
+        <KpiCard label={bi("Right class", "সঠিক শ্রেণি")} value={share(ev?.found_right_class)} sub={bi("Found and named correctly", "ধরা ও ঠিক নাম")} tone="teal" />
         <KpiCard
-          label={bi("False-alarm rate", "ভুল সতর্কতার হার")}
-          value={<span className="font-mono">{result ? result.faPerYard.toFixed(2) : NONE}</span>}
-          sub={bi("False positives / yard", "প্রতি গজে ভুল সতর্কতা")}
-          tone={result && result.faPerYard > 0.2 ? "red" : "amber"}
+          label={bi("Precision", "প্রিসিশন")}
+          value={share(ev?.precision)}
+          sub={bi("Flags that were real", "সতর্কবার্তার কত ভাগ সত্যি")}
         />
         <KpiCard
-          label={bi("Mean box IoU", "গড় বক্স IoU")}
-          value={<span className="font-mono">{result ? result.iou.toFixed(2) : NONE}</span>}
-          sub={bi("Box overlap with truth", "আসল বক্সের সাথে মিল")}
+          label={bi("False alarms", "ভুল সতর্কবার্তা")}
+          value={<span className="font-mono">{ev ? ev.false_alarms_per_100_tiles.toFixed(1) : NONE}</span>}
+          sub={bi("Per 100 tiles", "প্রতি ১০০ টুকরোয়")}
+          tone="amber"
+        />
+        <KpiCard
+          label={bi("Non-defects flagged", "অ-ত্রুটিকে ত্রুটি বলা")}
+          value={share(ev?.nondefects_called_defect)}
+          sub={bi("Stickers, threads, hands…", "স্টিকার, সুতা, হাত…")}
+          tone={ev && (ev.nondefects_called_defect ?? 0) > 0.2 ? "red" : "amber"}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
-          <CardTitle hint={bi("How raw detector output narrows to confirmed defects.", "কাঁচা শনাক্তকরণ থেকে নিশ্চিত ত্রুটি পর্যন্ত।")}>
-            {bi("False-alarm funnel", "ভুল সতর্কতার ফানেল")}
+          <CardTitle hint={bi("How the model does on each kind of fabric and camera.", "প্রতিটি ধরনের কাপড় ও ক্যামেরায় মডেল কেমন করে।")}>
+            {bi("By source", "উৎস অনুযায়ী")}
           </CardTitle>
-          <ol className="space-y-2">
-            {funnelSteps.map((step, i) => {
-              const n = funnel?.[i] ?? null;
-              const dropped = funnel && i > 0 ? funnel[i - 1] - funnel[i] : 0;
+          <ul className="space-y-2.5">
+            {!sources.length && <li className="text-sm text-slate-500">{NONE}</li>}
+            {sources.map((s) => {
+              const found = s.found_any_class;
               return (
-                <li key={i}>
-                  <div className="mb-0.5 flex items-baseline justify-between text-sm">
-                    <span className="text-slate-700">
-                      {i + 1}. {step}
-                    </span>
-                    <span className="font-mono font-semibold text-brand-navy">
-                      {n ?? NONE}
-                      {n !== null && i > 0 && <span className="ml-2 text-xs font-normal text-red-600">−{dropped}</span>}
+                <li key={s.source}>
+                  <div className="mb-0.5 flex items-baseline justify-between gap-2 text-sm">
+                    <span className="truncate text-slate-700">{SOURCES[s.source] ? bi(SOURCES[s.source].en, SOURCES[s.source].bn) : s.source}</span>
+                    <span className="shrink-0 font-mono text-xs text-slate-600">
+                      <span className={`font-semibold ${toneFor(found)}`}>{share(found, 0)}</span>
+                      {" · "}
+                      {s.false_alarms_per_100_tiles.toFixed(1)} {bi("FA/100", "ভুল/১০০")}
                     </span>
                   </div>
-                  <div className="h-6 rounded bg-slate-100">
-                    {n !== null && (
-                      <div
-                        className={`mx-auto h-6 rounded transition-all duration-500 ${funnelColors[i]}`}
-                        style={{ width: `${Math.max(4, (n / funnelMax) * 100)}%` }}
-                      />
+                  <div className="h-2.5 rounded bg-slate-100">
+                    {found !== null && found !== undefined && (
+                      <div className="h-2.5 rounded bg-brand-teal transition-all duration-500" style={{ width: `${Math.max(2, found * 100)}%` }} />
                     )}
                   </div>
                 </li>
               );
             })}
-          </ol>
+          </ul>
+          <p className="mt-3 text-xs text-slate-500">
+            {bi("Bar: share of real defects found. FA/100: false alarms per 100 tiles.", "দাগ: আসল ত্রুটির কত ভাগ ধরা পড়েছে। ভুল/১০০: প্রতি ১০০ টুকরোয় ভুল সতর্কবার্তা।")}
+          </p>
         </Card>
 
         <Card>
-          <CardTitle hint={bi("False positives by non-defect category.", "অ-ত্রুটি ধরন অনুযায়ী ভুল সতর্কতা।")}>
-            {bi("Nuisance breakdown", "অপ্রাসঙ্গিক সতর্কতার ভাগ")}
+          <CardTitle hint={bi("Things that are not defects: the app shows them grey and never scores them.", "যা ত্রুটি নয়: অ্যাপ এগুলো ধূসর দেখায়, কখনো নম্বর কাটে না।")}>
+            {bi("Non-defects recognised", "অ-ত্রুটি চেনা")}
           </CardTitle>
-          <div className="flex h-7 overflow-hidden rounded bg-slate-100" role="img" aria-label={bi("Nuisance share", "অপ্রাসঙ্গিক সতর্কতার অংশ")}>
-            {nuisanceTotal > 0 &&
-              NUISANCE.map((x) => {
-                const n = nuisanceCount(x.id) ?? 0;
-                return (
-                  <div
-                    key={x.id}
-                    className={`${x.color} transition-all duration-500`}
-                    style={{ width: `${(n / nuisanceTotal) * 100}%` }}
-                    title={`${t(`cls.${x.id}`)}: ${n}`}
-                  />
-                );
-              })}
-          </div>
-          <ul className="mt-4 space-y-2">
-            {NUISANCE.map((x) => {
-              const n = nuisanceCount(x.id);
-              return (
-                <li key={x.id} className="flex items-center gap-2 text-sm">
-                  <span className={`h-3 w-3 shrink-0 rounded-sm ${x.color}`} />
-                  <span className="flex-1 text-slate-700">{t(`cls.${x.id}`)}</span>
-                  <span className="font-mono font-semibold text-brand-navy">{n ?? NONE}</span>
-                  <span className="w-12 text-right text-xs text-slate-500">
-                    {n !== null && nuisanceTotal > 0 ? pct(n / nuisanceTotal, 0) : NONE}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+          <table className="min-w-full text-sm">
+            <thead className="text-left text-xs text-slate-500">
+              <tr>
+                <th className="py-1">{bi("Kind", "ধরন")}</th>
+                <th className="py-1 text-right">{bi("In test", "test-এ")}</th>
+                <th className="py-1 text-right">{bi("Recognised", "চিনেছে")}</th>
+                <th className="py-1 text-right">{bi("Precision", "প্রিসিশন")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(nondefects.length ? nondefects : (["sticker", "loose_thread", "wrinkle", "hand"] as const).map((cls) => ({ cls, truth: null, recall: null, precision: null }))).map((c) => (
+                <tr key={c.cls} className="border-t border-slate-100">
+                  <td className="py-1.5 text-slate-700">{t(`cls.${c.cls}`)}</td>
+                  <td className="py-1.5 text-right font-mono">{c.truth ?? NONE}</td>
+                  <td className={`py-1.5 text-right font-mono ${toneFor(c.recall)}`}>{share(c.recall)}</td>
+                  <td className="py-1.5 text-right font-mono">{share(c.precision)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </Card>
       </div>
 
       <Card>
-        <CardTitle>{bi("Per-class breakdown", "শ্রেণি অনুযায়ী বিশ্লেষণ")}</CardTitle>
+        <CardTitle hint={ev ? bi("Each class's threshold was chosen on the val split (best F1).", "প্রতিটি শ্রেণির সীমা val ভাগ থেকে বাছা (সেরা F1)।") : undefined}>{bi("Per-class breakdown", "শ্রেণি অনুযায়ী বিশ্লেষণ")}</CardTitle>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-100 text-left text-slate-700">
               <tr>
                 <th className="px-3 py-2">{bi("Defect class", "ত্রুটির শ্রেণি")}</th>
-                <th className="px-3 py-2 text-right">{bi("Support", "নমুনা")}</th>
+                <th className="px-3 py-2 text-right">{bi("In test", "test-এ")}</th>
+                <th className="px-3 py-2 text-right">{bi("Threshold", "সীমা")}</th>
                 <th className="px-3 py-2 text-right">{bi("Precision", "প্রিসিশন")}</th>
                 <th className="px-3 py-2 text-right">{bi("Recall", "রিকল")}</th>
-                <th className="px-3 py-2">{bi("Common confusion", "সাধারণ বিভ্রান্তি")}</th>
               </tr>
             </thead>
             <tbody>
-              {DEFECT_CLASSES.map((id) => {
-                const c = classRow(id);
-                return (
-                  <tr key={id} className="border-t border-slate-100">
-                    <td className="px-3 py-2 font-medium text-slate-800">{t(`cls.${id}`)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{c ? c.support : NONE}</td>
-                    <td className={`px-3 py-2 text-right font-mono ${c ? (c.p < 0.85 ? "text-brand-amber" : "text-emerald-700") : ""}`}>
-                      {c ? pct(c.p) : NONE}
-                    </td>
-                    <td className={`px-3 py-2 text-right font-mono ${c ? (c.r < 0.85 ? "text-brand-amber" : "text-emerald-700") : ""}`}>
-                      {c ? pct(c.r) : NONE}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600">{c?.confusion ? t(`cls.${c.confusion}`) : NONE}</td>
-                  </tr>
-                );
-              })}
+              {!defects.length && (
+                <tr>
+                  <td colSpan={5} className="px-3 py-3 text-center text-slate-500">
+                    {NONE}
+                  </td>
+                </tr>
+              )}
+              {[...defects].sort((a, b) => b.truth - a.truth).map((c) => (
+                <tr key={c.cls} className="border-t border-slate-100">
+                  <td className="px-3 py-2 font-medium text-slate-800">{t(`cls.${c.cls}`)}</td>
+                  <td className="px-3 py-2 text-right font-mono">{c.truth.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right font-mono">{c.threshold.toFixed(2)}</td>
+                  <td className={`px-3 py-2 text-right font-mono ${toneFor(c.precision)}`}>{share(c.precision)}</td>
+                  <td className={`px-3 py-2 text-right font-mono ${toneFor(c.recall)}`}>{share(c.recall)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
+        <p className="mt-3 text-xs text-slate-500">
+          {bi(
+            "Selvage defects are placed by position (a yarn fault in the selvage band), and oil stains are learned as stains: neither has a row of its own.",
+            "কিনারার ত্রুটি অবস্থান দিয়ে ঠিক হয় (কিনারার ব্যান্ডে সুতার ত্রুটি), আর তেলের দাগ শেখানো হয়েছে দাগ হিসেবে: এদের আলাদা সারি নেই।",
+          )}
+        </p>
       </Card>
     </div>
   );

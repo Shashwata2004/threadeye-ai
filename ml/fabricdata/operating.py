@@ -158,6 +158,7 @@ def report(dets: Sequence[Det], truths: Sequence[Truth], thresholds: Mapping[str
         "found_any_class": rate(len(found_any), len(t_def)),
         "found_right_class": rate(len(found_cls), len(t_def)),
         "defect_boxes": len(d_def),
+        "precision": rate(len(tp_any), len(tp_any) + len(false_alarm)),
         "false_alarms": len(false_alarm),
         "false_alarms_per_100_tiles": round(100 * len(false_alarm) / max(len(all_images), 1), 2),
         "nondefects": len(t_non),

@@ -11,6 +11,7 @@ export type Health = components["schemas"]["HealthOut"];
 export type ProviderAvailability = components["schemas"]["ProviderAvailabilityOut"];
 export type AuditEntry = components["schemas"]["AuditEntryOut"];
 export type AuditVerify = components["schemas"]["AuditVerifyOut"];
+export type ModelEvaluation = components["schemas"]["ModelEvaluationOut"];
 export type Role = Me["role"];
 
 export class ApiError extends Error {

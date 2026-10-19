@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, api, type Me } from "./client";
+import { ApiError, api, type Me, type ModelEvaluation } from "./client";
 
 export function useMe() {
   return useQuery({
@@ -177,5 +177,19 @@ export function useDefects(id: string) {
     queryKey: ["defects", id],
     queryFn: () =>
       must(api.GET("/api/v1/inspections/{inspection_id}/defects", { params: { path: { inspection_id: id } } }), "defects"),
+  });
+}
+
+/** The trained detector's test-split results; null until a model has been trained and evaluated. */
+export function useModelEvaluation() {
+  return useQuery({
+    queryKey: ["model-evaluation"],
+    queryFn: async (): Promise<ModelEvaluation | null> => {
+      const { data, response } = await api.GET("/api/v1/model/evaluation");
+      if (response.status === 404) return null;
+      if (!data) throw new ApiError(response.status, "evaluation unavailable");
+      return data;
+    },
+    staleTime: 5 * 60_000,
   });
 }

@@ -321,6 +321,31 @@
         }
       }
     },
+    "/api/v1/model/evaluation": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Model Evaluation",
+        "description": "The trained detector's test-split results (Benchmark screen).",
+        "operationId": "model_evaluation_api_v1_model_evaluation_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelEvaluationOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "no evaluated model"
+          }
+        }
+      }
+    },
     "/api/v1/audit": {
       "get": {
         "tags": [
@@ -3007,6 +3032,58 @@
         ],
         "title": "Capture"
       },
+      "ClassResultOut": {
+        "properties": {
+          "cls": {
+            "type": "string",
+            "title": "Cls"
+          },
+          "nondefect": {
+            "type": "boolean",
+            "title": "Nondefect"
+          },
+          "threshold": {
+            "type": "number",
+            "title": "Threshold"
+          },
+          "truth": {
+            "type": "integer",
+            "title": "Truth"
+          },
+          "recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recall"
+          },
+          "precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cls",
+          "nondefect",
+          "threshold",
+          "truth",
+          "recall",
+          "precision"
+        ],
+        "title": "ClassResultOut"
+      },
       "ConfirmIn": {
         "properties": {
           "note": {
@@ -4698,6 +4775,154 @@
         ],
         "title": "MeasurementIn"
       },
+      "ModelEvaluationOut": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "framework": {
+            "type": "string",
+            "title": "Framework"
+          },
+          "epochs": {
+            "type": "integer",
+            "title": "Epochs"
+          },
+          "train_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Train Minutes"
+          },
+          "classes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Classes"
+          },
+          "matching": {
+            "type": "string",
+            "title": "Matching"
+          },
+          "thresholds_from": {
+            "type": "string",
+            "title": "Thresholds From"
+          },
+          "tiles": {
+            "type": "integer",
+            "title": "Tiles"
+          },
+          "defects": {
+            "type": "integer",
+            "title": "Defects"
+          },
+          "found_any_class": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found Any Class"
+          },
+          "found_right_class": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found Right Class"
+          },
+          "defect_boxes": {
+            "type": "integer",
+            "title": "Defect Boxes"
+          },
+          "precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision"
+          },
+          "false_alarms": {
+            "type": "integer",
+            "title": "False Alarms"
+          },
+          "false_alarms_per_100_tiles": {
+            "type": "number",
+            "title": "False Alarms Per 100 Tiles"
+          },
+          "nondefects": {
+            "type": "integer",
+            "title": "Nondefects"
+          },
+          "nondefects_called_defect": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nondefects Called Defect"
+          },
+          "per_class": {
+            "items": {
+              "$ref": "#/components/schemas/ClassResultOut"
+            },
+            "type": "array",
+            "title": "Per Class"
+          },
+          "per_source": {
+            "items": {
+              "$ref": "#/components/schemas/SourceResultOut"
+            },
+            "type": "array",
+            "title": "Per Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "framework",
+          "epochs",
+          "train_minutes",
+          "classes",
+          "matching",
+          "thresholds_from",
+          "tiles",
+          "defects",
+          "found_any_class",
+          "found_right_class",
+          "defect_boxes",
+          "precision",
+          "false_alarms",
+          "false_alarms_per_100_tiles",
+          "nondefects",
+          "nondefects_called_defect",
+          "per_class",
+          "per_source"
+        ],
+        "title": "ModelEvaluationOut",
+        "description": "The trained detector measured on the held-out test split (never seen in training)."
+      },
       "NamedRef": {
         "properties": {
           "id": {
@@ -5493,6 +5718,58 @@
           "coverage_pct"
         ],
         "title": "ScoreSummary"
+      },
+      "SourceResultOut": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "tiles": {
+            "type": "integer",
+            "title": "Tiles"
+          },
+          "defects": {
+            "type": "integer",
+            "title": "Defects"
+          },
+          "found_any_class": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found Any Class"
+          },
+          "found_right_class": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found Right Class"
+          },
+          "false_alarms_per_100_tiles": {
+            "type": "number",
+            "title": "False Alarms Per 100 Tiles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "tiles",
+          "defects",
+          "found_any_class",
+          "found_right_class",
+          "false_alarms_per_100_tiles"
+        ],
+        "title": "SourceResultOut"
       },
       "SourceSpec": {
         "properties": {

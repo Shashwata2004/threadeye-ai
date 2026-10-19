@@ -142,6 +142,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/model/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Model Evaluation
+         * @description The trained detector's test-split results (Benchmark screen).
+         */
+        get: operations["model_evaluation_api_v1_model_evaluation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit": {
         parameters: {
             query?: never;
@@ -1064,6 +1084,21 @@ export interface components {
             /** Height */
             height: number;
         };
+        /** ClassResultOut */
+        ClassResultOut: {
+            /** Cls */
+            cls: string;
+            /** Nondefect */
+            nondefect: boolean;
+            /** Threshold */
+            threshold: number;
+            /** Truth */
+            truth: number;
+            /** Recall */
+            recall: number | null;
+            /** Precision */
+            precision: number | null;
+        };
         /** ConfirmIn */
         ConfirmIn: {
             /** Note */
@@ -1609,6 +1644,50 @@ export interface components {
              */
             unit: "in" | "yd" | "cm" | "m";
         };
+        /**
+         * ModelEvaluationOut
+         * @description The trained detector measured on the held-out test split (never seen in training).
+         */
+        ModelEvaluationOut: {
+            /** Model */
+            model: string;
+            /** Framework */
+            framework: string;
+            /** Epochs */
+            epochs: number;
+            /** Train Minutes */
+            train_minutes: number | null;
+            /** Classes */
+            classes: string[];
+            /** Matching */
+            matching: string;
+            /** Thresholds From */
+            thresholds_from: string;
+            /** Tiles */
+            tiles: number;
+            /** Defects */
+            defects: number;
+            /** Found Any Class */
+            found_any_class: number | null;
+            /** Found Right Class */
+            found_right_class: number | null;
+            /** Defect Boxes */
+            defect_boxes: number;
+            /** Precision */
+            precision: number | null;
+            /** False Alarms */
+            false_alarms: number;
+            /** False Alarms Per 100 Tiles */
+            false_alarms_per_100_tiles: number;
+            /** Nondefects */
+            nondefects: number;
+            /** Nondefects Called Defect */
+            nondefects_called_defect: number | null;
+            /** Per Class */
+            per_class: components["schemas"]["ClassResultOut"][];
+            /** Per Source */
+            per_source: components["schemas"]["SourceResultOut"][];
+        };
         /** NamedRef */
         NamedRef: {
             /**
@@ -1916,6 +1995,21 @@ export interface components {
             cells?: {
                 [key: string]: number;
             };
+        };
+        /** SourceResultOut */
+        SourceResultOut: {
+            /** Source */
+            source: string;
+            /** Tiles */
+            tiles: number;
+            /** Defects */
+            defects: number;
+            /** Found Any Class */
+            found_any_class: number | null;
+            /** Found Right Class */
+            found_right_class: number | null;
+            /** False Alarms Per 100 Tiles */
+            false_alarms_per_100_tiles: number;
         };
         /** SourceSpec */
         SourceSpec: {
@@ -2373,6 +2467,33 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProviderAvailabilityOut"][];
                 };
+            };
+        };
+    };
+    model_evaluation_api_v1_model_evaluation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelEvaluationOut"];
+                };
+            };
+            /** @description no evaluated model */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -176,6 +176,7 @@ def test_operating_point_counts_what_an_inspector_sees() -> None:
     r = report(dets, truths, thr, {"hole", "stain", "broken_yarn", "knot"}, lambda im: "src", ["a", "b", "c"])
     assert r["defects"] == 3 and r["found_any_class"] == 1.0 and r["found_right_class"] == round(2 / 3, 4)
     assert r["false_alarms"] == 2  # the sticker-as-stain and the empty knot
+    assert r["precision"] == 0.6  # 3 boxes on real defects (the duplicate not counted), 2 false alarms
     assert r["nondefects_called_defect"] == 1.0
     assert r["per_class"]["hole"]["precision"] == 0.5  # the hole (its duplicate not counted) and the stain
     assert r["per_source"]["src"]["tiles"] == 3

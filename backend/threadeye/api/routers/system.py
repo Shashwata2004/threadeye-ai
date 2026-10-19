@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from threadeye.api.deps import current_user, require
 from threadeye.api.schemas.system import (
     AuditEntryOut,
     AuditVerifyOut,
+    ModelEvaluationOut,
     ProviderAvailabilityOut,
     SystemStatusOut,
     WorkerStatus,
@@ -19,6 +21,7 @@ from threadeye.db.models import AuditLog, ComponentHeartbeat, User
 from threadeye.db.session import get_db, ping
 from threadeye.providers.registry import REGISTRY, ProviderSpec
 from threadeye.security.rbac import Perm
+from threadeye.services import model_card
 from threadeye.settings import get_settings
 
 router = APIRouter(tags=["system"])
@@ -60,6 +63,17 @@ def system_status(_: User = Depends(current_user), db: Session = Depends(get_db)
 def list_providers(_: User = Depends(current_user)) -> list[ProviderAvailabilityOut]:
     active_id = get_settings().detector_provider
     return [_provider_out(spec, active_id) for spec in REGISTRY.values()]
+
+
+@router.get(
+    "/model/evaluation", response_model=ModelEvaluationOut, responses={404: {"description": "no evaluated model"}}
+)
+def model_evaluation(_: User = Depends(current_user)) -> dict[str, Any]:
+    """The trained detector's test-split results (Benchmark screen)."""
+    ev = model_card.load_evaluation(get_settings().model_dir)
+    if ev is None:
+        raise HTTPException(404, "no evaluated model yet")
+    return ev
 
 
 @router.get("/audit", response_model=list[AuditEntryOut], tags=["audit"])

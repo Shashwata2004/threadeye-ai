@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Imperfection preset of the simulated detector for live inspections: "realistic" shows false
     # alarms and misses for the inspector to correct; "perfect" reproduces the answer key exactly.
     simulated_preset: Literal["perfect", "realistic"] = "realistic"
+    # The trained detector's model card (model_info.json, test_report.json from ml/kaggle/train.py).
+    # Empty: the copy shipped with the backend (threadeye/data/model/).
+    model_dir: str = ""
     storage_dir: str = "/data/storage"
     datasets_dir: str = "/data/datasets"
 
