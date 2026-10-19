@@ -185,7 +185,9 @@ def db_url() -> str | None:
         found = next(Path("/kaggle/input").rglob("threadeye_db_url.txt"), None)
         url = found.read_text().strip() if found else ""
         print(f"database URL from {'the code dataset' if url else 'nowhere'} (secret: {exc!r:.80})", flush=True)
-    return url.replace("postgresql+psycopg://", "postgresql://") or None
+    # Supabase's transaction pooler (port 6543) stalls on a 70 MB insert (measured from Kaggle: still running
+    # after 5 min); its session pooler (5432) takes 31 s. Checkpoint copies go through 5432.
+    return url.replace("postgresql+psycopg://", "postgresql://").replace(":6543/", ":5432/") or None
 
 
 DB_URL = db_url()
@@ -201,7 +203,7 @@ def from_supabase(name: str, dest: Path) -> bool:
     try:
         import psycopg
 
-        with psycopg.connect(DB_URL, autocommit=True, prepare_threshold=None) as conn:
+        with psycopg.connect(DB_URL, autocommit=True, prepare_threshold=None, connect_timeout=20) as conn:
             row = conn.execute("SELECT data FROM threadeye.blobs WHERE key = %s", (f"{UPLOAD_KEY}/{name}",)).fetchone()
         if row is None:
             return False
@@ -269,7 +271,7 @@ def checkpoint_uploader(stop: threading.Event) -> None:
             data = f.read_bytes()
             key = f"{UPLOAD_KEY}/{name}"
             try:
-                with psycopg.connect(url, autocommit=True, prepare_threshold=None) as conn:
+                with psycopg.connect(url, autocommit=True, prepare_threshold=None, connect_timeout=20) as conn:
                     conn.execute("SET statement_timeout = '10min'")
                     conn.execute(
                         "INSERT INTO threadeye.blobs (key, data, sha256, size, content_type) VALUES (%s, %s, %s, %s, %s) "
