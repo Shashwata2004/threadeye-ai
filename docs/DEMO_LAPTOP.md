@@ -14,7 +14,8 @@ processed in about 28 s, so the boxes keep ahead of the video.
    password, so never commit it or post it in a chat group.
 3. Install the tools:
    - uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`, then open a new terminal
-   - Node.js 20 or newer and pnpm: `sudo apt install nodejs npm && sudo npm i -g pnpm`
+   - Node.js 20 or newer and pnpm (Ubuntu's own `nodejs` package is too old):
+     `curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs && sudo npm i -g pnpm`
 
 ## Every time
 
