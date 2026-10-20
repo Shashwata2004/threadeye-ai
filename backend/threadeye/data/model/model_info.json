@@ -1,0 +1,270 @@
+{
+ "framework": "YOLOX (Apache-2.0)",
+ "yolox_commit": "6ddff4824372906469a7fae2dc3206c7aa4bbaee",
+ "size": "s",
+ "epochs": 20,
+ "batch": 16,
+ "input": [
+  640,
+  640
+ ],
+ "classes": [
+  "hole",
+  "stain",
+  "slub",
+  "broken_yarn",
+  "missing_yarn",
+  "knot",
+  "crease_mark",
+  "contamination",
+  "shade_bar",
+  "other_defect",
+  "sticker",
+  "loose_thread",
+  "wrinkle",
+  "hand"
+ ],
+ "thresholds": {
+  "hole": 0.4,
+  "stain": 0.2,
+  "slub": 0.25,
+  "broken_yarn": 0.25,
+  "missing_yarn": 0.3,
+  "knot": 0.3,
+  "crease_mark": 0.35,
+  "contamination": 0.45,
+  "shade_bar": 0.05,
+  "other_defect": 0.15,
+  "sticker": 0.6,
+  "loose_thread": 0.65,
+  "wrinkle": 0.55,
+  "hand": 0.55
+ },
+ "run_status": [
+  "training: finished all epochs",
+  "model under test: latest_ckpt.pth"
+ ],
+ "dataset_summary": {
+  "source_classes": {
+   "aitex": {
+    "019->slub": 40,
+    "030->slub": 19,
+    "006->broken_yarn": 13,
+    "002->broken_yarn": 10,
+    "010->broken_yarn": 9,
+    "022->other_defect": 9,
+    "023->crease_mark": 5,
+    "025->slub": 5,
+    "016->slub": 3,
+    "027->knot": 2,
+    "036->missing_yarn": 1,
+    "029->contamination": 1
+   },
+   "fabricspotdefect": {
+    "spot->stain": 3288
+   },
+   "moratuwa": {
+    "hole->hole": 58,
+    "horizontal->broken_yarn": 20,
+    "vertical->broken_yarn": 8
+   },
+   "fd_figshare": {
+    "0->stain": 207,
+    "2->hole": 197,
+    "3->hole": 195,
+    "1->hole": 182
+   },
+   "garment_defects": {
+    "Hole->hole": 257,
+    "Color_defect->stain": 240,
+    "Foreign_yarn->contamination": 144
+   },
+   "tianchi": {
+    "4->knot": 1996,
+    "3->contamination": 1055,
+    "12->slub": 915,
+    "17->broken_yarn": 546,
+    "15->knot": 473,
+    "19->crease_mark": 470,
+    "13->slub": 452,
+    "2->stain": 401,
+    "9->other_defect": 396,
+    "18->shade_bar": 361,
+    "20->other_defect": 361,
+    "14->stain": 336,
+    "1->hole": 312,
+    "16->missing_yarn": 302,
+    "10->broken_yarn": 284,
+    "8->slub": 213,
+    "7->slub": 195,
+    "6->other_defect": 161,
+    "11->other_defect": 160,
+    "5->other_defect": 134
+   },
+   "zju_leaper": {
+    "defect->other_defect": 4391
+   },
+   "raw_fabrid": {
+    "fabric_defect->other_defect": 361
+   },
+   "wfdd": {
+    "defect->other_defect": 231,
+    "flecked->stain": 40,
+    "contaminated->contamination": 38,
+    "string->contamination": 19,
+    "line->broken_yarn": 12
+   },
+   "fabric_stain": {
+    "0->stain": 870
+   },
+   "synth_nuisance": {
+    "sticker->sticker": 1904,
+    "loose_thread->loose_thread": 1829,
+    "wrinkle->wrinkle": 1508,
+    "hand->hand": 1414,
+    "stain->stain": 414,
+    "other_defect->other_defect": 270,
+    "hole->hole": 191,
+    "broken_yarn->broken_yarn": 45,
+    "contamination->contamination": 40,
+    "slub->slub": 22,
+    "knot->knot": 10,
+    "shade_bar->shade_bar": 4,
+    "missing_yarn->missing_yarn": 3,
+    "crease_mark->crease_mark": 2
+   }
+  },
+  "clean_images_per_source": {
+   "aitex": 141,
+   "moratuwa": 1500,
+   "zju_leaper": 8000,
+   "raw_fabrid": 507,
+   "wfdd": 2000,
+   "fabric_stain": 68
+  },
+  "images_per_source_split": {
+   "aitex": {
+    "train": 128,
+    "test": 110,
+    "val": 7
+   },
+   "fabricspotdefect": {
+    "val": 105,
+    "train": 811,
+    "test": 98
+   },
+   "moratuwa": {
+    "val": 91,
+    "train": 1210,
+    "test": 255
+   },
+   "fd_figshare": {
+    "test": 125,
+    "train": 543,
+    "val": 52
+   },
+   "garment_defects": {
+    "train": 833,
+    "test": 95,
+    "val": 96
+   },
+   "tianchi": {
+    "train": 4736,
+    "val": 658,
+    "test": 519
+   },
+   "zju_leaper": {
+    "train": 8795,
+    "val": 1103,
+    "test": 1102
+   },
+   "raw_fabrid": {
+    "train": 547,
+    "val": 95,
+    "test": 67
+   },
+   "wfdd": {
+    "val": 485,
+    "train": 1322,
+    "test": 434
+   },
+   "fabric_stain": {
+    "train": 396,
+    "val": 39,
+    "test": 31
+   },
+   "synth_nuisance": {
+    "val": 383,
+    "train": 3209,
+    "test": 408
+   }
+  },
+  "groups": 10913,
+  "tiles": {
+   "train": 38736,
+   "test": 9953,
+   "val": 10228
+  },
+  "defect_tiles": {
+   "train": 27757,
+   "test": 3054,
+   "val": 3852
+  },
+  "boxes_per_class": {
+   "train": {
+    "stain": 10519,
+    "other_defect": 8193,
+    "knot": 3605,
+    "slub": 3287,
+    "shade_bar": 2220,
+    "contamination": 1840,
+    "broken_yarn": 1585,
+    "sticker": 1510,
+    "loose_thread": 1462,
+    "hole": 1335,
+    "wrinkle": 1232,
+    "crease_mark": 1206,
+    "hand": 1134,
+    "missing_yarn": 630
+   },
+   "val": {
+    "stain": 1326,
+    "other_defect": 1157,
+    "slub": 568,
+    "knot": 479,
+    "shade_bar": 391,
+    "contamination": 219,
+    "crease_mark": 204,
+    "broken_yarn": 197,
+    "sticker": 190,
+    "hole": 176,
+    "loose_thread": 171,
+    "hand": 141,
+    "wrinkle": 131,
+    "missing_yarn": 53
+   },
+   "test": {
+    "stain": 1440,
+    "other_defect": 991,
+    "knot": 371,
+    "slub": 348,
+    "shade_bar": 248,
+    "sticker": 204,
+    "loose_thread": 196,
+    "hole": 176,
+    "broken_yarn": 163,
+    "wrinkle": 145,
+    "hand": 139,
+    "contamination": 130,
+    "crease_mark": 109,
+    "missing_yarn": 43
+   }
+  },
+  "dropped_boxes": {
+   "garment_defects:Sewing_error": 137,
+   "garment_defects:Broken_button": 265,
+   "garment_defects:Button_hike": 129
+  }
+ },
+ "minutes": 59.9
+}

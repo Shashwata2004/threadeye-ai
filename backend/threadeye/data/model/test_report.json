@@ -1,0 +1,179 @@
+{
+ "matching": "same class and IoU >= 0.3 or detection centre inside the truth box",
+ "tiles": 9672,
+ "defects": 4019,
+ "found_any_class": 0.4698,
+ "found_right_class": 0.4245,
+ "defect_boxes": 2923,
+ "precision": 0.7119,
+ "false_alarms": 764,
+ "false_alarms_per_100_tiles": 7.9,
+ "nondefects": 684,
+ "nondefects_called_defect": 0.0015,
+ "per_class": {
+  "broken_yarn": {
+   "threshold": 0.25,
+   "truth": 163,
+   "recall": 0.2515,
+   "precision": 0.3306
+  },
+  "contamination": {
+   "threshold": 0.45,
+   "truth": 130,
+   "recall": 0.5692,
+   "precision": 0.7327
+  },
+  "crease_mark": {
+   "threshold": 0.35,
+   "truth": 109,
+   "recall": 0.4954,
+   "precision": 0.5684
+  },
+  "hand": {
+   "threshold": 0.55,
+   "truth": 139,
+   "recall": 0.9928,
+   "precision": 0.9787
+  },
+  "hole": {
+   "threshold": 0.4,
+   "truth": 176,
+   "recall": 0.7443,
+   "precision": 0.8344
+  },
+  "knot": {
+   "threshold": 0.3,
+   "truth": 371,
+   "recall": 0.6577,
+   "precision": 0.7578
+  },
+  "loose_thread": {
+   "threshold": 0.65,
+   "truth": 196,
+   "recall": 0.852,
+   "precision": 0.9598
+  },
+  "missing_yarn": {
+   "threshold": 0.3,
+   "truth": 43,
+   "recall": 0.3721,
+   "precision": 0.4848
+  },
+  "other_defect": {
+   "threshold": 0.15,
+   "truth": 991,
+   "recall": 0.5166,
+   "precision": 0.6957
+  },
+  "shade_bar": {
+   "threshold": 0.05,
+   "truth": 248,
+   "recall": 0.1411,
+   "precision": 0.1458
+  },
+  "slub": {
+   "threshold": 0.25,
+   "truth": 348,
+   "recall": 0.4626,
+   "precision": 0.644
+  },
+  "stain": {
+   "threshold": 0.2,
+   "truth": 1440,
+   "recall": 0.3042,
+   "precision": 0.6394
+  },
+  "sticker": {
+   "threshold": 0.6,
+   "truth": 204,
+   "recall": 0.9853,
+   "precision": 0.995
+  },
+  "wrinkle": {
+   "threshold": 0.55,
+   "truth": 145,
+   "recall": 0.6759,
+   "precision": 0.8909
+  }
+ },
+ "per_source": {
+  "aitex": {
+   "tiles": 880,
+   "defects": 112,
+   "found_any_class": 0.1429,
+   "found_right_class": 0.0,
+   "false_alarms_per_100_tiles": 1.25
+  },
+  "fabric_stain": {
+   "tiles": 124,
+   "defects": 240,
+   "found_any_class": 0.7542,
+   "found_right_class": 0.7542,
+   "false_alarms_per_100_tiles": 4.84
+  },
+  "fabricspotdefect": {
+   "tiles": 290,
+   "defects": 923,
+   "found_any_class": 0.1116,
+   "found_right_class": 0.1116,
+   "false_alarms_per_100_tiles": 45.86
+  },
+  "fd_figshare": {
+   "tiles": 125,
+   "defects": 139,
+   "found_any_class": 0.8489,
+   "found_right_class": 0.8058,
+   "false_alarms_per_100_tiles": 34.4
+  },
+  "garment_defects": {
+   "tiles": 95,
+   "defects": 52,
+   "found_any_class": 0.5,
+   "found_right_class": 0.4615,
+   "false_alarms_per_100_tiles": 7.37
+  },
+  "moratuwa": {
+   "tiles": 765,
+   "defects": 5,
+   "found_any_class": 0.0,
+   "found_right_class": 0.0,
+   "false_alarms_per_100_tiles": 4.71
+  },
+  "raw_fabrid": {
+   "tiles": 536,
+   "defects": 31,
+   "found_any_class": 0.8065,
+   "found_right_class": 0.7419,
+   "false_alarms_per_100_tiles": 3.36
+  },
+  "synth_nuisance": {
+   "tiles": 408,
+   "defects": 108,
+   "found_any_class": 0.4722,
+   "found_right_class": 0.463,
+   "false_alarms_per_100_tiles": 2.94
+  },
+  "tianchi": {
+   "tiles": 5190,
+   "defects": 1958,
+   "found_any_class": 0.5725,
+   "found_right_class": 0.4959,
+   "false_alarms_per_100_tiles": 7.84
+  },
+  "wfdd": {
+   "tiles": 157,
+   "defects": 135,
+   "found_any_class": 0.1407,
+   "found_right_class": 0.1185,
+   "false_alarms_per_100_tiles": 0.0
+  },
+  "zju_leaper": {
+   "tiles": 1102,
+   "defects": 316,
+   "found_any_class": 0.7215,
+   "found_right_class": 0.7152,
+   "false_alarms_per_100_tiles": 8.26
+  }
+ },
+ "thresholds_from": "val split, best F1 per class"
+}

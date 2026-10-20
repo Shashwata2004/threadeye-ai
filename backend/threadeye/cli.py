@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _export_openapi(args: argparse.Namespace) -> int:
@@ -140,12 +141,24 @@ def _cloud_check(_: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _bulk_session() -> Any:
+    """A session for moving large files (videos, models) to or from Supabase: through the session pooler or
+    direct connection (THREADEYE_MIGRATION_DATABASE_URL). The transaction pooler stalls on inserts of tens of
+    MB (a 70 MB insert was still running after 5 minutes; through the session pooler it took 31 s)."""
+    from sqlalchemy.orm import sessionmaker
+
+    from threadeye.db.session import make_engine
+    from threadeye.settings import get_settings
+
+    url = get_settings().ddl_database_url.replace(":6543/", ":5432/")
+    return sessionmaker(bind=make_engine(url, cloud=True, serverless=True), expire_on_commit=False)()
+
+
 def _upload_video(args: argparse.Namespace) -> int:
     """Cloud profile: keep a simulated roll's video in the shared database, for hosts without local files."""
     from sqlalchemy import delete, text
 
     from threadeye.db.models import Blob
-    from threadeye.db.session import get_sessionmaker
     from threadeye.services import storage
     from threadeye.settings import get_settings
 
@@ -159,7 +172,7 @@ def _upload_video(args: argparse.Namespace) -> int:
         return 1
     data = video.read_bytes()
     key = storage.video_key(directory.name)
-    with get_sessionmaker()() as db:
+    with _bulk_session() as db:
         # One large statement: lift Supabase's per-statement time limit for this transaction only,
         # and send the bytes once (delete + insert, not an upsert that repeats them).
         db.execute(text("SET LOCAL statement_timeout = '15min'"))
@@ -179,7 +192,6 @@ def _upload_model(args: argparse.Namespace) -> int:
     from sqlalchemy import delete, text
 
     from threadeye.db.models import Blob
-    from threadeye.db.session import get_sessionmaker
     from threadeye.services import storage
     from threadeye.settings import get_settings
 
@@ -191,7 +203,7 @@ def _upload_model(args: argparse.Namespace) -> int:
     if len(onnx) != 1 or not all((directory / f).is_file() for f in MODEL_FILES):
         print(f"{directory} needs one threadeye_*.onnx and {', '.join(MODEL_FILES)}")
         return 1
-    with get_sessionmaker()() as db:
+    with _bulk_session() as db:
         db.execute(text("SET LOCAL statement_timeout = '15min'"))
         db.execute(delete(Blob).where(Blob.key.like(f"{MODEL_KEY}/%")))
         for f in (onnx[0], *(directory / n for n in MODEL_FILES)):
@@ -212,7 +224,6 @@ def _fetch_demo_assets(args: argparse.Namespace) -> int:
     from sqlalchemy import select
 
     from threadeye.db.models import Blob
-    from threadeye.db.session import get_sessionmaker
     from threadeye.services import storage
     from threadeye.settings import get_settings
 
@@ -234,7 +245,7 @@ def _fetch_demo_assets(args: argparse.Namespace) -> int:
     for meta in sorted(data_dir.glob("*/roll_meta.json")):
         wanted[storage.video_key(meta.parent.name)] = meta.parent / "roll_video.mp4"
     missing = 0
-    with get_sessionmaker()() as db:
+    with _bulk_session() as db:
         rows = db.execute(select(Blob.key, Blob.sha256).where(Blob.key.like(f"{MODEL_KEY}/%"))).all()
         for key, _ in rows:
             wanted[key] = model_dir / key.rsplit("/", 1)[1]
@@ -260,7 +271,6 @@ def _fetch_training_checkpoints(args: argparse.Namespace) -> int:
     from sqlalchemy import select
 
     from threadeye.db.models import Blob
-    from threadeye.db.session import get_sessionmaker
     from threadeye.settings import get_settings
 
     if not get_settings().is_cloud:
@@ -268,7 +278,7 @@ def _fetch_training_checkpoints(args: argparse.Namespace) -> int:
         return 1
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    with get_sessionmaker()() as db:
+    with _bulk_session() as db:
         rows = db.execute(select(Blob.key, Blob.size, Blob.created_at).where(Blob.key.like("models/training/%"))).all()
         for key, size, at in rows:
             path = out / key.removeprefix("models/training/")
