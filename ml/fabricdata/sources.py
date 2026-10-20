@@ -106,6 +106,61 @@ def read_aitex(root: Path) -> Iterator[ImageRecord]:
                           defect_free=True, force_split="test" if fabric == AITEX_DEMO_FABRIC else None)
 
 
+def open_rgb(r: ImageRecord) -> Image.Image:
+    """The record's image as its labels see it: the stored pixels turned by ``r.rotate``. EXIF orientation is
+    not applied: every reader measures sizes and masks on the stored pixels, and the labelled photos carry no
+    EXIF orientation (checked: all FabricSpotDefect photos have orientation 1)."""
+    with Image.open(r.path) as im:
+        out = im.convert("RGB")
+    if r.rotate == 90:
+        out = out.transpose(Image.Transpose.ROTATE_270)
+    elif r.rotate == 270:
+        out = out.transpose(Image.Transpose.ROTATE_90)
+    return out
+
+
+def _box_contrast(gray: np.ndarray, boxes: list[Box], scale: float) -> float:
+    """Mean |inside - surrounding ring| brightness of the boxes: high when the boxes sit on the marks."""
+    vals = []
+    h, w = gray.shape
+    for b in boxes:
+        x0, y0, x1, y1 = (int(v * scale) for v in (b.x0, b.y0, b.x1, b.y1))
+        if x1 - x0 < 3 or y1 - y0 < 3:
+            continue
+        m = max(3, (max(x1 - x0, y1 - y0)) // 2)
+        ring = gray[max(0, y0 - m):min(h, y1 + m), max(0, x0 - m):min(w, x1 + m)].astype(np.float64)
+        inner = gray[y0:y1, x0:x1].astype(np.float64)
+        n = ring.size - inner.size
+        if inner.size == 0 or n <= 0:
+            continue
+        vals.append(abs(inner.mean() - (ring.sum() - inner.sum()) / n))
+    return float(np.mean(vals)) if vals else 0.0
+
+
+ROTATION_MARGIN = 1.5
+"""A quarter turn is taken only when its box contrast beats the other one by this factor. FabricSpotDefect:
+96 photos turn clockwise, 48 counter-clockwise, 65 are too faint to tell and are left out."""
+
+
+def label_rotation(path: Path, width: int, height: int, boxes: list[Box]) -> int:
+    """0 when the stored image has the labels' size; for a sideways image (sizes swapped) the quarter turn
+    (90 or 270 degrees clockwise) that puts the boxes on the marks, judged by box contrast. Phones were
+    held both ways, so this is decided per image; -1 when neither turn is clearly right."""
+    with Image.open(path) as im:
+        if im.size == (width, height) or im.size != (height, width):  # size only: no pixel decoding yet
+            return 0
+        im.draft("L", (im.width // 4, im.height // 4))
+        small = im.convert("L")
+    scale = small.width / height  # small is still sideways: its width belongs to the labels' height
+    cw = _box_contrast(np.asarray(small.transpose(Image.Transpose.ROTATE_270)), boxes, scale)
+    ccw = _box_contrast(np.asarray(small.transpose(Image.Transpose.ROTATE_90)), boxes, scale)
+    if cw >= ccw * ROTATION_MARGIN:
+        return 90
+    if ccw >= cw * ROTATION_MARGIN:
+        return 270
+    return -1  # neither way is clearly right: the image is left out rather than trained with wrong boxes
+
+
 def read_coco(source: str, ann_files: list[Path], group_of: Callable[[str], str],
               image_dir_of: Callable[[Path], Path] | None = None) -> Iterator[ImageRecord]:
     for ann in ann_files:
@@ -118,8 +173,14 @@ def read_coco(source: str, ann_files: list[Path], group_of: Callable[[str], str]
         image_dir = image_dir_of(ann) if image_dir_of else ann.parent
         for im in j["images"]:
             path = image_dir / im["file_name"]
-            yield ImageRecord(source, path, int(im["width"]), int(im["height"]),
-                              by_image.get(im["id"], []), group=group_of(im["file_name"]))
+            boxes = by_image.get(im["id"], [])
+            w, h = int(im["width"]), int(im["height"])
+            rot = label_rotation(path, w, h, boxes) if path.exists() and boxes else 0
+            if rot < 0:
+                continue
+            if not boxes and path.exists():
+                w, h = image_size(path)  # no labels to match: the stored image's own size
+            yield ImageRecord(source, path, w, h, boxes, group=group_of(im["file_name"]), rotate=rot)
 
 
 def read_fabricspotdefect(root: Path) -> Iterator[ImageRecord]:

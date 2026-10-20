@@ -43,6 +43,16 @@ The detector learns 10 of the 12 taxonomy defects (`fabricdata/classes.py`):
 - Stain photos are shrunk to 1024 px (was 1600) before tiling: FabricSpotDefect alone had given a quarter of
   all train boxes.
 
+## Sideways FabricSpotDefect photos (build v9)
+
+228 of the 1,014 FabricSpotDefect photos are stored landscape (4032 x 3024) while their COCO labels are for
+the portrait image (3024 x 4032): the Roboflow export dropped the EXIF orientation. Until build v8 those
+boxes landed on the wrong pixels (the model then found 11 % of this source's stains with 46 false alarms
+per 100 tiles). `sources.label_rotation` now picks, per photo, the quarter turn that puts the boxes on the
+marks (box-versus-surrounding contrast; correctly stored photos score 7.1, the chosen turn 6.9, the other
+5.5). A turn is taken only when it is 1.5 x clearer than the other: 95 photos turn clockwise, 46
+counter-clockwise, and 63 too faint to tell are left out.
+
 ## Non-defects (build v8)
 
 `synth_nuisance.py` draws stickers, loose threads, handling wrinkles and hands onto tiles of the real sources

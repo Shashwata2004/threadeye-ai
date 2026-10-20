@@ -38,6 +38,9 @@ class ImageRecord:
     defect_free: bool = False
     force_split: str | None = None
     """E.g. "test" for the AITEX fabric the demo sample roll is rendered from."""
+    rotate: int = 0
+    """Degrees clockwise (90 or 270) to turn the stored image so it matches its labels: a re-export that
+    dropped the EXIF orientation left a fifth of the FabricSpotDefect photos sideways (sources.open_rgb)."""
 
     @property
     def key(self) -> str:

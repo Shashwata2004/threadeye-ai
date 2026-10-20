@@ -51,8 +51,7 @@ def bases(external: Path, tianchi_images: Path | None) -> dict[bool, dict[str, l
 
 def base_tile(r: ImageRecord, rng: np.random.Generator) -> tuple[np.ndarray, list] | None:
     s = min(1.0, MAX_SIDE[r.source] / max(r.width, r.height)) if r.source in MAX_SIDE else 1.0
-    with Image.open(r.path) as im:
-        im = im.convert("RGB")
+    with sources.open_rgb(r) as im:
         if s < 1.0:
             im = im.resize((round(im.width * s), round(im.height * s)), Image.Resampling.LANCZOS)
         x0 = int(rng.integers(0, max(1, im.width - TILE + 1)))

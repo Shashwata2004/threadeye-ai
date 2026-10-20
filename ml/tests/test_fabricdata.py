@@ -182,3 +182,22 @@ def test_operating_point_counts_what_an_inspector_sees() -> None:
     assert r["per_source"]["src"]["tiles"] == 3
     chosen = choose_thresholds(dets, truths, ["hole", "knot"])
     assert chosen["hole"] >= 0.05 and chosen["knot"] == 0.3  # no knot in the truth: default
+
+
+def test_sideways_photo_is_turned_to_match_its_labels(tmp_path: Path) -> None:
+    # Labels for a portrait image (300 x 400) with a dark spot at x 50-90, y 300-340; the file was stored
+    # landscape (400 x 300), i.e. turned 90 degrees counter-clockwise from what the labels saw.
+    portrait = np.full((400, 300), 200, np.uint8)
+    portrait[300:340, 50:90] = 40
+    Image.fromarray(portrait).transpose(Image.Transpose.ROTATE_90).save(tmp_path / "a.jpg")
+    ann = {"images": [{"id": 1, "file_name": "a.jpg", "width": 300, "height": 400}],
+           "annotations": [{"image_id": 1, "category_id": 1, "bbox": [50, 300, 40, 40]}],
+           "categories": [{"id": 1, "name": "spot"}]}
+    (tmp_path / "_annotations.coco.json").write_text(__import__("json").dumps(ann))
+    (r,) = list(sources.read_coco("fabricspotdefect", [tmp_path / "_annotations.coco.json"], lambda n: n))
+    assert r.rotate == 90
+    img = np.asarray(sources.open_rgb(r).convert("L"))
+    assert img.shape == (400, 300) and img[310:330, 60:80].mean() < 80  # the spot is under its box
+    Image.fromarray(portrait).save(tmp_path / "a.jpg")  # stored the right way round
+    (r,) = list(sources.read_coco("fabricspotdefect", [tmp_path / "_annotations.coco.json"], lambda n: n))
+    assert r.rotate == 0

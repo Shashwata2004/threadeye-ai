@@ -151,8 +151,7 @@ def write(tiles: list[Tile], out: Path, external: Path) -> None:
     manifest = []
     ann_id = 0
     for i, (path, ts) in enumerate(by_image.items()):
-        with Image.open(path) as im:
-            im = im.convert("RGB")
+        with sources.open_rgb(ts[0].record) as im:
             s = ts[0].scale
             if s < 1.0:
                 im = im.resize((round(im.width * s), round(im.height * s)), Image.Resampling.LANCZOS)
