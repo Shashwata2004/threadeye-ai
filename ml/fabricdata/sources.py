@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 import re
 import xml.etree.ElementTree as ET
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -23,6 +24,11 @@ ROBOFLOW_SUFFIX = re.compile(r"_(jpe?g|png)\.rf\.[0-9a-f]+\.(jpe?g|png)$", re.IG
 SESSION_GAP_S = 120
 """Photos taken less than this apart (phone time stamps in the file name) show the same defect."""
 
+READ_THREADS = 32
+"""Opening files on Kaggle's input disk mostly waits on the disk: one at a time, ZJU-Leaper's reader did not get
+through 5,000 of its 94,833 xml files in 20 minutes; with 32 threads it read 5,000 in 98 s (2026-10-20). So the
+readers of the large Kaggle-attached sources open their files from this many threads, results in order."""
+
 AITEX_DEMO_FABRIC = "02"
 """data/sample_roll is rendered from AITEX fabric 02 (roll_meta.json "source"): always test."""
 
@@ -30,6 +36,12 @@ AITEX_DEMO_FABRIC = "02"
 def original_name(file_name: str) -> str:
     """Roboflow renames ``x.jpg`` to ``x_jpg.rf.<hash>.jpg`` (once per augmented copy)."""
     return ROBOFLOW_SUFFIX.sub("", Path(file_name).name)
+
+
+def threaded(fn: Callable, items: Iterable) -> Iterator:
+    """``map(fn, items)`` with READ_THREADS threads, results in order (file opening waits on the disk)."""
+    with ThreadPoolExecutor(READ_THREADS) as ex:
+        yield from ex.map(fn, items)
 
 
 def image_size(path: Path) -> tuple[int, int]:
@@ -340,7 +352,8 @@ def read_zju_leaper(root: Path) -> Iterator[ImageRecord]:
     linked = root / "ZJU-Leaper"
     base = linked.resolve() if linked.is_symlink() else next(root.rglob("ImageSets")).parent
     masks = base / "Annotations/masks"
-    for xml in sorted((base / "Annotations/xmls").glob("*.xml")):
+
+    def one(xml: Path) -> ImageRecord | None:
         t = ET.parse(xml).getroot()
         img = base / "Images" / (t.findtext("filename") or f"{xml.stem}.jpg")
         defective = (t.findtext("defective") or "0").strip() == "1"
@@ -359,11 +372,15 @@ def read_zju_leaper(root: Path) -> Iterator[ImageRecord]:
             m = np.asarray(Image.open(mask).convert("L"))
             boxes = [Box(*b, src_cls="defect") for b in mask_boxes(m)]
         if defective and not boxes:
-            continue  # defective but no box or mask: unusable
+            return None  # defective but no box or mask: unusable
         pattern = t.findtext("pattern_id") or "?"
         num = int(xml.stem) if xml.stem.isdigit() else 0
-        yield ImageRecord("zju_leaper", img, w, h, boxes, group=f"zju:{pattern}:{num // ZJU_GROUP_SPAN}",
-                          defect_free=not defective)
+        return ImageRecord("zju_leaper", img, w, h, boxes, group=f"zju:{pattern}:{num // ZJU_GROUP_SPAN}",
+                           defect_free=not defective)
+
+    for r in threaded(one, sorted((base / "Annotations/xmls").glob("*.xml"))):
+        if r is not None:
+            yield r
 
 
 def read_raw_fabrid(root: Path) -> Iterator[ImageRecord]:
@@ -385,24 +402,29 @@ def read_wfdd(root: Path) -> Iterator[ImageRecord]:
     with masks in <fabric>/ground_truth/<defect>/NNN_mask.png; train/good and test/good are defect-free."""
     # On Kaggle WFDD is a read-only input linked in as <root>/WFDD; Path.rglob does not follow symlinks.
     base = (root / "WFDD").resolve() if (root / "WFDD").exists() else next(root.rglob("ground_truth")).parent.parent
+
+    def defect(img: Path) -> ImageRecord | None:
+        fabric, defect = img.parent.parent.parent, img.parent.name
+        mask_path = fabric / "ground_truth" / defect / f"{img.stem}_mask.png"
+        if not mask_path.exists():
+            return None
+        boxes = [Box(*b, src_cls=defect) for b in mask_boxes(np.asarray(Image.open(mask_path).convert("L")))]
+        if not boxes:
+            return None
+        w, h = image_size(img)
+        num = int(img.stem) if img.stem.isdigit() else 0
+        return ImageRecord("wfdd", img, w, h, boxes, group=f"wfdd:{fabric.name}:{defect}:{num // 5}")
+
+    def good(img: Path) -> ImageRecord:
+        fabric = img.parent.parent.parent
+        w, h = image_size(img)
+        return ImageRecord("wfdd", img, w, h, [], group=f"wfdd:{fabric.name}:good:{img.parent.parent.name}:{img.stem}",
+                           defect_free=True)
+
     for fabric in sorted(p for p in base.iterdir() if p.is_dir()):
-        for img in sorted((fabric / "test").glob("*/*.png")):
-            defect = img.parent.name
-            if defect == "good":
-                continue
-            mask_path = fabric / "ground_truth" / defect / f"{img.stem}_mask.png"
-            if not mask_path.exists():
-                continue
-            boxes = [Box(*b, src_cls=defect) for b in mask_boxes(np.asarray(Image.open(mask_path).convert("L")))]
-            if not boxes:
-                continue
-            w, h = image_size(img)
-            num = int(img.stem) if img.stem.isdigit() else 0
-            yield ImageRecord("wfdd", img, w, h, boxes, group=f"wfdd:{fabric.name}:{defect}:{num // 5}")
-        for img in sorted(fabric.glob("*/good/*.png")):
-            w, h = image_size(img)
-            yield ImageRecord("wfdd", img, w, h, [], group=f"wfdd:{fabric.name}:good:{img.parent.parent.name}:{img.stem}",
-                              defect_free=True)
+        tests = [img for img in sorted((fabric / "test").glob("*/*.png")) if img.parent.name != "good"]
+        yield from (r for r in threaded(defect, tests) if r is not None)
+        yield from threaded(good, sorted(fabric.glob("*/good/*.png")))
 
 
 def read_synth_nuisance(root: Path) -> Iterator[ImageRecord]:
