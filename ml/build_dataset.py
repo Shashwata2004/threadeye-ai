@@ -327,7 +327,9 @@ def main() -> None:
         print(f"  smoke run: {len(records)} images")
 
     print("grouping near-duplicates", flush=True)
-    prints = [fingerprint(r.path) if r.source in COPY_PRONE else Fingerprint(0.0, 0, 0) for r in records]
+    # ~11,000 photo decodes (5.5 min one at a time on Kaggle): from threads, PIL decodes outside the GIL.
+    prints = list(sources.threaded(
+        lambda r: fingerprint(r.path) if r.source in COPY_PRONE else Fingerprint(0.0, 0, 0), records))
     merges = merge_near_duplicates(records, prints)
     print(f"  {merges} merges")
     if args.patch_base:
