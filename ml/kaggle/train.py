@@ -31,6 +31,9 @@ INIT_FROM_PREVIOUS = bool(PARAMS.get("init_from_previous", False))
 """Fine-tune: start a new schedule from the newest attached checkpoint's weights (e.g. after a data fix),
 instead of YOLOX's COCO weights. Not a resume: optimizer, epoch count and learning-rate schedule start over."""
 LR_SCALE = float(PARAMS.get("lr_scale", 1.0))
+EVAL_ONLY = bool(PARAMS.get("eval_only", False))
+"""Train nothing: test the newest attached checkpoint on this notebook's dataset (the previous model on a
+patched test set, as the baseline a new model is compared with)."""
 """Continue from the last epoch of a previous session attached as an input (the other training notebook:
 threadeye-train and threadeye-train-2 take turns). "auto": resume whenever such a checkpoint is attached."""
 YOLOX_COMMIT = PARAMS.get("yolox_commit", "main")
@@ -330,18 +333,27 @@ def checkpoint_uploader(stop: threading.Event) -> None:
 
 stop_uploads = threading.Event()
 uploader = threading.Thread(target=checkpoint_uploader, args=(stop_uploads,), daemon=True)
-uploader.start()
-try:
-    # The variables come first: "timeout VAR=x cmd" would try to run "VAR=x" as the command.
-    sh(f"{env} timeout --signal=INT --kill-after=5m {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} -d {DEVICES} "
-       f"-b {BATCH} --fp16 -o {start}", cwd=YOLOX, name="training", limit_min=TRAIN_BUDGET_H * 60 + 10)
-    note("training: finished all epochs")
-except subprocess.CalledProcessError as exc:
-    note(f"training: stopped (exit {exc.returncode}; 124 = the {TRAIN_BUDGET_H} h budget, 137 = killed after it)")
-    # A rank stuck in a GPU collective ignores the interrupt and keeps its GPU memory: clear it before testing.
-    subprocess.run("pkill -9 -f tools/train.py", shell=True, check=False)
-stop_uploads.set()
-uploader.join(timeout=600)
+if EVAL_ONLY:
+    attached = sorted([*Path("/kaggle/input").rglob("latest_ckpt.pth"), *Path("/kaggle/input").rglob("best_ckpt.pth")],
+                      key=lambda p: p.stat().st_mtime)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    if attached:
+        shutil.copy(attached[-1], run_dir / "latest_ckpt.pth")
+        note(f"training: skipped (eval_only); model under test: {attached[-1]}")
+else:
+    uploader.start()
+    try:
+        # The variables come first: "timeout VAR=x cmd" would try to run "VAR=x" as the command.
+        sh(f"{env} timeout --signal=INT --kill-after=5m {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} "
+           f"-d {DEVICES} -b {BATCH} --fp16 -o {start}", cwd=YOLOX, name="training",
+           limit_min=TRAIN_BUDGET_H * 60 + 10)
+        note("training: finished all epochs")
+    except subprocess.CalledProcessError as exc:
+        note(f"training: stopped (exit {exc.returncode}; 124 = the {TRAIN_BUDGET_H} h budget, 137 = killed after it)")
+        # A rank stuck in a GPU collective ignores the interrupt and keeps its GPU memory: clear it before testing.
+        subprocess.run("pkill -9 -f tools/train.py", shell=True, check=False)
+    stop_uploads.set()
+    uploader.join(timeout=600)
 # Training evaluates nothing, so the model of this session is its newest checkpoint (latest_ckpt.pth, written at
 # the end of every epoch); best_ckpt.pth is only used when there is no newer one.
 ckpts = [run_dir / n for n in ("latest_ckpt.pth", "last_epoch_ckpt.pth", "best_ckpt.pth") if (run_dir / n).exists()]
