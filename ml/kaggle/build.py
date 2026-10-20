@@ -7,7 +7,6 @@ Internet on, no GPU needed.
 """
 
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -16,25 +15,27 @@ import zipfile
 from pathlib import Path
 
 CODE = next(Path("/kaggle/input").rglob("build_dataset.py")).parent  # .../ml
+sys.path.insert(0, str(CODE / "kaggle"))
+import steplog  # time-stamped log with a heartbeat; every step has a time limit
+
 PARAMS = json.loads(next(Path("/kaggle/input").rglob("params.json")).read_text())
 EXT = Path("/kaggle/tmp/external")
 OUT = Path("/kaggle/working/threadeye_v1")
 T0 = time.time()
 
 
-def sh(cmd: str) -> None:
-    print(f"[{time.time() - T0:6.0f}s] + {cmd[:160]}", flush=True)
-    # Unbuffered, so the steps' own progress lines reach the live log (kernels logs -f) as they happen.
-    subprocess.run(cmd, shell=True, check=True, env={**os.environ, "PYTHONUNBUFFERED": "1"})
+def sh(cmd: str, name: str | None = None, limit_min: float = 20) -> None:
+    steplog.step(name or cmd.split()[0], cmd, limit_min)
 
 
 def fetch(url: str, dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    sh(f"curl -sSL --retry 5 -A 'curl/8.5.0' -o '{dest}' '{url}'")
+    sh(f"curl -sSL --retry 5 -A 'curl/8.5.0' -o '{dest}' '{url}'", f"download {dest.relative_to(EXT)}", 20)
     return dest
 
 
 def unzip(zf: Path, to: Path, members_prefix: str | None = None) -> None:
+    steplog.phase(f"unzip {zf.relative_to(EXT)}")
     to.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zf) as z:
         names = [n for n in z.namelist() if members_prefix is None or n.startswith(members_prefix)]
@@ -43,7 +44,7 @@ def unzip(zf: Path, to: Path, members_prefix: str | None = None) -> None:
 
 
 def un7z(f: Path, to: Path) -> None:
-    sh(f"7z x -y -o'{to}' '{f}' > /dev/null")
+    sh(f"7z x -y -o'{to}' '{f}' > /dev/null", f"7z {f.name}", 20)
     f.unlink()
 
 
@@ -143,15 +144,15 @@ ego = next((p.parent for pat in ("*/_LABELLED_SAMPLES", "*/*/_LABELLED_SAMPLES",
                                   "*/*/*/*/_LABELLED_SAMPLES") for p in Path("/kaggle/input").glob(pat)), None)
 hands = EXT / "hand_cutouts"
 if ego is not None:
-    sh(f"{sys.executable} {CODE / 'scripts/egohands_cutouts.py'} '{ego}' '{hands}' --max 2000")
+    sh(f"{sys.executable} {CODE / 'scripts/egohands_cutouts.py'} '{ego}' '{hands}' --max 2000", "hand cut-outs", 45)
 else:
     print("!! EgoHands not attached: cartoon hands only", flush=True)
 sh(" ".join([sys.executable, str(CODE / "synth_nuisance.py"), "--external", str(EXT), "--n",
              str(PARAMS.get("synth_nuisance", 4000)), "--tianchi-images", str(EXT / "tianchi/images"),
-             *(["--hands", str(hands)] if ego is not None else [])]))
+             *(["--hands", str(hands)] if ego is not None else [])]), "non-defect tiles", 60)
 
 caps = PARAMS.get("caps", [])
 sh(" ".join([sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT),
-             "--tianchi-images", str(EXT / "tianchi/images"), *[f"--cap {c}" for c in caps]]))
+             "--tianchi-images", str(EXT / "tianchi/images"), *[f"--cap {c}" for c in caps]]), "dataset tiles", 150)
 sh(f"du -sh {OUT} && ls {OUT}")
 print(f"done in {(time.time() - T0) / 60:.1f} min")

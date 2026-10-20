@@ -11,7 +11,6 @@ in a fraction f of train images is repeated max(1, sqrt(t / f)) times, t = 0.1.
 import hashlib
 import json
 import math
-import os
 import shutil
 import subprocess
 import sys
@@ -54,10 +53,13 @@ in the session (a hang, Kaggle's 12-hour limit), the epochs trained so far are k
 T0 = time.time()
 
 
-def sh(cmd: str, cwd: Path | None = None) -> None:
-    print(f"[{time.time() - T0:6.0f}s] + {cmd[:200]}", flush=True)
-    # pipefail: a failing step piped into tee must still fail the notebook.
-    subprocess.run(["bash", "-o", "pipefail", "-c", cmd], check=True, cwd=cwd)
+sys.path.insert(0, str(next(Path("/kaggle/input").rglob("kaggle/steplog.py")).parent))
+import steplog  # time-stamped log with a heartbeat; every step has a time limit
+
+
+def sh(cmd: str, cwd: Path | None = None, name: str | None = None, limit_min: float = 60) -> None:
+    # bash with pipefail: a failing step piped into tee must still fail the notebook.
+    steplog.step(name or cmd.split()[0], cmd, limit_min, cwd)
 
 
 def repeat_factor_sampling(coco: dict, t: float = 0.1) -> dict:
@@ -317,7 +319,7 @@ uploader.start()
 try:
     # The variables come first: "timeout VAR=x cmd" would try to run "VAR=x" as the command.
     sh(f"{env} timeout --signal=INT --kill-after=5m {TRAIN_BUDGET_H}h {sys.executable} tools/train.py -f {exp} -d {DEVICES} "
-       f"-b {BATCH} --fp16 -o {start}", cwd=YOLOX)
+       f"-b {BATCH} --fp16 -o {start}", cwd=YOLOX, name="training", limit_min=TRAIN_BUDGET_H * 60 + 10)
     note("training: finished all epochs")
 except subprocess.CalledProcessError as exc:
     note(f"training: stopped (exit {exc.returncode}; 124 = the {TRAIN_BUDGET_H} h budget, 137 = killed after it)")
