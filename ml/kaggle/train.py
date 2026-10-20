@@ -28,6 +28,10 @@ MAX_TRAIN = PARAMS.get("max_train_images")  # a smoke test sets a small number
 TRAIN_BUDGET_H = float(PARAMS.get("train_budget_h", 10.0))
 EVAL_INTERVAL = int(PARAMS.get("eval_interval", 0))  # 0: no evaluation during training
 RESUME = PARAMS.get("resume", "auto")
+INIT_FROM_PREVIOUS = bool(PARAMS.get("init_from_previous", False))
+"""Fine-tune: start a new schedule from the newest attached checkpoint's weights (e.g. after a data fix),
+instead of YOLOX's COCO weights. Not a resume: optimizer, epoch count and learning-rate schedule start over."""
+LR_SCALE = float(PARAMS.get("lr_scale", 1.0))
 """Continue from the last epoch of a previous session attached as an input (the other training notebook:
 threadeye-train and threadeye-train-2 take turns). "auto": resume whenever such a checkpoint is attached."""
 YOLOX_COMMIT = PARAMS.get("yolox_commit", "main")
@@ -128,6 +132,7 @@ class Exp(MyExp):
         self.max_epoch = {EPOCHS}
         self.no_aug_epochs = max(1, {EPOCHS} // 10)
         self.warmup_epochs = min(5, max(1, {EPOCHS} // 10))
+        self.basic_lr_per_img *= {LR_SCALE}
         # No evaluation inside training: two-GPU sessions hung at the barrier right after an in-training
         # evaluation. Each session evaluates once at its end instead (val operating point + test).
         self.data_num_workers = 4
@@ -230,6 +235,14 @@ def from_supabase(name: str, dest: Path) -> bool:
 resume_from = run_dir / "resume_from.pth"
 prev = sorted([*Path("/kaggle/input").rglob("latest_ckpt.pth"), *Path("/kaggle/input").rglob("last_epoch_ckpt.pth")],
               key=lambda p: p.stat().st_mtime)
+if INIT_FROM_PREVIOUS:
+    RESUME = False
+    attached = sorted([*Path("/kaggle/input").rglob("latest_ckpt.pth"), *Path("/kaggle/input").rglob("best_ckpt.pth")],
+                      key=lambda p: p.stat().st_mtime)
+    if not attached:
+        raise SystemExit("init_from_previous: no checkpoint attached (attach the previous training notebook)")
+    start = f"-c {attached[-1]}"
+    print("fine-tuning from the weights of", attached[-1], flush=True)
 if RESUME:
     if prev:
         # Only the newest checkpoint: an earlier session's best_ckpt.pth is not copied, it would be an older
