@@ -70,7 +70,8 @@ def main() -> None:
     per_video = max(1, args.max // max(len(videos), 1))
     args.out.mkdir(parents=True, exist_ok=True)
     meta = []
-    for video in videos:
+    for i, video in enumerate(videos):
+        print(f"  video {i + 1}/{len(videos)}: {len(meta)} cutouts so far", flush=True)
         found = cutouts(video)
         step = max(1, len(found) // per_video)
         for rgba, edge in found[::step][:per_video]:

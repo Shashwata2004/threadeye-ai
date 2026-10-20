@@ -7,6 +7,7 @@ Internet on, no GPU needed.
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -23,7 +24,8 @@ T0 = time.time()
 
 def sh(cmd: str) -> None:
     print(f"[{time.time() - T0:6.0f}s] + {cmd[:160]}", flush=True)
-    subprocess.run(cmd, shell=True, check=True)
+    # Unbuffered, so the steps' own progress lines reach the live log (kernels logs -f) as they happen.
+    subprocess.run(cmd, shell=True, check=True, env={**os.environ, "PYTHONUNBUFFERED": "1"})
 
 
 def fetch(url: str, dest: Path) -> Path:

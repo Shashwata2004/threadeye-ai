@@ -43,6 +43,7 @@ def bases(external: Path, tianchi_images: Path | None) -> dict[bool, dict[str, l
         if not root.exists():
             continue
         reader = sources.READERS[name]
+        print(f"  reading {name}", flush=True)
         for r in (reader(root, tianchi_images) if name == "tianchi" else reader(root)):
             if r.path.exists():
                 out[r.defect_free or not r.boxes][name].append(r)
@@ -120,6 +121,8 @@ def main() -> None:
         for d in drawn:
             counts[d.cls] += 1
         groups[name] = {"group": r.group, "force_split": r.force_split, "base": f"{r.source}:{r.path.name}"}
+        if len(coco["images"]) % 500 == 0:
+            print(f"  {len(coco['images'])}/{args.n} tiles", flush=True)
         if len(previews) < args.preview:
             previews.append((img.copy(), drawn, defects))
     coco["categories"] = [{"id": i + 1, "name": c} for i, c in enumerate(cats)]
