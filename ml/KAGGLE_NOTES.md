@@ -41,6 +41,9 @@ Checked 2026-10-19. Every line says where it comes from:
 - [doc] A notebook's output can be attached to another notebook as an input ("chaining notebooks").
   [measured] A notebook whose input notebook is still running waits in QUEUED until that input finishes
   (twice: the training waited for the build; train-2 waited for a stuck train run).
+  [measured, 2026-10-20] **Not always:** a training run pushed while its input build was RUNNING sat in
+  QUEUED ~20 minutes, then started and trained on the build's *previous* successful output (the old dataset).
+  So never push a dependent notebook before its input has finished.
 - [unknown] Whether the output of a run that ends in ERROR is kept. `kernels files` with a version number
   ignores the version and lists the last successful output, so we could not check. Our scripts therefore
   never end in an error after training starts.
