@@ -3,11 +3,20 @@
     ml/.venv/bin/python ml/build_dataset.py --dry-run                 # counts only, writes nothing
     ml/.venv/bin/python ml/build_dataset.py --out data/processed/threadeye_v1
     ... --tianchi-images /kaggle/working/tianchi                      # where the Tianchi export was unpacked
+    ... --smoke 20                                                    # 20 images per source: time every step
+    ... --patch-base OLD --patch fabricspotdefect --out PATCH         # rebuild one source on top of OLD
 
 Steps: read every available source → map classes to the ThreadEye taxonomy (dropping non-roll defects)
 → merge near-duplicate images into one group → group-aware split → tiles → COCO per split + manifest.
 Train tiles without a defect are subsampled (``--bg-ratio`` per defect tile); val/test keep every tile so
 false alarms are measured on realistic data.
+
+A patch (``--patch-base``/``--patch``) re-reads only the patched sources and the sources that may hold copies
+of them (COPY_PRONE, for the near-duplicate groups), writes only the patched sources' tiles, and writes
+annotations for the whole dataset: the base build's tiles of every other source (same file names, same
+splits) plus the new ones. Non-defect tiles drawn on a patched source are left out (their boxes came from the
+old records). Splits are decided per source (fabricdata.split), so the result is the full build's result for
+the same code; a patched record grouped with a copy from another source takes that copy's split.
 """
 
 from __future__ import annotations
@@ -18,6 +27,7 @@ import hashlib
 import json
 import sys
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -64,8 +74,11 @@ class Tile:
 
     @property
     def name(self) -> str:
+        # The record key's hash keeps images with the same file name apart (record.key); before 2026-10-20
+        # such tiles overwrote each other while all their boxes were kept.
         stem = sources.original_name(self.record.path.name).rsplit(".", 1)[0]
-        return f"{self.record.source}__{stem}__{self.win.x0}_{self.win.y0}.jpg"
+        tag = hashlib.sha1(self.record.key.encode()).hexdigest()[:6]
+        return f"{self.record.source}__{stem}_{tag}__{self.win.x0}_{self.win.y0}.jpg"
 
 
 def load(external: Path, wanted: list[str], tianchi_images: Path | None) -> tuple[list[ImageRecord], Counter]:
@@ -114,6 +127,15 @@ def apply_caps(records: list[ImageRecord], caps: list[str], seed: int) -> list[I
     return out
 
 
+def smoke_sample(records: list[ImageRecord], n: int, seed: int) -> list[ImageRecord]:
+    """``n`` hash-chosen images per source and kind (with / without defects): a full run in minutes."""
+    pools: dict[tuple[str, bool], list[ImageRecord]] = defaultdict(list)
+    for r in records:
+        pools[(r.source, r.defect_free)].append(r)
+    return [r for pool in pools.values()
+            for r in sorted(pool, key=lambda r: hashlib.sha1(f"{seed}:{r.key}".encode()).hexdigest())[:n]]
+
+
 def plan(records: list[ImageRecord], split_of: dict[str, str], tile: int, overlap: float) -> list[Tile]:
     tiles = []
     for r in records:
@@ -141,47 +163,88 @@ def keep_tiles(tiles: list[Tile], bg_ratio: float, seed: int) -> list[Tile]:
     return out
 
 
-def write(tiles: list[Tile], out: Path, external: Path) -> None:
+def cut(ts: list[Tile], out: Path) -> list[tuple[Tile, int, int]]:
+    """Save the tiles of one image; (tile, width, height) for each."""
+    done = []
+    with sources.open_rgb(ts[0].record) as im:
+        s = ts[0].scale
+        if s < 1.0:
+            im = im.resize((round(im.width * s), round(im.height * s)), Image.Resampling.LANCZOS)
+        for t in ts:
+            split_dir = out / t.split / "images"
+            split_dir.mkdir(parents=True, exist_ok=True)
+            crop = im.crop((t.win.x0, t.win.y0, t.win.x1, t.win.y1))
+            crop.save(split_dir / t.name, quality=92)
+            done.append((t, crop.width, crop.height))
+    return done
+
+
+def write(tiles: list[Tile], out: Path, external: Path, base: Path | None = None,
+          replaced: frozenset[str] = frozenset()) -> None:
+    """Tiles to ``out``/<split>/images and COCO annotations + manifest for them. With ``base``, the annotations
+    and manifest also hold the base build's tiles, except those of the ``replaced`` sources (and the non-defect
+    tiles drawn on them); their images stay in ``base``."""
     cats = [{"id": i + 1, "name": c} for i, c in enumerate(DETECTOR_CLASSES)]
     cat_id = {c: i + 1 for i, c in enumerate(DETECTOR_CLASSES)}
     coco = {s: {"images": [], "annotations": [], "categories": cats} for s in SPLITS}
+    manifest: list[dict] = []
+    ann_id = 0
+
+    def add(split: str, name: str, w: int, h: int, boxes: list[tuple[str, list[float]]]) -> None:
+        nonlocal ann_id
+        c = coco[split]
+        img_id = len(c["images"]) + 1
+        c["images"].append({"id": img_id, "file_name": name, "width": w, "height": h})
+        for cls, (x, y, bw, bh) in boxes:
+            ann_id += 1
+            c["annotations"].append({"id": ann_id, "image_id": img_id, "category_id": cat_id[cls],
+                                     "bbox": [x, y, bw, bh], "area": round(bw * bh, 1), "iscrowd": 0})
+
+    if base is not None:
+        rows = {r["tile"]: r for r in csv.DictReader((base / "manifest.csv").open())}
+        dropped = Counter()
+        for split in SPLITS:
+            b = json.loads((base / split / "annotations.json").read_text())
+            names = {c["id"]: c["name"] for c in b["categories"]}
+            anns: dict[int, list] = defaultdict(list)
+            for a in b["annotations"]:
+                anns[a["image_id"]].append((names[a["category_id"]], a["bbox"]))
+            for im in b["images"]:
+                row = rows[im["file_name"]]
+                # A non-defect tile keeps its base image's group, whose prefix names the base source.
+                if row["source"] in replaced or (row["source"] == "synth_nuisance"
+                                                 and row["group"].split(":")[0] in replaced):
+                    dropped[row["source"]] += 1
+                    continue
+                add(split, im["file_name"], im["width"], im["height"], anns[im["id"]])
+                manifest.append(row)
+        print(f"  base: kept {sum(len(coco[s]['images']) for s in SPLITS)} tiles, left out {dict(dropped)}")
+
+    names = Counter(t.name for t in tiles) + Counter(im["file_name"] for c in coco.values() for im in c["images"])
+    clash = [n for n, k in names.items() if k > 1]
+    assert not clash, f"{len(clash)} tile names are used more than once, e.g. {clash[:3]}"
     by_image: dict[Path, list[Tile]] = defaultdict(list)
     for t in tiles:
         by_image[t.record.path].append(t)
-    manifest = []
-    ann_id = 0
-    for i, (path, ts) in enumerate(by_image.items()):
-        with sources.open_rgb(ts[0].record) as im:
-            s = ts[0].scale
-            if s < 1.0:
-                im = im.resize((round(im.width * s), round(im.height * s)), Image.Resampling.LANCZOS)
-            for t in ts:
-                split_dir = out / t.split / "images"
-                split_dir.mkdir(parents=True, exist_ok=True)
-                crop = im.crop((t.win.x0, t.win.y0, t.win.x1, t.win.y1))
-                crop.save(split_dir / t.name, quality=92)
-                c = coco[t.split]
-                img_id = len(c["images"]) + 1
-                c["images"].append({"id": img_id, "file_name": t.name, "width": crop.width, "height": crop.height})
-                for b in t.boxes:
-                    ann_id += 1
-                    c["annotations"].append({
-                        "id": ann_id, "image_id": img_id, "category_id": cat_id[b.cls],
-                        "bbox": [round(b.x0, 1), round(b.y0, 1), round(b.w, 1), round(b.h, 1)],
-                        "area": round(b.w * b.h, 1), "iscrowd": 0,
-                    })
+    # Opening images on Kaggle's input disk waits on the disk: cut many images at once (results in order).
+    with ThreadPoolExecutor(sources.READ_THREADS) as ex:
+        for i, done in enumerate(ex.map(lambda ts: cut(ts, out), by_image.values())):
+            for t, w, h in done:
+                add(t.split, t.name, w, h, [(b.cls, [round(b.x0, 1), round(b.y0, 1), round(b.w, 1), round(b.h, 1)])
+                                            for b in t.boxes])
+                path = t.record.path
                 manifest.append({
                     "split": t.split, "tile": t.name, "source": t.record.source,
                     "original": str(path.relative_to(external)) if path.is_relative_to(external) else str(path),
                     "group": t.record.group, "boxes": len(t.boxes), "licence": LICENCE[t.record.source],
                 })
-        if (i + 1) % 500 == 0:
-            print(f"  {i + 1}/{len(by_image)} images")
+            if (i + 1) % 500 == 0:
+                print(f"  {i + 1}/{len(by_image)} images", flush=True)
     for s in SPLITS:
         (out / s).mkdir(parents=True, exist_ok=True)
         (out / s / "annotations.json").write_text(json.dumps(coco[s]))
     with (out / "manifest.csv").open("w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(manifest[0]))
+        w = csv.DictWriter(fh, fieldnames=["split", "tile", "source", "original", "group", "boxes", "licence"])
         w.writeheader()
         w.writerows(manifest)
 
@@ -208,6 +271,26 @@ def summary(records: list[ImageRecord], split_of: dict[str, str], tiles: list[Ti
     }
 
 
+def patch_summary(base: Path, info: dict, out: Path, replaced: frozenset[str]) -> dict:
+    """The base build's summary with the replaced sources' entries swapped and the totals recounted."""
+    merged = json.loads((base / "summary.json").read_text())
+    for key in ("source_classes", "clean_images_per_source", "images_per_source_split"):
+        merged[key] = {k: v for k, v in merged[key].items() if k not in replaced} | info[key]
+    merged["dropped_boxes"] = {k: v for k, v in merged["dropped_boxes"].items()
+                               if k.split(":")[0] not in replaced} | info["dropped_boxes"]
+    per_split_cls: dict[str, Counter] = {}
+    for s in SPLITS:
+        c = json.loads((out / s / "annotations.json").read_text())
+        names = {x["id"]: x["name"] for x in c["categories"]}
+        per_split_cls[s] = Counter(names[a["category_id"]] for a in c["annotations"])
+        merged["tiles"][s] = len(c["images"])
+        merged["defect_tiles"][s] = len({a["image_id"] for a in c["annotations"]})
+    merged["boxes_per_class"] = {s: dict(c.most_common()) for s, c in per_split_cls.items()}
+    merged["patch"] = {"base_tiles": json.loads((base / "summary.json").read_text())["tiles"],
+                       "replaced": sorted(replaced)}
+    return merged
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--external", type=Path, default=Path("data/external"))
@@ -221,9 +304,17 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--cap", action="append", default=[], help="SOURCE:clean=N or SOURCE:defect=N")
     ap.add_argument("--commercial-only", action="store_true", help="leave out non-commercial sources")
+    ap.add_argument("--smoke", type=int, default=0, help="only N images per source and kind (timing run)")
+    ap.add_argument("--patch-base", type=Path, help="a finished build: keep its tiles of the other sources")
+    ap.add_argument("--patch", nargs="*", default=[], help="the sources to rebuild on top of --patch-base")
     args = ap.parse_args()
+    replaced = frozenset(args.patch)
+    if args.patch_base:
+        assert replaced, "--patch-base needs --patch SOURCE..."
+        # Copies of a patched source can only be in the copy-prone sources (fabricdata.dedupe.COPY_PRONE).
+        args.sources = [s for s in args.sources if s in replaced or (s in COPY_PRONE and replaced & COPY_PRONE)]
 
-    print("reading sources")
+    print("reading sources", flush=True)
     wanted = [s for s in args.sources if not (args.commercial_only and s in NON_COMMERCIAL)]
     records, dropped = load(args.external, wanted, args.tianchi_images)
     present = [r for r in records if r.path.exists()]
@@ -231,19 +322,41 @@ def main() -> None:
     if missing:
         print(f"  {missing} images listed but not on disk (e.g. Tianchi images on Kaggle): left out")
     records = apply_caps(present, args.cap, args.seed)
+    if args.smoke:
+        records = smoke_sample(records, args.smoke, args.seed)
+        print(f"  smoke run: {len(records)} images")
 
-    print("grouping near-duplicates")
+    print("grouping near-duplicates", flush=True)
     prints = [fingerprint(r.path) if r.source in COPY_PRONE else Fingerprint(0.0, 0, 0) for r in records]
     merges = merge_near_duplicates(records, prints)
     print(f"  {merges} merges")
+    if args.patch_base:
+        # The other sources' records were read only to find copies: they keep the base build's split, and a
+        # patched record in a group with one of them goes to that split.
+        base_split = {r["original"]: r["split"] for r in csv.DictReader((args.patch_base / "manifest.csv").open())}
+        others = [r for r in records if r.source not in replaced]
+        records = [r for r in records if r.source in replaced]
+        forced = {}
+        for r in others:
+            rel = str(r.path.relative_to(args.external)) if r.path.is_relative_to(args.external) else str(r.path)
+            if rel in base_split:
+                forced[r.group] = base_split[rel]
+        for r in records:
+            if r.group in forced:
+                r.force_split = forced[r.group]
+        print(f"  {sum(r.group in forced for r in records)} patched images go with a copy in another source")
+        dropped = Counter({k: v for k, v in dropped.items() if k.split(":")[0] in replaced})
     split_of = assign_splits(records, seed=args.seed)
     tiles = keep_tiles(plan(records, split_of, args.tile, args.overlap), args.bg_ratio, args.seed)
     info = summary(records, split_of, tiles, dropped)
     print(json.dumps(info, indent=1))
     if args.dry_run:
         return
-    print(f"writing {len(tiles)} tiles to {args.out}")
-    write(tiles, args.out, args.external)
+    print(f"writing {len(tiles)} tiles to {args.out}", flush=True)
+    write(tiles, args.out, args.external, args.patch_base, replaced)
+    if args.patch_base:
+        info = patch_summary(args.patch_base, info, args.out, replaced)
+        (args.out / "PATCH").write_text(f"{args.patch_base}\n")
     (args.out / "summary.json").write_text(json.dumps(info, indent=1))
     print("done")
 

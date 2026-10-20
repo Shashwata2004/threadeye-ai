@@ -201,3 +201,18 @@ def test_sideways_photo_is_turned_to_match_its_labels(tmp_path: Path) -> None:
     Image.fromarray(portrait).save(tmp_path / "a.jpg")  # stored the right way round
     (r,) = list(sources.read_coco("fabricspotdefect", [tmp_path / "_annotations.coco.json"], lambda n: n))
     assert r.rotate == 0
+
+
+def test_same_file_name_in_two_folders_stays_two_images() -> None:
+    # Moratuwa hole/22.jpg and horizontal/22.jpg, WFDD 000.png in every folder: once one tile overwrote the
+    # other while both kept their boxes, and both shared one split entry.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import build_dataset
+
+    a = ImageRecord("moratuwa", Path("/x/Fabric Defect Dataset/hole/22.jpg"), 640, 640, [], group="m:hole:22")
+    b = ImageRecord("moratuwa", Path("/x/Fabric Defect Dataset/horizontal/22.jpg"), 640, 640, [], group="m:hor:22")
+    assert a.key != b.key
+    split_of = assign_splits([a, b], seed=0)
+    assert len(split_of) == 2
+    names = {t.name for t in build_dataset.plan([a, b], split_of, 640, 0.2)}
+    assert len(names) == 2

@@ -44,4 +44,7 @@ class ImageRecord:
 
     @property
     def key(self) -> str:
-        return f"{self.source}:{self.path.name}"
+        """Unique per image and the same on every machine: sources reuse file names in their folders (Moratuwa
+        hole/22.jpg and horizontal/22.jpg; WFDD 000.png in every fabric and defect folder), so the last four
+        path parts, not the name alone."""
+        return f"{self.source}:{'/'.join(self.path.parts[-4:])}"

@@ -43,6 +43,10 @@ WEIGHTS = {
 }
 
 DATA = next(Path("/kaggle/input").rglob("threadeye_v1/summary.json")).parent
+PATCH = next((p.parent for p in Path("/kaggle/input").rglob("threadeye_patch/PATCH")), None)
+"""A patch build (build_dataset.py --patch) attached next to the full build: its annotations describe the whole
+dataset; its images replace the full build's tiles of the patched sources."""
+ANN = PATCH or DATA
 TMP = Path("/kaggle/tmp")
 YOLOX = TMP / "YOLOX"
 WORK = TMP / "data"
@@ -101,8 +105,19 @@ sh(f"curl -sSL -o {weights} {WEIGHTS[SIZE]}")
 
 (WORK / "annotations").mkdir(parents=True, exist_ok=True)
 for split in ("train", "val", "test"):
-    (WORK / split).symlink_to(DATA / split / "images") if not (WORK / split).exists() else None
-train = json.loads((DATA / "train/annotations.json").read_text())
+    if (WORK / split).exists():
+        continue
+    if PATCH is None:
+        (WORK / split).symlink_to(DATA / split / "images")
+        continue
+    # One link per tile: the patch's own images, the full build's for every other tile.
+    (WORK / split).mkdir(parents=True)
+    own = {f.name for f in (PATCH / split / "images").iterdir()} if (PATCH / split / "images").exists() else set()
+    for im in json.loads((PATCH / split / "annotations.json").read_text())["images"]:
+        n = im["file_name"]
+        (WORK / split / n).symlink_to((PATCH if n in own else DATA) / split / "images" / n)
+    print(f"{split}: {len(own)} patch tiles linked over the full build", flush=True)
+train = json.loads((ANN / "train/annotations.json").read_text())
 if MAX_TRAIN:
     # A fixed random sample: the tiles are ordered by source, and the first N would be one or two sources only
     # (the first smoke test trained on AITEX and stain photos and was tested on everything).
@@ -112,7 +127,7 @@ if MAX_TRAIN:
              "annotations": [a for a in train["annotations"] if a["image_id"] in keep]}
 (WORK / "annotations/train.json").write_text(json.dumps(repeat_factor_sampling(train)))
 for split in ("val", "test"):
-    shutil.copy(DATA / split / "annotations.json", WORK / f"annotations/{split}.json")
+    shutil.copy(ANN / split / "annotations.json", WORK / f"annotations/{split}.json")
 num_classes = len(train["categories"])
 class_names = [c["name"] for c in sorted(train["categories"], key=lambda c: c["id"])]
 
@@ -373,7 +388,7 @@ torch.onnx.export(model, torch.zeros(1, 3, 640, 640), "{onnx_path}", input_names
 
 test = json.load(open("{WORK / 'annotations/test.json'}"))
 name = next(i["file_name"] for i in test["images"] if any(a["image_id"] == i["id"] for a in test["annotations"]))
-img, _ = ValTransform(legacy=False)(cv2.imread("{DATA / 'test/images'}/" + name), None, (640, 640))
+img, _ = ValTransform(legacy=False)(cv2.imread("{WORK / 'test'}/" + name), None, (640, 640))
 x = np.stack([img, img]).astype(np.float32)
 with torch.no_grad():
     ref = model(torch.from_numpy(x)).numpy()
@@ -407,7 +422,7 @@ for split in ("val", "test"):
     for i in range(0, len(names), 32):
         chunk, xs, ratios = names[i:i + 32], [], []
         for n in chunk:
-            img = cv2.imread(f"{DATA}/{{split}}/images/{{n}}")
+            img = cv2.imread(f"{WORK}/{{split}}/{{n}}")
             ratios.append(min(640 / img.shape[0], 640 / img.shape[1]))
             xs.append(tf(img, None, (640, 640))[0])
         with torch.no_grad():
@@ -465,7 +480,7 @@ for f in (best, onnx_path, TMP / "test_eval.txt", run_dir / "train_log.txt"):
 (OUT / "model_info.json").write_text(json.dumps({
     "framework": "YOLOX (Apache-2.0)", "yolox_commit": commit, "size": SIZE, "epochs": EPOCHS, "batch": BATCH,
     "input": [640, 640], "classes": class_names, "thresholds": thresholds, "run_status": status,
-    "dataset_summary": json.loads((DATA / "summary.json").read_text()),
+    "dataset_summary": json.loads((ANN / "summary.json").read_text()),
     "minutes": round((time.time() - T0) / 60, 1),
 }, indent=1))
 print(f"done in {(time.time() - T0) / 60:.1f} min")
