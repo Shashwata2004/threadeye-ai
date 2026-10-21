@@ -37,11 +37,16 @@ class FakeModel(LocalModelDetector):
     """Answers per tile offset: {(x0, y0): [(box in tile px, cls, score), ...]}."""
 
     def __init__(
-        self, tmp_path: Path, plan: dict[tuple[int, int], list[Any]], thresholds: dict | None = None, **cfg: Any
+        self,
+        tmp_path: Path,
+        plan: dict[tuple[int, int], list[Any]],
+        thresholds: dict | None = None,
+        card: dict | None = None,
+        **cfg: Any,
     ) -> None:
         model = tmp_path / "threadeye_s.onnx"
         model.write_bytes(b"fake")
-        info = {"classes": CLASSES, "input": [640, 640], "size": "s", "thresholds": thresholds or {}}
+        info = {"classes": CLASSES, "input": [640, 640], "size": "s", "thresholds": thresholds or {}, **(card or {})}
         (tmp_path / "model_info.json").write_text(json.dumps(info))
         super().__init__({"model_path": str(model), **cfg}, ctx=None)  # type: ignore[arg-type]
         self.plan = plan
@@ -119,3 +124,13 @@ def test_per_class_thresholds_from_the_model_card(tmp_path: Path) -> None:
     assert [c for _, c, _ in det.detect_array(np.zeros((640, 640, 3), np.uint8))] == ["stain"]
     det = FakeModel(tmp_path, plan, thresholds={"hole": 0.6, "stain": 0.4}, score_threshold=0.45)
     assert sorted(c for _, c, _ in det.detect_array(np.zeros((640, 640, 3), np.uint8))) == ["hole", "stain"]
+
+
+def test_the_model_card_sets_the_inference_scale(tmp_path: Path) -> None:
+    det = FakeModel(tmp_path, {(0, 0): [((100, 100, 140, 140), 0, 0.7)]}, card={"infer_scale": 2})
+    assert det.infer_scale == 2.0
+    _, jpg = cv2.imencode(".jpg", np.zeros((320, 320, 3), np.uint8))
+    pos = FramePosition(1, 0.2, 0.0, 0.0, 1.1, 18.0, "running", 200.0, False)
+    (d,) = det.detect(FramePacket(pos, FrameImage(jpg.tobytes(), 320, 320, scale=1.0))).detections
+    assert d.bbox_px == pytest.approx((50, 50, 70, 70), abs=0.5)  # model pixels / 2 = view pixels
+    assert FakeModel(tmp_path, {}, card={"infer_scale": 2}, infer_scale=1.0).infer_scale == 1.0

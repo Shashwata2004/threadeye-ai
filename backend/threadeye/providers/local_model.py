@@ -147,6 +147,10 @@ class LocalModelDetector(DetectorProvider):
         self._version = str(info.get("version") or f"yolox-{info.get('size', '?')}")
         if "score_threshold" not in self.config:
             self.class_thresholds = {str(k): float(v) for k, v in (info.get("thresholds") or {}).items()}
+        if "infer_scale" not in self.config and info.get("infer_scale"):
+            # The scale the model was trained to look at (e.g. 2: AITEX-size defects enlarged): a model card
+            # says it, so installing the model cannot leave it running at the wrong scale.
+            self.infer_scale = float(info["infer_scale"])
 
     @property
     def info(self) -> ProviderInfo:
