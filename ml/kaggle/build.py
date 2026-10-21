@@ -21,14 +21,24 @@ import time
 import zipfile
 from pathlib import Path
 
-CODE = next(Path("/kaggle/input").rglob("build_dataset.py")).parent  # .../ml
+print("build.py started", flush=True)
+
+
+def find_inputs(name: str, max_depth: int) -> list[Path]:
+    """Matches of ``name`` (may hold a "/") at most ``max_depth`` folders below /kaggle/input, shallowest first.
+    Never rglob there: a walk through the attached dataset's 65,000 tiles took over four minutes (2026-10-21,
+    inputs mounted as /kaggle/input/{datasets,notebooks}/<owner>/<slug>/), before the first log line."""
+    return [p for d in range(max_depth + 1) for p in sorted(Path("/kaggle/input").glob("*/" * d + name))]
+
+
+CODE = find_inputs("build_dataset.py", 4)[0].parent  # .../ml
 sys.path.insert(0, str(CODE / "kaggle"))
 sys.path.insert(0, str(CODE))
 import steplog  # time-stamped log with a heartbeat; every step has a time limit
 
 from fabricdata.dedupe import COPY_PRONE
 
-PARAMS = json.loads(next(Path("/kaggle/input").rglob("params.json")).read_text())
+PARAMS = json.loads(find_inputs("params.json", 3)[0].read_text())
 BUILD = PARAMS.get("build", {})
 PATCH = sorted(BUILD.get("patch", []))
 SMOKE = int(BUILD.get("smoke", 0))
@@ -38,7 +48,7 @@ EXT = Path("/kaggle/tmp/external")
 OUT = Path("/kaggle/working/threadeye_patch" if PATCH else "/kaggle/working/threadeye_v1")
 BASE = None
 if PATCH:
-    BASE = next((p.parent for p in Path("/kaggle/input").rglob("threadeye_v1/summary.json")), None)
+    BASE = next((p.parent for p in find_inputs("threadeye_v1/summary.json", 3)), None)
     if BASE is None:
         raise SystemExit("patch build: attach a full build (threadeye-build-dataset) as an input")
     steplog.log(f"patch build of {PATCH} on top of {BASE}")
@@ -144,14 +154,14 @@ if wanted("raw_fabrid"):
     unzip(next((EXT / "raw_fabrid/outer").rglob("*.zip")), EXT / "raw_fabrid")
 
 # WFDD: a Kaggle dataset attached to this notebook (read-only input), linked into the external layout.
-wfdd_in = next(Path("/kaggle/input").rglob("WFDD"), None)
+wfdd_in = next(iter(find_inputs("WFDD", 4)), None)
 if wfdd_in is not None and wanted("wfdd"):
     (EXT / "wfdd").mkdir(parents=True, exist_ok=True)
     (EXT / "wfdd" / "WFDD").symlink_to(wfdd_in)
 
 # Fabric Stain Dataset: a Kaggle dataset attached to this notebook. Its two folders both number from 1, so the
 # images (and their YOLO .txt labels) are linked flat as <folder>_<name> (fabricdata.sources.read_fabric_stain).
-stain_in = next((p.parent for p in Path("/kaggle/input").rglob("images") if (p / "stain").is_dir()), None)
+stain_in = next((p.parent for p in find_inputs("images", 4) if (p / "stain").is_dir()), None)
 if stain_in is not None and wanted("fabric_stain"):
     flat = EXT / "fabric_stain/flat"
     flat.mkdir(parents=True, exist_ok=True)

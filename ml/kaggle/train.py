@@ -19,7 +19,17 @@ import time
 from collections import Counter
 from pathlib import Path
 
-PARAMS = json.loads(next(Path("/kaggle/input").rglob("params.json")).read_text()).get("train", {})
+print("train.py started", flush=True)
+
+
+def find_inputs(name: str, max_depth: int) -> list[Path]:
+    """Matches of ``name`` (may hold a "/") at most ``max_depth`` folders below /kaggle/input, shallowest first.
+    Never rglob there: a walk through the attached dataset's 65,000 tiles took over four minutes (2026-10-21,
+    inputs mounted as /kaggle/input/{datasets,notebooks}/<owner>/<slug>/), before the first log line."""
+    return [p for d in range(max_depth + 1) for p in sorted(Path("/kaggle/input").glob("*/" * d + name))]
+
+
+PARAMS = json.loads(find_inputs("params.json", 3)[0].read_text()).get("train", {})
 SIZE = PARAMS.get("model", "s")  # nano | tiny | s | m
 EPOCHS = int(PARAMS.get("epochs", 30))
 BATCH = int(PARAMS.get("batch", 16))
@@ -45,8 +55,11 @@ WEIGHTS = {
     "m": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_m.pth",
 }
 
-DATA = next(Path("/kaggle/input").rglob("threadeye_v1/summary.json")).parent
-PATCH = next((p.parent for p in Path("/kaggle/input").rglob("threadeye_patch/PATCH")), None)
+PACKED = next((p.parent for p in find_inputs("threadeye_packed/PACKED", 3)), None)
+"""The dataset packed into one tar per split (pack.py): attaching it is quick, the 65,000 loose tiles of a
+full build stalled the start of training (2026-10-21). Unpacked onto the local disk before training."""
+DATA = PACKED or find_inputs("threadeye_v1/summary.json", 3)[0].parent
+PATCH = None if PACKED else next((p.parent for p in find_inputs("threadeye_patch/PATCH", 3)), None)
 """A patch build (build_dataset.py --patch) attached next to the full build: its annotations describe the whole
 dataset; its images replace the full build's tiles of the patched sources."""
 ANN = PATCH or DATA
@@ -60,7 +73,7 @@ in the session (a hang, Kaggle's 12-hour limit), the epochs trained so far are k
 T0 = time.time()
 
 
-sys.path.insert(0, str(next(Path("/kaggle/input").rglob("kaggle/steplog.py")).parent))
+sys.path.insert(0, str(find_inputs("kaggle/steplog.py", 4)[0].parent))
 import steplog  # time-stamped log with a heartbeat; every step has a time limit
 
 
@@ -109,6 +122,10 @@ sh(f"curl -sSL -o {weights} {WEIGHTS[SIZE]}")
 (WORK / "annotations").mkdir(parents=True, exist_ok=True)
 for split in ("train", "val", "test"):
     if (WORK / split).exists():
+        continue
+    if PACKED is not None:
+        (WORK / split).mkdir(parents=True)
+        sh(f"tar -xf {PACKED / f'{split}.tar'} -C {WORK / split}", name=f"unpack {split}", limit_min=30)
         continue
     if PATCH is None:
         (WORK / split).symlink_to(DATA / split / "images")
@@ -216,7 +233,7 @@ def db_url() -> str | None:
 
         url = UserSecretsClient().get_secret("THREADEYE_DATABASE_URL")
     except Exception as exc:  # noqa: BLE001
-        found = next(Path("/kaggle/input").rglob("threadeye_db_url.txt"), None)
+        found = next(iter(find_inputs("threadeye_db_url.txt", 3)), None)
         url = found.read_text().strip() if found else ""
         print(f"database URL from {'the code dataset' if url else 'nowhere'} (secret: {exc!r:.80})", flush=True)
     # Supabase's transaction pooler (port 6543) stalls on a 70 MB insert (measured from Kaggle: still running
@@ -253,11 +270,11 @@ def from_supabase(name: str, dest: Path) -> bool:
 # hung or cancelled session, whose output Kaggle does not keep). The optimizer and learning-rate schedule
 # continue as they were.
 resume_from = run_dir / "resume_from.pth"
-prev = sorted([*Path("/kaggle/input").rglob("latest_ckpt.pth"), *Path("/kaggle/input").rglob("last_epoch_ckpt.pth")],
+prev = sorted([*find_inputs("latest_ckpt.pth", 5), *find_inputs("last_epoch_ckpt.pth", 5)],
               key=lambda p: p.stat().st_mtime)
 if INIT_FROM_PREVIOUS:
     RESUME = False
-    attached = sorted([*Path("/kaggle/input").rglob("latest_ckpt.pth"), *Path("/kaggle/input").rglob("best_ckpt.pth")],
+    attached = sorted([*find_inputs("latest_ckpt.pth", 5), *find_inputs("best_ckpt.pth", 5)],
                       key=lambda p: p.stat().st_mtime)
     if not attached:
         raise SystemExit("init_from_previous: no checkpoint attached (attach the previous training notebook)")
@@ -334,7 +351,7 @@ def checkpoint_uploader(stop: threading.Event) -> None:
 stop_uploads = threading.Event()
 uploader = threading.Thread(target=checkpoint_uploader, args=(stop_uploads,), daemon=True)
 if EVAL_ONLY:
-    attached = sorted([*Path("/kaggle/input").rglob("latest_ckpt.pth"), *Path("/kaggle/input").rglob("best_ckpt.pth")],
+    attached = sorted([*find_inputs("latest_ckpt.pth", 5), *find_inputs("best_ckpt.pth", 5)],
                       key=lambda p: p.stat().st_mtime)
     run_dir.mkdir(parents=True, exist_ok=True)
     if attached:
@@ -449,7 +466,7 @@ for split in ("val", "test"):
 ''')
 def operating_point() -> dict[str, float]:
     sh(f"{env} {sys.executable} {dets_py}", cwd=YOLOX)
-    sys.path.insert(0, str(next(Path("/kaggle/input").rglob("fabricdata/operating.py")).parents[1]))
+    sys.path.insert(0, str(find_inputs("fabricdata/operating.py", 4)[0].parents[1]))
     from fabricdata.classes import NUISANCE_CLASSES
     from fabricdata.operating import Det, Truth, choose_thresholds, report
 
