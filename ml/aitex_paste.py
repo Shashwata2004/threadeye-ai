@@ -33,8 +33,9 @@ EDGE = 0.1
 """Share of an AITEX image's width at each end left alone: the left end of the strips is the selvage."""
 
 
-def donors(records: list, split_of: dict, max_side: int) -> list[tuple[str, np.ndarray, np.ndarray]]:
-    """(AITEX code, patch, defect mask) of every small train-split defect, cut from its image and mask files."""
+def donors(records: list, split_of: dict, max_side: int) -> list[tuple[str, np.ndarray, np.ndarray, str]]:
+    """(AITEX code, patch, defect mask, image name) of every small train-split defect, cut from its image and
+    mask files."""
     out = []
     for r in records:
         if not r.boxes or split_of[r.key] != "train":
@@ -53,7 +54,7 @@ def donors(records: list, split_of: dict, max_side: int) -> list[tuple[str, np.n
             m = mask[y0:y1, x0:x1]
             if m.sum() < 2:
                 continue
-            out.append((b.src_cls, img[y0:y1, x0:x1].copy(), m.copy()))
+            out.append((b.src_cls, img[y0:y1, x0:x1].copy(), m.copy(), r.path.name))
     return out
 
 
@@ -84,7 +85,7 @@ def main() -> None:
     split_of = assign_splits(records, seed=0)  # the build's split (per source, seed 0)
     pool = donors(records, split_of, args.max_side)
     bases = [r for r in records if r.defect_free and split_of[r.key] == "train"]
-    print(f"{len(pool)} donor defects {sorted({c for c, _, _ in pool})}, {len(bases)} clean train images", flush=True)
+    print(f"{len(pool)} donor defects {sorted({c for c, _, _, _ in pool})}, {len(bases)} clean train images", flush=True)
     out = args.external / "aitex_paste"
     (out / "images").mkdir(parents=True, exist_ok=True)
     coco: dict = {"images": [], "annotations": [], "categories": []}
@@ -96,8 +97,9 @@ def main() -> None:
         h, w = base.shape
         placed: list[tuple[float, float, float, float]] = []
         boxes = []
+        used: set[str] = set()
         for _ in range(args.per_image):
-            code, patch, m = rng.choice(pool)
+            code, patch, m, donor = rng.choice(pool)
             if rng.random() < 0.5:
                 patch, m = patch[:, ::-1], m[:, ::-1]
             if rng.random() < 0.5:
@@ -117,6 +119,7 @@ def main() -> None:
             box = paste(base, np.ascontiguousarray(patch), np.ascontiguousarray(m), x, y)
             placed.append(box)
             boxes.append((code, box))
+            used.add(donor)
         name = f"paste_{i:05d}.png"
         Image.fromarray(np.clip(base, 0, 255).astype(np.uint8)).save(out / "images" / name)
         img_id = i + 1
@@ -128,7 +131,9 @@ def main() -> None:
                                         "category_id": cats.index(code) + 1,
                                         "bbox": [round(x0, 1), round(y0, 1), round(x1 - x0, 1), round(y1 - y0, 1)],
                                         "area": round((x1 - x0) * (y1 - y0), 1), "iscrowd": 0})
-        groups[name] = {"group": base_rec.group, "base": base_rec.path.name}
+        # Its own group: sharing the base image's group moved those groups out of AITEX's split and shifted
+        # 53 AITEX images from train to test, 14 of them donors (2026-10-22). The build checks base and donors.
+        groups[name] = {"group": f"aitex_paste:{base_rec.group}", "base": base_rec.path.name, "donors": sorted(used)}
         if (i + 1) % 100 == 0:
             print(f"  {i + 1}/{args.n} images", flush=True)
     coco["categories"] = [{"id": k + 1, "name": c} for k, c in enumerate(cats)]

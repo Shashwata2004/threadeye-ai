@@ -233,3 +233,22 @@ def test_enlarged_tiles_scale_their_boxes_and_keep_their_own_names() -> None:
     b1 = next(b for t in x1 for b in t.boxes)
     b2 = next(b for t in x2 for b in t.boxes)
     assert (b2.w, b2.h) == (2 * b1.w, 2 * b1.h)
+
+
+def test_a_paste_made_from_a_test_image_stops_the_build(tmp_path: Path) -> None:
+    import json as _json
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import build_dataset
+
+    (tmp_path / "aitex_paste").mkdir()
+    (tmp_path / "aitex_paste/groups.json").write_text(_json.dumps(
+        {"paste_00000.png": {"group": "aitex_paste:aitex:clean:x", "base": "clean.png", "donors": ["0001_019_03.png"]}}))
+    donor = ImageRecord("aitex", Path("/x/0001_019_03.png"), 4096, 256, [], group="aitex:0001")
+    base = ImageRecord("aitex", Path("/x/clean.png"), 4096, 256, [], group="aitex:clean:x", defect_free=True)
+    paste = ImageRecord("aitex_paste", Path("/x/paste_00000.png"), 4096, 256, [], group="aitex_paste:aitex:clean:x")
+    records = [donor, base, paste]
+    ok = {donor.key: "train", base.key: "train", paste.key: "train"}
+    build_dataset.check_pastes(records, ok, tmp_path)  # no error
+    with pytest.raises(SystemExit, match="not in train"):
+        build_dataset.check_pastes(records, {**ok, donor.key: "test"}, tmp_path)
