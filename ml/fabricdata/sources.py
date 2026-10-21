@@ -427,6 +427,16 @@ def read_wfdd(root: Path) -> Iterator[ImageRecord]:
         yield from threaded(good, sorted(fabric.glob("*/good/*.png")))
 
 
+def read_aitex_paste(root: Path) -> Iterator[ImageRecord]:
+    """ml/aitex_paste.py output: real AITEX defects on clean AITEX weave, all in the train split (their donors
+    and bases are train images)."""
+    groups = json.loads((root / "groups.json").read_text())
+    for r in read_coco("aitex_paste", [root / "annotations.json"], lambda n: groups[n]["group"],
+                       image_dir_of=lambda ann: ann.parent / "images"):
+        r.force_split = "train"
+        yield r
+
+
 def read_synth_nuisance(root: Path) -> Iterator[ImageRecord]:
     """ml/synth_nuisance.py output: each image keeps its base image's group (and forced split)."""
     groups = json.loads((root / "groups.json").read_text())
@@ -448,4 +458,5 @@ READERS: dict[str, Callable[[Path], Iterator[ImageRecord]]] = {
     "wfdd": read_wfdd,
     "fabric_stain": read_fabric_stain,
     "synth_nuisance": read_synth_nuisance,
+    "aitex_paste": read_aitex_paste,
 }

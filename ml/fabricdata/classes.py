@@ -50,6 +50,7 @@ SOURCE_CLASS_MAP: dict[str, dict[str, str | None]] = {
         "030": "slub",  # nep
         "036": "missing_yarn",  # weft crack
     },
+    "aitex_paste": {},  # set below: the same codes as AITEX (ml/aitex_paste.py)
     "fabricspotdefect": {"spot": "stain"},
     "fabric_stain": {"0": "stain"},
     # Already ThreadEye names (defects of the base tile + the nuisances drawn on it).
@@ -89,6 +90,7 @@ SOURCE_CLASS_MAP: dict[str, dict[str, str | None]] = {
         "20": "other_defect",
     },
 }
+SOURCE_CLASS_MAP["aitex_paste"] = SOURCE_CLASS_MAP["aitex"]
 
 
 class UnmappedClass(KeyError):

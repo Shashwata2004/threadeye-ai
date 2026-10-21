@@ -32,13 +32,17 @@ def main() -> None:
     ap.add_argument("model", type=Path)
     ap.add_argument("--roll", type=Path, default=ROOT / "data/sample_roll")
     ap.add_argument("--infer-scale", type=float, default=1.0, help="enlarge frames before tiling (tiny defects)")
+    ap.add_argument("--score-threshold", type=float, help="one threshold for every class instead of the card's")
     ap.add_argument("--quiet", action="store_true", help="only the evaluation line")
     args = ap.parse_args()
 
     key = load_answer_key(args.roll, require_media=True)
     source = VideoFileSource(args.roll)
     meta = source.parsed.meta
-    det = LocalModelDetector({"model_path": str(args.model), "infer_scale": args.infer_scale}, ProviderContext())
+    cfg = {"model_path": str(args.model), "infer_scale": args.infer_scale}
+    if args.score_threshold is not None:
+        cfg["score_threshold"] = args.score_threshold
+    det = LocalModelDetector(cfg, ProviderContext())
     runner = Runner(source, det, simulator_parity_profile(),
                     RollSpec(width_in=meta.fabric_width_in, declared_length_yd=meta.roll_length_yd),
                     inspection_id="demo-eval")

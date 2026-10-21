@@ -6,6 +6,8 @@ params.json "build" chooses what is built:
 - {"patch": ["fabricspotdefect", ...]} — only those sources again, on top of a full build attached as an input
   (notebook threadeye-patch-dataset), into /kaggle/working/threadeye_patch: minutes, for a fix in one source;
 - "scales": {"aitex": [1, 2]} — those sources also tiled enlarged (tiny defects; the app's infer_scale);
+- "bg_ratio_for": {"aitex": 2} — that source keeps more defect-free tiles (against false alarms on its weave);
+- "aitex_paste": N — N images of real AITEX defects pasted onto clean AITEX weave (patch it as "aitex_paste");
 - "smoke": N — N images per source and kind, a few non-defect tiles: every step runs, each one's time is
   measured, before a long build.
 
@@ -43,6 +45,7 @@ BUILD = PARAMS.get("build", {})
 PATCH = sorted(BUILD.get("patch", []))
 SMOKE = int(BUILD.get("smoke", 0))
 SCALES = [f"--scales {k}={','.join(str(z) for z in v)}" for k, v in BUILD.get("scales", {}).items()]
+SCALES += [f"--bg-ratio-for {k}={v}" for k, v in BUILD.get("bg_ratio_for", {}).items()]
 """{"aitex": [1, 2]}: also tile those sources enlarged (build_dataset.py --scales)."""
 EXT = Path("/kaggle/tmp/external")
 OUT = Path("/kaggle/working/threadeye_patch" if PATCH else "/kaggle/working/threadeye_v1")
@@ -179,6 +182,10 @@ sh("df -h /kaggle/tmp /kaggle/working | cat")
 caps = PARAMS.get("caps", [])
 smoke = [f"--smoke {SMOKE}"] if SMOKE else []
 tianchi = ["--tianchi-images", str(EXT / "tianchi/images")]
+if wanted("aitex_paste") and (PATCH is None or "aitex_paste" in PATCH):
+    # Real AITEX defects pasted onto clean AITEX weave (ml/aitex_paste.py), read as the source aitex_paste.
+    sh(f"{sys.executable} {CODE / 'aitex_paste.py'} --external {EXT} --n {40 if SMOKE else BUILD.get('aitex_paste', 600)}",
+       "AITEX pastes", 30)
 if PATCH:
     sh(" ".join([sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT), *tianchi,
                  *[f"--cap {c}" for c in caps], *smoke, *SCALES, "--patch-base", str(BASE), "--patch", *PATCH]),

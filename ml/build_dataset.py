@@ -54,6 +54,7 @@ LICENCE = {
     "wfdd": "WFDD (Kaggle mirror hodinhtrieu/the-woven-fabric-defect-detection-wfdd; licence not stated)",
     "fabric_stain": "CC0 1.0 (Kaggle priemshpathirana/fabric-stain-dataset)",
     "synth_nuisance": "ours (ml/synth_nuisance.py) on tiles of the sources above; hands from EgoHands (CC BY 4.0)",
+    "aitex_paste": "ours (ml/aitex_paste.py): AITEX defects pasted onto AITEX clean images (AITEX terms apply)",
 }
 NON_COMMERCIAL = {"zju_leaper"}
 """Left out with --commercial-only (a model for a product that is sold)."""
@@ -154,7 +155,7 @@ def plan(records: list[ImageRecord], split_of: dict[str, str], tile: int, overla
     return tiles
 
 
-def keep_tiles(tiles: list[Tile], bg_ratio: float, seed: int) -> list[Tile]:
+def keep_tiles(tiles: list[Tile], bg_ratio: float, seed: int, bg_for: dict[str, float] | None = None) -> list[Tile]:
     """All defect tiles; train background tiles subsampled per source and zoom to ``bg_ratio`` per defect tile
     (per zoom, so adding an enlarged copy of a source leaves its usual-size tiles as they were)."""
     pos = Counter((t.record.source, t.zoom) for t in tiles if t.split == "train" and t.boxes)
@@ -165,7 +166,8 @@ def keep_tiles(tiles: list[Tile], bg_ratio: float, seed: int) -> list[Tile]:
             out.append(t)
             continue
         src = (t.record.source, t.zoom)
-        share = min(1.0, bg_ratio * max(pos[src], 1) / max(bg[src], 1))
+        ratio = (bg_for or {}).get(t.record.source, bg_ratio)
+        share = min(1.0, ratio * max(pos[src], 1) / max(bg[src], 1))
         if int(hashlib.sha1(f"{seed}:{t.name}".encode()).hexdigest()[:8], 16) / 0xFFFFFFFF < share:
             out.append(t)
     return out
@@ -318,6 +320,8 @@ def main() -> None:
     ap.add_argument("--smoke", type=int, default=0, help="only N images per source and kind (timing run)")
     ap.add_argument("--patch-base", type=Path, help="a finished build: keep its tiles of the other sources")
     ap.add_argument("--patch", nargs="*", default=[], help="the sources to rebuild on top of --patch-base")
+    ap.add_argument("--bg-ratio-for", action="append", default=[],
+                    help="SOURCE=R: that source's own --bg-ratio (more defect-free fabric against false alarms)")
     ap.add_argument("--scales", action="append", default=[],
                     help="SOURCE=1,2: also tile that source enlarged (tiny defects; the app's infer_scale)")
     args = ap.parse_args()
@@ -363,9 +367,11 @@ def main() -> None:
         dropped = Counter({k: v for k, v in dropped.items() if k.split(":")[0] in replaced})
     split_of = assign_splits(records, seed=args.seed)
     zooms = {k: tuple(float(z) for z in v.split(",")) for k, v in (x.split("=") for x in args.scales)}
-    tiles = keep_tiles(plan(records, split_of, args.tile, args.overlap, zooms), args.bg_ratio, args.seed)
+    bg_for = {k: float(v) for k, v in (x.split("=") for x in args.bg_ratio_for)}
+    tiles = keep_tiles(plan(records, split_of, args.tile, args.overlap, zooms), args.bg_ratio, args.seed, bg_for)
     info = summary(records, split_of, tiles, dropped)
     info["zooms"] = {k: list(v) for k, v in zooms.items()}
+    info["bg_ratio_for"] = bg_for
     print(json.dumps(info, indent=1))
     if args.dry_run:
         return
