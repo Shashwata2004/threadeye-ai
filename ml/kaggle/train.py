@@ -270,6 +270,7 @@ def from_supabase(name: str, dest: Path) -> bool:
 # hung or cancelled session, whose output Kaggle does not keep). The optimizer and learning-rate schedule
 # continue as they were.
 resume_from = run_dir / "resume_from.pth"
+PREVIOUS: dict = {}
 prev = sorted([*find_inputs("latest_ckpt.pth", 5), *find_inputs("last_epoch_ckpt.pth", 5)],
               key=lambda p: p.stat().st_mtime)
 if INIT_FROM_PREVIOUS:
@@ -280,6 +281,11 @@ if INIT_FROM_PREVIOUS:
         raise SystemExit("init_from_previous: no checkpoint attached (attach the previous training notebook)")
     start = f"-c {attached[-1]}"
     print("fine-tuning from the weights of", attached[-1], flush=True)
+    # The model card counts the earlier model's epochs too (the Benchmark screen showed "8 epochs" for a
+    # 20 + 8 epoch model): its card sits in the same notebook output as the checkpoint.
+    card = next((c for d in attached[-1].parents for c in [d / "model/model_info.json"] if c.exists()), None)
+    PREVIOUS = {"checkpoint": str(attached[-1]),
+                "epochs": int(json.loads(card.read_text()).get("epochs", 0)) if card else 0}
 if RESUME:
     if prev:
         # Only the newest checkpoint: an earlier session's best_ckpt.pth is not copied, it would be an older
@@ -507,7 +513,8 @@ for f in (best, onnx_path, TMP / "test_eval.txt", run_dir / "train_log.txt"):
     if f.exists():
         shutil.copy(f, OUT / f.name)
 (OUT / "model_info.json").write_text(json.dumps({
-    "framework": "YOLOX (Apache-2.0)", "yolox_commit": commit, "size": SIZE, "epochs": EPOCHS, "batch": BATCH,
+    "framework": "YOLOX (Apache-2.0)", "yolox_commit": commit, "size": SIZE,
+    "epochs": EPOCHS + PREVIOUS.get("epochs", 0), "fine_tuned_from": PREVIOUS or None, "batch": BATCH,
     "input": [640, 640], "classes": class_names, "thresholds": thresholds, "run_status": status,
     "dataset_summary": json.loads((ANN / "summary.json").read_text()),
     "minutes": round((time.time() - T0) / 60, 1),
