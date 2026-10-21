@@ -184,7 +184,52 @@ def _upload_video(args: argparse.Namespace) -> int:
 
 
 MODEL_KEY = "models/current"
+MODEL_STAGING = "models/staging"
 MODEL_FILES = ("model_info.json", "test_report.json")
+CHUNK = 2 << 20
+"""Large files go up in pieces of this size, each its own short transaction, retried on a dropped link: one
+36 MB insert stalled for over 10 minutes on a home connection (2026-10-21, ~180 KB/s, links dropping)."""
+
+
+def _put_in_pieces(key: str, data: bytes, content_type: str, attempts: int = 6) -> str:
+    """Store ``data`` under ``key`` piece by piece and check it whole on the server; returns its SHA-256."""
+    import hashlib
+    import time
+
+    from sqlalchemy import text
+
+    sha = hashlib.sha256(data).hexdigest()
+
+    def run(sql: str, **params: Any) -> Any:
+        for attempt in range(attempts):
+            try:
+                with _bulk_session() as db:
+                    db.execute(text("SET LOCAL statement_timeout = '5min'"))
+                    res = db.execute(text(sql), params)
+                    out = res.first() if res.returns_rows else None
+                    db.commit()
+                    return out
+            except Exception as exc:
+                if attempt == attempts - 1:
+                    raise
+                print(f"    retry ({type(exc).__name__}): {str(exc).splitlines()[0][:80]}")
+                time.sleep(5 * (attempt + 1))
+        return None
+
+    run(
+        "INSERT INTO threadeye.blobs (key, data, sha256, size, content_type) VALUES (:k, '', '', 0, :ct) "
+        "ON CONFLICT (key) DO UPDATE SET data = '', sha256 = '', size = 0, content_type = :ct",
+        k=key,
+        ct=content_type,
+    )
+    for i in range(0, len(data), CHUNK):
+        run("UPDATE threadeye.blobs SET data = data || :d WHERE key = :k", d=data[i : i + CHUNK], k=key)
+        print(f"    {min(i + CHUNK, len(data)) / 1e6:.0f}/{len(data) / 1e6:.0f} MB")
+    got = run("SELECT encode(sha256(data), 'hex'), length(data) FROM threadeye.blobs WHERE key = :k", k=key)
+    if got is None or got[0] != sha or got[1] != len(data):
+        raise RuntimeError(f"{key}: the server holds {got}, expected sha256 {sha[:16]} and {len(data)} bytes")
+    run("UPDATE threadeye.blobs SET sha256 = :s, size = :n WHERE key = :k", s=sha, n=len(data), k=key)
+    return sha
 
 
 def _upload_model(args: argparse.Namespace) -> int:
@@ -192,7 +237,6 @@ def _upload_model(args: argparse.Namespace) -> int:
     from sqlalchemy import delete, text
 
     from threadeye.db.models import Blob
-    from threadeye.services import storage
     from threadeye.settings import get_settings
 
     if not get_settings().is_cloud:
@@ -203,13 +247,19 @@ def _upload_model(args: argparse.Namespace) -> int:
     if len(onnx) != 1 or not all((directory / f).is_file() for f in MODEL_FILES):
         print(f"{directory} needs one threadeye_*.onnx and {', '.join(MODEL_FILES)}")
         return 1
+    # Up to a staging key first, piece by piece and checked; then the current model is swapped in one short
+    # transaction, so a broken upload never leaves a half model as the current one.
+    files = (onnx[0], *(directory / n for n in MODEL_FILES))
+    for f in files:
+        data = f.read_bytes()
+        sha = _put_in_pieces(f"{MODEL_STAGING}/{f.name}", data, "application/octet-stream")
+        print(f"  {f.name}: {len(data) / 1e6:.1f} MB, sha256 {sha[:16]} (staged)")
     with _bulk_session() as db:
-        db.execute(text("SET LOCAL statement_timeout = '15min'"))
         db.execute(delete(Blob).where(Blob.key.like(f"{MODEL_KEY}/%")))
-        for f in (onnx[0], *(directory / n for n in MODEL_FILES)):
-            data = f.read_bytes()
-            sha = storage.put(db, f"{MODEL_KEY}/{f.name}", data, content_type="application/octet-stream")
-            print(f"  {f.name}: {len(data) / 1e6:.1f} MB, sha256 {sha[:16]}")
+        db.execute(
+            text("UPDATE threadeye.blobs SET key = :cur || substr(key, length(:stg) + 1) WHERE key LIKE :pat"),
+            {"cur": MODEL_KEY, "stg": MODEL_STAGING, "pat": f"{MODEL_STAGING}/%"},
+        )
         db.commit()
     print(f"uploaded the model in {directory} as {MODEL_KEY}/")
     return 0
