@@ -71,6 +71,8 @@ class Tile:
     scale: float
     win: Window
     boxes: list[Box]
+    zoom: float = 1.0
+    """Extra enlargement (--scales): the tile shows the image at zoom × its usual size."""
 
     @property
     def name(self) -> str:
@@ -78,7 +80,8 @@ class Tile:
         # such tiles overwrote each other while all their boxes were kept.
         stem = sources.original_name(self.record.path.name).rsplit(".", 1)[0]
         tag = hashlib.sha1(self.record.key.encode()).hexdigest()[:6]
-        return f"{self.record.source}__{stem}_{tag}__{self.win.x0}_{self.win.y0}.jpg"
+        zoom = f"_x{self.zoom:g}" if self.zoom != 1.0 else ""
+        return f"{self.record.source}__{stem}_{tag}{zoom}__{self.win.x0}_{self.win.y0}.jpg"
 
 
 def load(external: Path, wanted: list[str], tianchi_images: Path | None) -> tuple[list[ImageRecord], Counter]:
@@ -136,27 +139,32 @@ def smoke_sample(records: list[ImageRecord], n: int, seed: int) -> list[ImageRec
             for r in sorted(pool, key=lambda r: hashlib.sha1(f"{seed}:{r.key}".encode()).hexdigest())[:n]]
 
 
-def plan(records: list[ImageRecord], split_of: dict[str, str], tile: int, overlap: float) -> list[Tile]:
+def plan(records: list[ImageRecord], split_of: dict[str, str], tile: int, overlap: float,
+         zooms: dict[str, tuple[float, ...]] | None = None) -> list[Tile]:
+    """Tiles of every record, at each of its source's zooms (default: 1, the usual size only)."""
     tiles = []
     for r in records:
-        s = min(1.0, MAX_SIDE[r.source] / max(r.width, r.height)) if r.source in MAX_SIDE else 1.0
-        w, h = round(r.width * s), round(r.height * s)
-        boxes = [b for b in scaled(r.boxes, s) if b.w >= MIN_BOX_PX and b.h >= MIN_BOX_PX]
-        for win in windows(w, h, tile, overlap):
-            tiles.append(Tile(r, split_of[r.key], s, win, clip(boxes, win)))
+        base = min(1.0, MAX_SIDE[r.source] / max(r.width, r.height)) if r.source in MAX_SIDE else 1.0
+        for zoom in (zooms or {}).get(r.source, (1.0,)):
+            s = base * zoom
+            w, h = round(r.width * s), round(r.height * s)
+            boxes = [b for b in scaled(r.boxes, s) if b.w >= MIN_BOX_PX and b.h >= MIN_BOX_PX]
+            for win in windows(w, h, tile, overlap):
+                tiles.append(Tile(r, split_of[r.key], s, win, clip(boxes, win), zoom))
     return tiles
 
 
 def keep_tiles(tiles: list[Tile], bg_ratio: float, seed: int) -> list[Tile]:
-    """All defect tiles; train background tiles subsampled per source to ``bg_ratio`` per defect tile."""
-    pos = Counter(t.record.source for t in tiles if t.split == "train" and t.boxes)
-    bg = Counter(t.record.source for t in tiles if t.split == "train" and not t.boxes)
+    """All defect tiles; train background tiles subsampled per source and zoom to ``bg_ratio`` per defect tile
+    (per zoom, so adding an enlarged copy of a source leaves its usual-size tiles as they were)."""
+    pos = Counter((t.record.source, t.zoom) for t in tiles if t.split == "train" and t.boxes)
+    bg = Counter((t.record.source, t.zoom) for t in tiles if t.split == "train" and not t.boxes)
     out = []
     for t in tiles:
         if t.boxes or t.split != "train":
             out.append(t)
             continue
-        src = t.record.source
+        src = (t.record.source, t.zoom)
         share = min(1.0, bg_ratio * max(pos[src], 1) / max(bg[src], 1))
         if int(hashlib.sha1(f"{seed}:{t.name}".encode()).hexdigest()[:8], 16) / 0xFFFFFFFF < share:
             out.append(t)
@@ -168,8 +176,10 @@ def cut(ts: list[Tile], out: Path) -> list[tuple[Tile, int, int]]:
     done = []
     with sources.open_rgb(ts[0].record) as im:
         s = ts[0].scale
-        if s < 1.0:
-            im = im.resize((round(im.width * s), round(im.height * s)), Image.Resampling.LANCZOS)
+        if s != 1.0:
+            # Enlarged as the app enlarges a frame (infer_scale: cv2 bilinear); shrunk with Lanczos.
+            resample = Image.Resampling.BILINEAR if s > 1.0 else Image.Resampling.LANCZOS
+            im = im.resize((round(im.width * s), round(im.height * s)), resample)
         for t in ts:
             split_dir = out / t.split / "images"
             split_dir.mkdir(parents=True, exist_ok=True)
@@ -223,9 +233,9 @@ def write(tiles: list[Tile], out: Path, external: Path, base: Path | None = None
     names = Counter(t.name for t in tiles) + Counter(im["file_name"] for c in coco.values() for im in c["images"])
     clash = [n for n, k in names.items() if k > 1]
     assert not clash, f"{len(clash)} tile names are used more than once, e.g. {clash[:3]}"
-    by_image: dict[Path, list[Tile]] = defaultdict(list)
+    by_image: dict[tuple[Path, float], list[Tile]] = defaultdict(list)
     for t in tiles:
-        by_image[t.record.path].append(t)
+        by_image[(t.record.path, t.scale)].append(t)
     # Opening images on Kaggle's input disk waits on the disk: cut many images at once (results in order).
     with ThreadPoolExecutor(sources.READ_THREADS) as ex:
         for i, done in enumerate(ex.map(lambda ts: cut(ts, out), by_image.values())):
@@ -288,6 +298,7 @@ def patch_summary(base: Path, info: dict, out: Path, replaced: frozenset[str]) -
     merged["boxes_per_class"] = {s: dict(c.most_common()) for s, c in per_split_cls.items()}
     merged["patch"] = {"base_tiles": json.loads((base / "summary.json").read_text())["tiles"],
                        "replaced": sorted(replaced)}
+    merged["zooms"] = info.get("zooms", {})
     return merged
 
 
@@ -307,6 +318,8 @@ def main() -> None:
     ap.add_argument("--smoke", type=int, default=0, help="only N images per source and kind (timing run)")
     ap.add_argument("--patch-base", type=Path, help="a finished build: keep its tiles of the other sources")
     ap.add_argument("--patch", nargs="*", default=[], help="the sources to rebuild on top of --patch-base")
+    ap.add_argument("--scales", action="append", default=[],
+                    help="SOURCE=1,2: also tile that source enlarged (tiny defects; the app's infer_scale)")
     args = ap.parse_args()
     replaced = frozenset(args.patch)
     if args.patch_base:
@@ -349,8 +362,10 @@ def main() -> None:
         print(f"  {sum(r.group in forced for r in records)} patched images go with a copy in another source")
         dropped = Counter({k: v for k, v in dropped.items() if k.split(":")[0] in replaced})
     split_of = assign_splits(records, seed=args.seed)
-    tiles = keep_tiles(plan(records, split_of, args.tile, args.overlap), args.bg_ratio, args.seed)
+    zooms = {k: tuple(float(z) for z in v.split(",")) for k, v in (x.split("=") for x in args.scales)}
+    tiles = keep_tiles(plan(records, split_of, args.tile, args.overlap, zooms), args.bg_ratio, args.seed)
     info = summary(records, split_of, tiles, dropped)
+    info["zooms"] = {k: list(v) for k, v in zooms.items()}
     print(json.dumps(info, indent=1))
     if args.dry_run:
         return

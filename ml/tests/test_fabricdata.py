@@ -216,3 +216,20 @@ def test_same_file_name_in_two_folders_stays_two_images() -> None:
     assert len(split_of) == 2
     names = {t.name for t in build_dataset.plan([a, b], split_of, 640, 0.2)}
     assert len(names) == 2
+
+
+def test_enlarged_tiles_scale_their_boxes_and_keep_their_own_names() -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import build_dataset
+
+    r = ImageRecord("aitex", Path("/x/Defect_images/0001_002_00.png"), 600, 256, [Box(100, 50, 110, 60, src_cls="002")],
+                    group="aitex:1")
+    split_of = assign_splits([r], seed=0)
+    tiles = build_dataset.plan([r], split_of, 640, 0.2, {"aitex": (1.0, 2.0)})
+    x1 = [t for t in tiles if t.zoom == 1.0]
+    x2 = [t for t in tiles if t.zoom == 2.0]
+    assert x1 and x2
+    assert all("_x2__" in t.name for t in x2) and not any("_x2__" in t.name for t in x1)
+    b1 = next(b for t in x1 for b in t.boxes)
+    b2 = next(b for t in x2 for b in t.boxes)
+    assert (b2.w, b2.h) == (2 * b1.w, 2 * b1.h)

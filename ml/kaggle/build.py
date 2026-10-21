@@ -5,6 +5,7 @@ params.json "build" chooses what is built:
 - {} — the full dataset into /kaggle/working/threadeye_v1 (every source, the non-defect tiles, hours);
 - {"patch": ["fabricspotdefect", ...]} — only those sources again, on top of a full build attached as an input
   (notebook threadeye-patch-dataset), into /kaggle/working/threadeye_patch: minutes, for a fix in one source;
+- "scales": {"aitex": [1, 2]} — those sources also tiled enlarged (tiny defects; the app's infer_scale);
 - "smoke": N — N images per source and kind, a few non-defect tiles: every step runs, each one's time is
   measured, before a long build.
 
@@ -31,6 +32,8 @@ PARAMS = json.loads(next(Path("/kaggle/input").rglob("params.json")).read_text()
 BUILD = PARAMS.get("build", {})
 PATCH = sorted(BUILD.get("patch", []))
 SMOKE = int(BUILD.get("smoke", 0))
+SCALES = [f"--scales {k}={','.join(str(z) for z in v)}" for k, v in BUILD.get("scales", {}).items()]
+"""{"aitex": [1, 2]}: also tile those sources enlarged (build_dataset.py --scales)."""
 EXT = Path("/kaggle/tmp/external")
 OUT = Path("/kaggle/working/threadeye_patch" if PATCH else "/kaggle/working/threadeye_v1")
 BASE = None
@@ -168,7 +171,7 @@ smoke = [f"--smoke {SMOKE}"] if SMOKE else []
 tianchi = ["--tianchi-images", str(EXT / "tianchi/images")]
 if PATCH:
     sh(" ".join([sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT), *tianchi,
-                 *[f"--cap {c}" for c in caps], *smoke, "--patch-base", str(BASE), "--patch", *PATCH]),
+                 *[f"--cap {c}" for c in caps], *smoke, *SCALES, "--patch-base", str(BASE), "--patch", *PATCH]),
        "patch tiles", 60)
     sh(f"du -sh {OUT} && ls {OUT}")
     steplog.log(f"done in {(time.time() - T0) / 60:.1f} min")
@@ -189,6 +192,6 @@ sh(" ".join([sys.executable, str(CODE / "synth_nuisance.py"), "--external", str(
              *(["--hands", str(hands)] if ego is not None else [])]), "non-defect tiles", 60)
 
 sh(" ".join([sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT), *tianchi,
-             *[f"--cap {c}" for c in caps], *smoke]), "dataset tiles", 150)
+             *[f"--cap {c}" for c in caps], *smoke, *SCALES]), "dataset tiles", 150)
 sh(f"du -sh {OUT} && ls {OUT}")
 steplog.log(f"done in {(time.time() - T0) / 60:.1f} min")
