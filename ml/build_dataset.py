@@ -131,23 +131,29 @@ def apply_caps(records: list[ImageRecord], caps: list[str], seed: int) -> list[I
     return out
 
 
-def check_pastes(records: list[ImageRecord], split_of: dict[str, str], external: Path) -> None:
+def check_pastes(records: list[ImageRecord], split_of: dict[str, str], external: Path,
+                 smoke: bool = False) -> list[ImageRecord]:
     """Every AITEX image a pasted image was made from (its base and its donor defects) must be a train image of
-    this build, or test pixels would be trained on; the build stops otherwise."""
+    this build, or test pixels would be trained on: the build stops otherwise. A smoke run splits a sample of
+    AITEX, not the split the pastes were made for, so it leaves out the pastes that do not fit instead."""
     pastes = [r for r in records if r.source == "aitex_paste"]
     if not pastes:
-        return
+        return records
     made_from = json.loads((external / "aitex_paste/groups.json").read_text())
     aitex = {r.path.name: split_of[r.key] for r in records if r.source == "aitex"}
-    bad = Counter()
+    bad: Counter = Counter()
+    unfit = set()
     for r in pastes:
         info = made_from[r.path.name]
         for name in [info["base"], *info.get("donors", [])]:
             if aitex.get(name, "train") != "train":
                 bad[f"{name} ({aitex[name]})"] += 1
-    if bad:
+                unfit.add(r.key)
+    if bad and not smoke:
         raise SystemExit(f"aitex_paste: {len(bad)} source images are not in train, e.g. {list(bad)[:5]}")
-    print(f"  aitex_paste: {len(pastes)} images, every base and donor is a train image", flush=True)
+    print(f"  aitex_paste: {len(pastes) - len(unfit)} images whose base and donors are all train images"
+          + (f" ({len(unfit)} left out of this smoke run)" if unfit else ""), flush=True)
+    return [r for r in records if r.key not in unfit]
 
 
 def smoke_sample(records: list[ImageRecord], n: int, seed: int) -> list[ImageRecord]:
@@ -385,7 +391,7 @@ def main() -> None:
         print(f"  {sum(r.group in forced for r in records)} patched images go with a copy in another source")
         dropped = Counter({k: v for k, v in dropped.items() if k.split(":")[0] in replaced})
     split_of = assign_splits(records, seed=args.seed)
-    check_pastes(records, split_of, args.external)
+    records = check_pastes(records, split_of, args.external, smoke=bool(args.smoke))
     zooms = {k: tuple(float(z) for z in v.split(",")) for k, v in (x.split("=") for x in args.scales)}
     bg_for = {k: float(v) for k, v in (x.split("=") for x in args.bg_ratio_for)}
     tiles = keep_tiles(plan(records, split_of, args.tile, args.overlap, zooms), args.bg_ratio, args.seed, bg_for)

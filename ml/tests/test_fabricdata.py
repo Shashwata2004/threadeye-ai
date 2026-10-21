@@ -252,3 +252,5 @@ def test_a_paste_made_from_a_test_image_stops_the_build(tmp_path: Path) -> None:
     build_dataset.check_pastes(records, ok, tmp_path)  # no error
     with pytest.raises(SystemExit, match="not in train"):
         build_dataset.check_pastes(records, {**ok, donor.key: "test"}, tmp_path)
+    kept = build_dataset.check_pastes(records, {**ok, donor.key: "test"}, tmp_path, smoke=True)
+    assert paste not in kept and donor in kept
