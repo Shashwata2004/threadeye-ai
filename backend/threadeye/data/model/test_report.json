@@ -1,178 +1,178 @@
 {
  "matching": "same class and IoU >= 0.3 or detection centre inside the truth box",
- "tiles": 9368,
- "defects": 3591,
- "found_any_class": 0.5419,
- "found_right_class": 0.494,
- "defect_boxes": 2991,
- "precision": 0.7071,
- "false_alarms": 806,
- "false_alarms_per_100_tiles": 8.6,
- "nondefects": 541,
- "nondefects_called_defect": 0.0074,
+ "tiles": 10988,
+ "defects": 3719,
+ "found_any_class": 0.5424,
+ "found_right_class": 0.4948,
+ "defect_boxes": 2897,
+ "precision": 0.7459,
+ "false_alarms": 687,
+ "false_alarms_per_100_tiles": 6.25,
+ "nondefects": 209,
+ "nondefects_called_defect": 0.0096,
  "per_class": {
   "broken_yarn": {
-   "threshold": 0.3,
-   "truth": 163,
-   "recall": 0.2331,
-   "precision": 0.3878
+   "threshold": 0.4,
+   "truth": 227,
+   "recall": 0.2996,
+   "precision": 0.5667
   },
   "contamination": {
-   "threshold": 0.4,
+   "threshold": 0.45,
    "truth": 102,
-   "recall": 0.8137,
-   "precision": 0.7217
+   "recall": 0.7745,
+   "precision": 0.7054
   },
   "crease_mark": {
-   "threshold": 0.35,
-   "truth": 109,
-   "recall": 0.4954,
-   "precision": 0.5934
+   "threshold": 0.25,
+   "truth": 112,
+   "recall": 0.5179,
+   "precision": 0.4915
   },
   "hand": {
-   "threshold": 0.4,
-   "truth": 107,
+   "threshold": 0.45,
+   "truth": 43,
    "recall": 1.0,
-   "precision": 0.9907
+   "precision": 1.0
   },
   "hole": {
-   "threshold": 0.55,
+   "threshold": 0.6,
    "truth": 166,
-   "recall": 0.7169,
-   "precision": 0.844
+   "recall": 0.6325,
+   "precision": 0.8678
   },
   "knot": {
-   "threshold": 0.3,
+   "threshold": 0.35,
    "truth": 371,
-   "recall": 0.6388,
-   "precision": 0.7548
+   "recall": 0.6253,
+   "precision": 0.7733
   },
   "loose_thread": {
    "threshold": 0.7,
-   "truth": 152,
-   "recall": 0.7895,
-   "precision": 0.9836
+   "truth": 59,
+   "recall": 0.7966,
+   "precision": 0.9792
   },
   "missing_yarn": {
-   "threshold": 0.3,
+   "threshold": 0.2,
    "truth": 43,
-   "recall": 0.3953,
-   "precision": 0.5
+   "recall": 0.5581,
+   "precision": 0.4
   },
   "other_defect": {
-   "threshold": 0.15,
-   "truth": 923,
-   "recall": 0.5677,
-   "precision": 0.685
+   "threshold": 0.2,
+   "truth": 929,
+   "recall": 0.5285,
+   "precision": 0.7383
   },
   "shade_bar": {
-   "threshold": 0.05,
+   "threshold": 0.1,
    "truth": 248,
-   "recall": 0.1855,
-   "precision": 0.1661
+   "recall": 0.1048,
+   "precision": 0.2047
   },
   "slub": {
-   "threshold": 0.25,
-   "truth": 348,
-   "recall": 0.4483,
-   "precision": 0.6265
+   "threshold": 0.2,
+   "truth": 403,
+   "recall": 0.6253,
+   "precision": 0.6131
   },
   "stain": {
    "threshold": 0.2,
    "truth": 1118,
-   "recall": 0.4472,
-   "precision": 0.6631
+   "recall": 0.4517,
+   "precision": 0.676
   },
   "sticker": {
-   "threshold": 0.3,
-   "truth": 172,
+   "threshold": 0.25,
+   "truth": 68,
    "recall": 1.0,
-   "precision": 0.9829
+   "precision": 0.9714
   },
   "wrinkle": {
-   "threshold": 0.25,
-   "truth": 110,
-   "recall": 0.7727,
-   "precision": 0.7328
+   "threshold": 0.35,
+   "truth": 39,
+   "recall": 0.5897,
+   "precision": 0.6216
   }
  },
  "per_source": {
   "aitex": {
-   "tiles": 880,
-   "defects": 112,
-   "found_any_class": 0.1161,
-   "found_right_class": 0.0,
-   "false_alarms_per_100_tiles": 1.14
+   "tiles": 2664,
+   "defects": 252,
+   "found_any_class": 0.5595,
+   "found_right_class": 0.4841,
+   "false_alarms_per_100_tiles": 2.29
   },
   "fabric_stain": {
    "tiles": 124,
    "defects": 240,
-   "found_any_class": 0.7667,
-   "found_right_class": 0.7667,
-   "false_alarms_per_100_tiles": 3.23
+   "found_any_class": 0.7833,
+   "found_right_class": 0.7833,
+   "false_alarms_per_100_tiles": 2.42
   },
   "fabricspotdefect": {
    "tiles": 248,
    "defects": 645,
    "found_any_class": 0.2527,
    "found_right_class": 0.2527,
-   "false_alarms_per_100_tiles": 51.61
+   "false_alarms_per_100_tiles": 49.19
   },
   "fd_figshare": {
    "tiles": 125,
    "defects": 139,
-   "found_any_class": 0.7986,
-   "found_right_class": 0.7482,
-   "false_alarms_per_100_tiles": 23.2
+   "found_any_class": 0.7338,
+   "found_right_class": 0.6619,
+   "false_alarms_per_100_tiles": 25.6
   },
   "garment_defects": {
    "tiles": 95,
    "defects": 52,
    "found_any_class": 0.5577,
-   "found_right_class": 0.5577,
-   "false_alarms_per_100_tiles": 8.42
+   "found_right_class": 0.5385,
+   "false_alarms_per_100_tiles": 15.79
   },
   "moratuwa": {
-   "tiles": 528,
+   "tiles": 558,
    "defects": 0,
    "found_any_class": null,
    "found_right_class": null,
-   "false_alarms_per_100_tiles": 3.03
+   "false_alarms_per_100_tiles": 2.15
   },
   "raw_fabrid": {
    "tiles": 536,
    "defects": 31,
-   "found_any_class": 0.7742,
-   "found_right_class": 0.7097,
-   "false_alarms_per_100_tiles": 2.8
+   "found_any_class": 0.8065,
+   "found_right_class": 0.8065,
+   "false_alarms_per_100_tiles": 4.85
   },
   "synth_nuisance": {
-   "tiles": 316,
-   "defects": 59,
-   "found_any_class": 0.5424,
-   "found_right_class": 0.5254,
-   "false_alarms_per_100_tiles": 5.06
+   "tiles": 122,
+   "defects": 47,
+   "found_any_class": 0.7234,
+   "found_right_class": 0.7021,
+   "false_alarms_per_100_tiles": 9.84
   },
   "tianchi": {
    "tiles": 5190,
    "defects": 1958,
-   "found_any_class": 0.5766,
-   "found_right_class": 0.5015,
-   "false_alarms_per_100_tiles": 9.17
+   "found_any_class": 0.5577,
+   "found_right_class": 0.4837,
+   "false_alarms_per_100_tiles": 6.49
   },
   "wfdd": {
    "tiles": 224,
    "defects": 39,
-   "found_any_class": 0.7949,
-   "found_right_class": 0.7949,
-   "false_alarms_per_100_tiles": 0.89
+   "found_any_class": 0.6667,
+   "found_right_class": 0.6667,
+   "false_alarms_per_100_tiles": 0.45
   },
   "zju_leaper": {
    "tiles": 1102,
    "defects": 316,
-   "found_any_class": 0.7278,
-   "found_right_class": 0.7215,
-   "false_alarms_per_100_tiles": 9.26
+   "found_any_class": 0.6867,
+   "found_right_class": 0.6835,
+   "false_alarms_per_100_tiles": 5.99
   }
  },
  "thresholds_from": "val split, best F1 per class"
