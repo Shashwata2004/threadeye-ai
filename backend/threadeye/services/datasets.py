@@ -1,7 +1,8 @@
 """Simulated rolls that can be inspected: directories under ``THREADEYE_DATASETS_DIR``.
 
 A roll directory holds the simulator's files (roll_meta.json, frames.csv, ...) and, for the live
-screen, a browser-playable video. This module only reads public facts about a roll (length, width,
+screen, a browser-playable video. A roll with a ``HIDDEN`` file is not offered for new inspections (an old demo
+roll kept for the tests); it can still be opened by id. This module only reads public facts about a roll (length, width,
 frame count, video file). It never reads the answer key.
 """
 
@@ -21,6 +22,7 @@ DATASET_ID = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,63}$")
 # First match wins: a small web preview (scripts/make_web_preview.py) before the full-size video.
 VIDEO_FILES = (("roll_web.webm", "video/webm"), ("roll_web.mp4", "video/mp4"), ("roll_video.mp4", "video/mp4"))
 PREFERRED = ("linescan_roll", "sample_roll", "demo_roll")
+HIDDEN = "HIDDEN"
 
 
 class DatasetNotFound(LookupError):
@@ -83,6 +85,7 @@ def list_datasets(base: Path | None = None) -> list[DatasetInfo]:
             and DATASET_ID.match(d.name)
             and (d / "roll_meta.json").is_file()
             and (d / "frames.csv").is_file()
+            and not (d / HIDDEN).exists()
         ):
             info = _info(d)
             if info:
