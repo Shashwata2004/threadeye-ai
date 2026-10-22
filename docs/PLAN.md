@@ -282,9 +282,10 @@ The contract is FastAPI → `docs/api/openapi.json`, committed. CI fails on drif
 5. **RollMapper** (`core/geometry.py`) applies `bbox / image_scale`, then `roll_y_px = roll_y_top_px[f] + y`, `yd = roll_y_px / px_per_cm / 91.44`, `across_cm = (x − fabric_x0_px[f]) / px_per_cm`. It flags `truncated` when the box is within 3 px of the view's top or bottom edge. The inverse mapping (roll → current frame) lets the overlay keep boxes **attached to the moving fabric** between detections.
 6. **Deduper** (`core/dedupe.py`, incremental, per inspection) only compares against defects within ±1 view length. It merges when roll-box IoU > 0.3 **or** centres ≤ 3 cm apart (both configurable). Box = **mean of non-truncated sightings**. If every sighting is truncated (a running defect longer than the view), box = **union**. Adjacent truncated pieces of the same class/track also union. Class = majority vote, ties broken by confidence, then first seen. Records `sightings` and `best_frame_id` (most central, non-hand).
 7. **NonDefectFilter** (`core/nondefect.py`) is an ordered rule chain. Each rule returns `(category, explanation)`:
-   (a) the provider's class is a non-defect class (sticker, loose_thread, wrinkle, pin_hole, hand, board);
+   (a) the provider's class is a non-defect class (sticker, loose_thread, wrinkle, pin_hole, selvage_weave, hand, board);
    (b) the box lies outside the fabric edges → `board`;
    (c) a small hole-class box (< 0.3 in) inside `selvage_band` → `pin_hole`;
+   (c2) a yarn-fault box (broken/missing yarn, other) inside `selvage_band` → `selvage_weave` (the selvage weave and pin row look like yarn faults; promoted, it shows as `selvage_defect`). "Inside" = the box centre lies in the band, so a fault reaching into the body stays a defect;
    (d) seen only in hand-visible frames → **flag `uncertain_hand`** (still a defect, inspector decides).
    Non-defects are **drawn grey-dashed, never scored, counted per category**, and can be promoted to a defect by the inspector.
 8. **Confirmation:** new defects are `pending`. One click confirms, rejects (with a reason category that mirrors the non-defect list) or reclassifies. The inspector can edit the length and can **add a missed defect** at the current yard. Every action is an event, a `confirmations` row and a `label_sample`.

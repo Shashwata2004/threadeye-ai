@@ -25,6 +25,7 @@ nondefects:
   - {id: loose_thread, en: Loose thread, bn: আলগা সুতা}
   - {id: wrinkle, en: Handling wrinkle, bn: নাড়াচাড়ার ভাঁজ}
   - {id: pin_hole, en: Selvage pin holes, bn: কিনারার পিনের ছিদ্র}
+  - {id: selvage_weave, en: Selvage weave, bn: কিনারার বুনন}
   - {id: hand, en: Inspector's hand, bn: হাত}
   - {id: board, en: Board beside fabric, bn: বোর্ড}
 

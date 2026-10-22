@@ -187,6 +187,10 @@ def one_track(box: RollBox, cls: str, hand: bool = False):  # type: ignore[no-un
         (RollBox(10, 10.4, 0.4, 0.8), "hole", "pin_hole"),
         (RollBox(10, 10.4, 149.2, 149.6), "hole", "pin_hole"),
         (RollBox(10, 13, 0.4, 1.2), "hole", None),  # too big for a pin hole: a real hole
+        (RollBox(10, 10.3, 0.0, 1.0), "missing_yarn", "selvage_weave"),  # the selvage weave / pin row
+        (RollBox(10, 10.3, 148.4, 150.0), "broken_yarn", "selvage_weave"),  # spills past the band, centre in it
+        (RollBox(10, 10.3, 0.2, 3.0), "broken_yarn", None),  # reaches into the body
+        (RollBox(10, 10.3, 0.2, 1.0), "stain", None),  # a stain stays a defect
         (RollBox(10, 12, 50, 52), "stain", None),
     ],
 )

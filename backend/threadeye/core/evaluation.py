@@ -91,7 +91,8 @@ def _explain(box: RollBox, nuisances: list[TruthNuisance], fabric_width_cm: floa
             return n.type
     if box.across_end_cm <= 0 or box.across_start_cm >= fabric_width_cm:
         return "board"
-    if box.across_end_cm <= selvage_band_cm or box.across_start_cm >= fabric_width_cm - selvage_band_cm:
+    center = (box.across_start_cm + box.across_end_cm) / 2  # the app's rule (NonDefectFilter.in_selvage)
+    if selvage_band_cm > 0 and (center <= selvage_band_cm or center >= fabric_width_cm - selvage_band_cm):
         return "selvage"
     return "unexplained"
 
