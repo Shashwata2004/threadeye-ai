@@ -9,6 +9,8 @@ Config (``threadeye.providers.registry.create_provider("local_model", config)``)
                    (model_info.json "thresholds", ml/fabricdata/operating.py), else 0.30
   nms_iou  0.45;  overlap  0.2 (tile overlap, as in training);  threads  0 (= ORT default)
   infer_scale      1.0: model pixels per view pixel (a scaled capture is resized to this first)
+  pack             True: a strip lower than half a tile (line-scan) has several pieces stacked per tile
+  whole_strip      True: with a model exported for any input size, a strip lower than a tile runs in one pass
 
 A frame is the camera view (``FrameImage``; a browser capture may be scaled). It is cut into model-size tiles
 with overlap exactly like the training tiles (``ml/fabricdata/tiles.py``), so defects keep the pixel size the
@@ -47,6 +49,8 @@ if TYPE_CHECKING:
     Array = NDArray[Any]
 
 PAD_VALUE = 114
+PACK_GAP = 32
+"""Rows of padding between line-scan pieces stacked in one tile (more than a stride-32 cell)."""
 STRIDES = (8, 16, 32)
 
 
@@ -127,6 +131,9 @@ class LocalModelDetector(DetectorProvider):
         self.nms_iou = float(self.config.get("nms_iou", 0.45))
         self.overlap = float(self.config.get("overlap", 0.2))
         self.infer_scale = float(self.config.get("infer_scale", 1.0))
+        self.pack = bool(self.config.get("pack", True))
+        self.whole_strip = bool(self.config.get("whole_strip", True))
+        self._any_size = False
         self._load_info()
 
     # ------------------------------------------------------------------------------------ model files
@@ -176,6 +183,8 @@ class LocalModelDetector(DetectorProvider):
                         "nms_iou": self.nms_iou,
                         "overlap": self.overlap,
                         "infer_scale": self.infer_scale,
+                        "pack": self.pack,
+                        "whole_strip": self.whole_strip,
                     },
                     sort_keys=True,
                 ).encode()
@@ -204,6 +213,10 @@ class LocalModelDetector(DetectorProvider):
             opts.intra_op_num_threads = int(self.config["threads"])
         self._session = ort.InferenceSession(data, sess_options=opts, providers=["CPUExecutionProvider"])
         self._input_name = self._session.get_inputs()[0].name
+        # Exported with free height and width (ml/kaggle/train.py since 2026-10-22, or ml/onnx_any_size.py):
+        # a strip lower than a tile runs whole.
+        fixed = all(isinstance(d, int) for d in self._session.get_inputs()[0].shape[2:])
+        self._any_size = self.whole_strip and not fixed
 
     def close(self) -> None:
         self._session = None
@@ -222,18 +235,42 @@ class LocalModelDetector(DetectorProvider):
 
         size = self.input_size
         h, w = image.shape[:2]
-        tiles, offsets, ratios = [], [], []
-        for y0 in tile_positions(h, size[0], self.overlap):
-            for x0 in tile_positions(w, size[1], self.overlap):
+        xs, ys = tile_positions(w, size[1], self.overlap), tile_positions(h, size[0], self.overlap)
+        pieces = [(x0, y0) for y0 in ys for x0 in xs]
+        # A line-scan strip is far lower than a tile: a full-width piece would leave most of its tile padding.
+        # Stack ``per`` pieces in one tile, PACK_GAP rows of padding apart, at the scale letterbox would use
+        # (1: pieces of a strip at least a tile wide), so every piece keeps its pixel size.
+        ph = min(h, size[0])
+        per = (size[0] + PACK_GAP) // (ph + PACK_GAP) if self.pack and w >= size[1] else 1
+        tiles, layouts, ratios = [], [], []
+        if self._any_size and h <= size[0] and w > size[1]:
+            # A model exported for any input size sees the whole strip at once: no tiles, no seams, one pass
+            # (a 3840 x 248 line-scan strip: 0.3 s on a laptop CPU, against 0.7 s as stacked tiles).
+            size = (math.ceil(h / STRIDES[-1]) * STRIDES[-1], math.ceil(w / STRIDES[-1]) * STRIDES[-1])
+            canvas = np.full((size[0], size[1], 3), PAD_VALUE, dtype=np.uint8)
+            canvas[:h, :w] = image
+            tiles.append(np.ascontiguousarray(canvas.transpose(2, 0, 1), dtype=np.float32))
+            layouts.append([(0, 0)])
+            ratios.append(1.0)
+            pieces = []
+        for i in range(0, len(pieces), per):
+            group = pieces[i : i + per]
+            if per == 1:
+                x0, y0 = group[0]
                 chw, r = letterbox(image[y0 : y0 + size[0], x0 : x0 + size[1]], size)
-                tiles.append(chw)
-                offsets.append((x0, y0))
-                ratios.append(r)
+            else:
+                canvas = np.full((size[0], size[1], 3), PAD_VALUE, dtype=np.uint8)
+                for j, (x0, y0) in enumerate(group):
+                    canvas[j * (ph + PACK_GAP) : j * (ph + PACK_GAP) + ph] = image[y0 : y0 + ph, x0 : x0 + size[1]]
+                chw, r = np.ascontiguousarray(canvas.transpose(2, 0, 1), dtype=np.float32), 1.0
+            tiles.append(chw)
+            layouts.append(group)
+            ratios.append(r)
         raw = self.run(np.stack(tiles))
         preds = decode(raw, size)
         thr = np.array([self.class_thresholds.get(c, self.score_threshold) for c in self.classes], np.float32)
         all_boxes, all_scores, all_cls = [], [], []
-        for p, (x0, y0), r in zip(preds, offsets, ratios, strict=True):
+        for p, group, r in zip(preds, layouts, ratios, strict=True):
             cls_scores = p[:, 5:]
             cls = cls_scores.argmax(1)
             score = p[:, 4] * cls_scores[np.arange(len(cls)), cls]
@@ -242,11 +279,19 @@ class LocalModelDetector(DetectorProvider):
                 continue
             cx, cy, bw, bh = (p[ok, i] for i in range(4))
             boxes = np.stack((cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2), 1) / r
-            boxes[:, [0, 2]] += x0
-            boxes[:, [1, 3]] += y0
+            if len(group) == 1:
+                slot = np.zeros(len(boxes), int)
+            else:  # each box belongs to the piece its centre lies on; a box centred on the padding is dropped
+                slot = (cy // (ph + PACK_GAP)).astype(int)
+                on_piece = (cy - slot * (ph + PACK_GAP) < ph) & (slot < len(group))
+                boxes, slot, ok_score, ok_cls = boxes[on_piece], slot[on_piece], score[ok][on_piece], cls[ok][on_piece]
+                boxes[:, [1, 3]] = (boxes[:, [1, 3]] - (slot * (ph + PACK_GAP))[:, None]).clip(0, ph)
+            offsets = np.array(group, np.float32)[slot]
+            boxes[:, [0, 2]] += offsets[:, :1]
+            boxes[:, [1, 3]] += offsets[:, 1:]
             all_boxes.append(boxes)
-            all_scores.append(score[ok])
-            all_cls.append(cls[ok])
+            all_scores.append(score[ok] if len(group) == 1 else ok_score)
+            all_cls.append(cls[ok] if len(group) == 1 else ok_cls)
         if not all_boxes:
             return []
         boxes = np.concatenate(all_boxes)

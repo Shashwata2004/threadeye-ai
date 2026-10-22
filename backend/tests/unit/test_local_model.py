@@ -134,3 +134,43 @@ def test_the_model_card_sets_the_inference_scale(tmp_path: Path) -> None:
     (d,) = det.detect(FramePacket(pos, FrameImage(jpg.tobytes(), 320, 320, scale=1.0))).detections
     assert d.bbox_px == pytest.approx((50, 50, 70, 70), abs=0.5)  # model pixels / 2 = view pixels
     assert FakeModel(tmp_path, {}, card={"infer_scale": 2}, infer_scale=1.0).infer_scale == 1.0
+
+
+class StripModel(LocalModelDetector):
+    """A line-scan strip: answers one box (in input pixels) in the first input it gets."""
+
+    def __init__(self, tmp_path: Path, box: tuple[float, float, float, float], any_size: bool) -> None:
+        model = tmp_path / "threadeye_s.onnx"
+        model.write_bytes(b"fake")
+        (tmp_path / "model_info.json").write_text(json.dumps({"classes": CLASSES, "input": [640, 640], "size": "s"}))
+        super().__init__({"model_path": str(model), "score_threshold": 0.3}, ctx=None)  # type: ignore[arg-type]
+        self._any_size = any_size
+        self.box = box
+        self.shapes: list[tuple[int, ...]] = []
+
+    def run(self, batch: Any) -> Any:
+        self.shapes.append(batch.shape)
+        h, w = batch.shape[2:]
+        out = np.zeros((len(batch), sum((h // s) * (w // s) for s in (8, 16, 32)), 5 + len(CLASSES)), np.float32)
+        x0, y0, x1, y1 = self.box
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        a = int(cy // 8) * (w // 8) + int(cx // 8)
+        out[0, a, :2] = cx / 8 - int(cx // 8), cy / 8 - int(cy // 8)
+        out[0, a, 2:5] = math.log((x1 - x0) / 8), math.log((y1 - y0) / 8), 1
+        out[0, a, 6] = 0.9
+        return out
+
+
+def test_a_line_scan_strip_is_stacked_two_pieces_per_tile(tmp_path: Path) -> None:
+    # 3840 x 248: eight pieces in four tiles; the second piece of the first tile (x 457) sits 280 rows down.
+    m = StripModel(tmp_path, (100, 330, 110, 340), any_size=False)
+    found = m.detect_array(np.zeros((248, 3840, 3), np.uint8))
+    assert m.shapes == [(4, 3, 640, 640)]
+    assert [(tuple(round(v) for v in box), cls) for box, cls, _ in found] == [((557, 50, 567, 60), "stain")]
+
+
+def test_an_any_size_model_sees_the_whole_strip_at_once(tmp_path: Path) -> None:
+    m = StripModel(tmp_path, (2000, 50, 2010, 60), any_size=True)
+    found = m.detect_array(np.zeros((248, 3840, 3), np.uint8))
+    assert m.shapes == [(1, 3, 256, 3840)]
+    assert [(tuple(round(v) for v in box), cls) for box, cls, _ in found] == [((2000, 50, 2010, 60), "stain")]

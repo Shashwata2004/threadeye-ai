@@ -403,7 +403,7 @@ kept("test evaluation", f"THREADEYE_EVAL_SPLIT=test {env} {sys.executable} tools
 # ------------------------------------------------------------------------------------------- ONNX
 # YOLOX's tools/export_onnx.py calls torch.onnx._export, which recent PyTorch removed. Our own export: raw head
 # output (no decoding in the graph: backend/threadeye/providers/local_model.py decodes), dynamic batch (the app
-# sends all tiles of a frame at once), the TorchScript exporter (dynamo=False), then a check that ONNX Runtime
+# sends all tiles of a frame at once) and size (a line-scan strip runs whole), the TorchScript exporter (dynamo=False), then a check that ONNX Runtime
 # gives the same output as PyTorch on a real test tile.
 onnx_path = TMP / f"threadeye_{SIZE}.onnx"
 export_py = TMP / "export_onnx.py"
@@ -419,7 +419,8 @@ model.load_state_dict(torch.load("{best}", map_location="cpu", weights_only=Fals
 model.eval()
 model.head.decode_in_inference = False
 torch.onnx.export(model, torch.zeros(1, 3, 640, 640), "{onnx_path}", input_names=["images"], output_names=["output"],
-                  opset_version=17, dynamic_axes={{"images": {{0: "batch"}}, "output": {{0: "batch"}}}}, dynamo=False)
+                  opset_version=17, dynamic_axes={{"images": {{0: "batch", 2: "height", 3: "width"}},
+                                                   "output": {{0: "batch", 1: "anchors"}}}}, dynamo=False)
 
 test = json.load(open("{WORK / 'annotations/test.json'}"))
 name = next(i["file_name"] for i in test["images"] if any(a["image_id"] == i["id"] for a in test["annotations"]))
