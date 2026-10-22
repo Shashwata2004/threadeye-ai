@@ -156,9 +156,6 @@ def _bulk_session() -> Any:
 
 def _upload_video(args: argparse.Namespace) -> int:
     """Cloud profile: keep a simulated roll's video in the shared database, for hosts without local files."""
-    from sqlalchemy import delete, text
-
-    from threadeye.db.models import Blob
     from threadeye.services import storage
     from threadeye.settings import get_settings
 
@@ -172,13 +169,7 @@ def _upload_video(args: argparse.Namespace) -> int:
         return 1
     data = video.read_bytes()
     key = storage.video_key(directory.name)
-    with _bulk_session() as db:
-        # One large statement: lift Supabase's per-statement time limit for this transaction only,
-        # and send the bytes once (delete + insert, not an upsert that repeats them).
-        db.execute(text("SET LOCAL statement_timeout = '15min'"))
-        db.execute(delete(Blob).where(Blob.key == key))
-        sha = storage.put(db, key, data, content_type="video/mp4")
-        db.commit()
+    sha = _put_in_pieces(key, data, "video/mp4")  # piece by piece: one large insert stalls on a home link
     print(f"uploaded {video} ({len(data) / 1e6:.1f} MB, sha256 {sha[:16]}) as {key}")
     return 0
 

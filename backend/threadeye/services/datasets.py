@@ -20,7 +20,7 @@ from threadeye.sources.simulated_roll import TrackFrameSource, VideoFileSource
 DATASET_ID = re.compile(r"^[a-z0-9][a-z0-9_\-]{0,63}$")
 # First match wins: a small web preview (scripts/make_web_preview.py) before the full-size video.
 VIDEO_FILES = (("roll_web.webm", "video/webm"), ("roll_web.mp4", "video/mp4"), ("roll_video.mp4", "video/mp4"))
-PREFERRED = ("sample_roll", "demo_roll")
+PREFERRED = ("linescan_roll", "sample_roll", "demo_roll")
 
 
 class DatasetNotFound(LookupError):
@@ -87,7 +87,7 @@ def list_datasets(base: Path | None = None) -> list[DatasetInfo]:
             info = _info(d)
             if info:
                 found.append(info)
-    # The real sample roll first, then the synthetic demo roll, then the rest.
+    # The line-scan roll first (the demo), then the first sample roll, the synthetic demo roll, the rest.
     return sorted(found, key=lambda i: (PREFERRED.index(i.id) if i.id in PREFERRED else len(PREFERRED), i.id))
 
 

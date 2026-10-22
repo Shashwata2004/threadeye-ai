@@ -115,9 +115,10 @@ cloud-check: ## verify the Supabase connection, schema isolation and audit chain
 
 cloud-setup: cloud-migrate cloud-seed cloud-check ## migrate + seed + verify in one go
 
-cloud-upload-video: ## store data/sample_roll/roll_video.mp4 in Supabase (for the Vercel deployment)
+ROLL ?= linescan_roll
+cloud-upload-video: ## store data/$(ROLL)/roll_video.mp4 in Supabase (ROLL=linescan_roll by default; Vercel and fetch-demo-assets)
 	@python3 scripts/check_cloud_env.py $(CLOUD_ENV)
-	$(cloud_run) $(THREADEYE) upload-video ../data/sample_roll
+	$(cloud_run) $(THREADEYE) upload-video ../data/$(ROLL)
 
 cloud-run: ## run the app on this machine against Supabase → http://localhost:3000
 	./scripts/run_cloud.sh

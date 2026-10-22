@@ -1,0 +1,54 @@
+{
+  "simulated": true,
+  "mode": "realistic",
+  "source": "aitex-fabric-02",
+  "seed": 11,
+  "video": "roll_video.mp4",
+  "frames_csv": "frames.csv",
+  "nuisance_csv": "nuisance.csv",
+  "fps": 3.186,
+  "frames": 165,
+  "duration_s": 51.79,
+  "frame_size": [
+    3840,
+    284
+  ],
+  "view_region": {
+    "x": 0,
+    "y": 0,
+    "w": 3840,
+    "h": 248
+  },
+  "fabric_width_px": 3556,
+  "selvage_band_px": 21,
+  "label_bar_height": 36,
+  "fabric_motion": "fabric enters at the bottom of the frame and exits at the top",
+  "px_per_cm": 23.706666666666667,
+  "px_per_frame_at_full_speed": 248.02957382995046,
+  "speed_m_min": 20.0,
+  "operator_stops": 5,
+  "view_length_cm": 10.46119235095613,
+  "board_margin_cm": 6.0,
+  "roll_length_px": 28448,
+  "roll_length_yd": 13.123,
+  "fabric_width_cm": 150.0,
+  "fabric_width_in": 59.06,
+  "tiles_across": 1,
+  "defect_count": 7,
+  "nuisance_count": 17,
+  "classes": [
+    "broken_yarn",
+    "crease",
+    "fuzzyball",
+    "nep"
+  ],
+  "hole_classes": "any class name containing 'hole'",
+  "expected_score": {
+    "total_points": 9,
+    "points_per_100_sq_yd": 41.81,
+    "threshold": 40.0,
+    "verdict": "FAIL",
+    "rule": "4-point: <=3in 1, 3-6in 2, 6-9in 3, >9in 4; holes <=1in 2, >1in 4; max 4 points per linear yard"
+  },
+  "position_formula": "use frames.csv: roll_y_px = roll_y_top_px[frame] + y_in_view; x_on_fabric_px = x_in_view - fabric_x0_px[frame]; yard = roll_y_px / px_per_cm / 91.44; across_cm = x_on_fabric_px / px_per_cm"
+}

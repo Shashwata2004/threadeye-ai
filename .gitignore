@@ -39,7 +39,7 @@ build/
 *.log
 
 # Large simulator outputs: commit only after the licence check (PLAN.md Q2)
-data/sample_roll/*.mp4
+data/*/*.mp4
 
 # OS / editors
 .DS_Store
