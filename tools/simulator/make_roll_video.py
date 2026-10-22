@@ -474,8 +474,37 @@ def load_aitex(args, frame_w: int) -> DatasetSource:
 # --------------------------------------------------------------------------
 
 
+SEAM_SHIFT = 8
+"""Largest sideways shift (px) tried to line a picture's weave up with the one above it (--seam-cut)."""
+
+
+def seam_path(err: np.ndarray, keep_a: np.ndarray, keep_b: np.ndarray) -> np.ndarray:
+    """Per column, the overlap row where the lower picture takes over: the path of least squared difference
+    that moves at most one row per column (image quilting's minimum-error boundary cut). ``keep_a[x]``: the
+    upper picture's defect pixels reach down to that overlap row (the cut must lie below); ``keep_b[x]``: the
+    lower picture's defect pixels start at that row (the cut must not lie below it)."""
+    oy, w = err.shape
+    rows = np.arange(oy)[:, None]
+    cost = np.where((rows <= keep_a[None, :]) | (rows > keep_b[None, :]), 1e12, err.astype(np.float64))
+    acc = cost.copy()
+    back = np.zeros((oy, w), np.int64)
+    idx = np.arange(oy)
+    for x in range(1, w):
+        prev = acc[:, x - 1]
+        cand = np.stack([np.r_[np.inf, prev[:-1]], prev, np.r_[prev[1:], np.inf]])
+        i = cand.argmin(0)
+        acc[:, x] += cand[i, idx]
+        back[:, x] = idx + i - 1
+    k = np.empty(w, np.int64)
+    k[-1] = int(acc[:, -1].argmin())
+    for x in range(w - 1, 0, -1):
+        k[x - 1] = back[k[x], x]
+    return k
+
+
+
 class RollRenderer:
-    def __init__(self, source, plan: list[list[Cell]]):
+    def __init__(self, source, plan: list[list[Cell]], seam_cut: bool = False):
         self.src = source
         self.plan = plan
         self.o = source.overlap if source.cols > 1 else 0
@@ -486,6 +515,43 @@ class RollRenderer:
         oy = source.cell_h - self.stride_y
         self.weight = np.outer(ramp(source.cell_h, oy), ramp(source.cell_w, self.o)).astype(np.float32)
         self.row_cache: dict[tuple[int, int], np.ndarray] = {}
+        # --seam-cut (one picture across, overlapping rows): instead of cross-fading two weaves that do not line
+        # up (which leaves a smooth grey band a detector reads as a broken pick), shift each picture sideways
+        # to continue the weave above it and switch pictures along the least visible path.
+        self.shift = [0] * len(plan)
+        self.cut: dict[int, np.ndarray] = {}
+        if seam_cut and source.cols == 1 and oy > 0 and len(plan) > 1:
+            self._plan_seams(oy)
+
+    def _row_image(self, r: int) -> np.ndarray:
+        img = self.src.cell_image(r, 0, self.plan[r][0])
+        return np.roll(img, self.shift[r], axis=1) if self.shift[r] else img
+
+    def _plan_seams(self, oy: int) -> None:
+        ch, w = self.src.cell_h, self.src.cell_w
+        inner = slice(SEAM_SHIFT, w - SEAM_SHIFT)
+        prev = self._row_image(0)
+        for r in range(1, len(self.plan)):
+            a = prev[ch - oy:].astype(np.float32)
+            raw = self.src.cell_image(r, 0, self.plan[r][0])
+            b_raw = raw[:oy].astype(np.float32)
+            errs = {s: float(((a[:, inner] - np.roll(b_raw, s, axis=1)[:, inner]) ** 2).mean())
+                    for s in range(-SEAM_SHIFT, SEAM_SHIFT + 1)}
+            self.shift[r] = min(errs, key=errs.get)
+            b = np.roll(b_raw, self.shift[r], axis=1)
+            keep_a = np.full(w, -1, np.int64)
+            keep_b = np.full(w, oy, np.int64)
+            for box in self.plan[r - 1][0].boxes:  # the upper picture's defects in the overlap stay its own
+                if box.y1 > ch - oy:
+                    xs = slice(max(0, int(box.x0) - 2), min(w, int(np.ceil(box.x1)) + 2))
+                    keep_a[xs] = np.maximum(keep_a[xs], min(oy - 1, int(np.ceil(box.y1)) - (ch - oy) + 1))
+            for box in self.plan[r][0].boxes:  # and the lower picture's
+                if box.y0 < oy:
+                    x0, x1 = box.x0 + self.shift[r], box.x1 + self.shift[r]
+                    xs = slice(max(0, int(x0) - 2), min(w, int(np.ceil(x1)) + 2))
+                    keep_b[xs] = np.minimum(keep_b[xs], max(0, int(box.y0) - 1))
+            self.cut[r] = seam_path(((a - b) ** 2).sum(-1), keep_a, keep_b)
+            prev = np.roll(raw, self.shift[r], axis=1)
 
     def window(self, y: int, height: int) -> np.ndarray:
         if self.src.cols == 1 and self.stride_y == self.src.cell_h:
@@ -504,13 +570,25 @@ class RollRenderer:
                 continue
             for c, cell in enumerate(self.plan[r]):
                 if (r, c) not in self.row_cache:
-                    self.row_cache[(r, c)] = self.src.cell_image(r, c, cell)
+                    self.row_cache[(r, c)] = self._row_image(r) if self.cut else self.src.cell_image(r, c, cell)
                 img = self.row_cache[(r, c)]
                 cx = c * self.stride_x
-                wpart = self.weight[a0 - ry : a1 - ry]
+                wpart = self._seam_weight(r)[a0 - ry : a1 - ry] if self.cut else self.weight[a0 - ry : a1 - ry]
                 acc[a0 - y : a1 - y, cx : cx + cw] += img[a0 - ry : a1 - ry].astype(np.float32) * wpart[..., None]
                 wsum[a0 - y : a1 - y, cx : cx + cw] += wpart
         return acc / np.maximum(wsum, 1e-6)[..., None]
+
+    def _seam_weight(self, r: int) -> np.ndarray:
+        """1 where picture r shows, 0 where its neighbour does (the two seams of its overlaps)."""
+        ch, w = self.src.cell_h, self.src.cell_w
+        oy = ch - self.stride_y
+        wt = np.ones((ch, w), np.float32)
+        rows = np.arange(oy)[:, None]
+        if r in self.cut:  # seam with the picture above: picture r from its cut row down
+            wt[:oy] = rows >= self.cut[r][None, :]
+        if r + 1 in self.cut:  # seam with the picture below: picture r above that cut row
+            wt[ch - oy:] = rows < self.cut[r + 1][None, :]
+        return wt
 
     def _window_fast(self, y: int, height: int) -> np.ndarray:
         """Single column, no overlap (synthetic source): rows tile exactly, so just copy slices."""
@@ -538,7 +616,7 @@ class RollRenderer:
         out = []
         for r, row in enumerate(self.plan):
             for c, cell in enumerate(row):
-                ox, oy = c * self.stride_x, r * self.stride_y
+                ox, oy = c * self.stride_x + self.shift[r], r * self.stride_y
                 for b in cell.boxes:
                     out.append((Box(b.cls, b.x0 + ox, b.y0 + oy, b.x1 + ox, b.y1 + oy), cell.key))
         return out
@@ -919,6 +997,8 @@ def main():
     ap.add_argument("--no-stickers", action="store_true", help="do not place stickers at stops")
     ap.add_argument("--tiles-across", default="auto", help="dataset tiles placed side by side across the width")
     ap.add_argument("--overlap", type=int, default=12, help="feathered overlap between dataset tiles (px)")
+    ap.add_argument("--seam-cut", action="store_true",
+                    help="join stacked tiles along the least visible path, weave lined up, instead of cross-fading")
     ap.add_argument("--tint", help="colourise grayscale datasets, e.g. #3b5b8c")
     ap.add_argument("--no-flatten", action="store_true", help="keep each dataset tile's own lighting gradient")
     ap.add_argument("--trim-left", type=float, default=None,
@@ -975,7 +1055,7 @@ def main():
     p_defect = min(0.9, args.defects_per_10m / cells_per_10m)
 
     plan = source.plan(n_rows, rng, p_defect)
-    renderer = RollRenderer(source, plan)
+    renderer = RollRenderer(source, plan, seam_cut=args.seam_cut)
     roll_px = min(roll_px, renderer.length)
     if roll_px <= view_h + 2:
         raise SystemExit("Roll is shorter than one camera view; increase --roll-length-m")
