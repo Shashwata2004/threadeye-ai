@@ -345,6 +345,8 @@ def main() -> None:
     ap.add_argument("--smoke", type=int, default=0, help="only N images per source and kind (timing run)")
     ap.add_argument("--patch-base", type=Path, help="a finished build: keep its tiles of the other sources")
     ap.add_argument("--patch", nargs="*", default=[], help="the sources to rebuild on top of --patch-base")
+    ap.add_argument("--write-splits", type=Path,
+                    help="write {AITEX image name: split} of this build (for ml/aitex_paste.py --splits)")
     ap.add_argument("--bg-ratio-for", action="append", default=[],
                     help="SOURCE=R: that source's own --bg-ratio (more defect-free fabric against false alarms)")
     ap.add_argument("--scales", action="append", default=[],
@@ -391,6 +393,10 @@ def main() -> None:
         print(f"  {sum(r.group in forced for r in records)} patched images go with a copy in another source")
         dropped = Counter({k: v for k, v in dropped.items() if k.split(":")[0] in replaced})
     split_of = assign_splits(records, seed=args.seed)
+    if args.write_splits:
+        # The final split, near-duplicate links to other sources included: AITEX images that are copies of
+        # Moratuwa images take the split of their group, which a split of AITEX alone does not know.
+        args.write_splits.write_text(json.dumps({r.path.name: split_of[r.key] for r in records if r.source == "aitex"}))
     records = check_pastes(records, split_of, args.external, smoke=bool(args.smoke))
     zooms = {k: tuple(float(z) for z in v.split(",")) for k, v in (x.split("=") for x in args.scales)}
     bg_for = {k: float(v) for k, v in (x.split("=") for x in args.bg_ratio_for)}

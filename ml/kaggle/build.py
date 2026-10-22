@@ -182,14 +182,24 @@ sh("df -h /kaggle/tmp /kaggle/working | cat")
 caps = PARAMS.get("caps", [])
 smoke = [f"--smoke {SMOKE}"] if SMOKE else []
 tianchi = ["--tianchi-images", str(EXT / "tianchi/images")]
-if wanted("aitex_paste") and (PATCH is None or "aitex_paste" in PATCH):
-    # Real AITEX defects pasted onto clean AITEX weave (ml/aitex_paste.py), read as the source aitex_paste.
-    sh(f"{sys.executable} {CODE / 'aitex_paste.py'} --external {EXT} --n {40 if SMOKE else BUILD.get('aitex_paste', 600)}",
-       "AITEX pastes", 30)
+
+
+def make_pastes(build_args: list[str]) -> None:
+    """Real AITEX defects pasted onto clean AITEX weave (ml/aitex_paste.py, the source aitex_paste), made from
+    train images of this very build: a dry run writes its splits first."""
+    if not (wanted("aitex_paste") and (PATCH is None or "aitex_paste" in PATCH)):
+        return
+    splits = EXT / "aitex_splits.json"
+    sh(" ".join([*build_args, "--dry-run", "--write-splits", str(splits), "> /dev/null"]), "AITEX splits", 60)
+    sh(f"{sys.executable} {CODE / 'aitex_paste.py'} --external {EXT} --splits {splits} "
+       f"--n {40 if SMOKE else BUILD.get('aitex_paste', 600)}", "AITEX pastes", 30)
+
+
 if PATCH:
-    sh(" ".join([sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT), *tianchi,
-                 *[f"--cap {c}" for c in caps], *smoke, *SCALES, "--patch-base", str(BASE), "--patch", *PATCH]),
-       "patch tiles", 60)
+    patch_args = [sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT), *tianchi,
+                  *[f"--cap {c}" for c in caps], *smoke, *SCALES, "--patch-base", str(BASE), "--patch", *PATCH]
+    make_pastes(patch_args)
+    sh(" ".join(patch_args), "patch tiles", 60)
     sh(f"du -sh {OUT} && ls {OUT}")
     steplog.log(f"done in {(time.time() - T0) / 60:.1f} min")
     raise SystemExit(0)
@@ -208,7 +218,9 @@ sh(" ".join([sys.executable, str(CODE / "synth_nuisance.py"), "--external", str(
              str(100 if SMOKE else PARAMS.get("synth_nuisance", 4000)), *tianchi,
              *(["--hands", str(hands)] if ego is not None else [])]), "non-defect tiles", 60)
 
-sh(" ".join([sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT), *tianchi,
-             *[f"--cap {c}" for c in caps], *smoke, *SCALES]), "dataset tiles", 150)
+full_args = [sys.executable, str(CODE / "build_dataset.py"), "--external", str(EXT), "--out", str(OUT), *tianchi,
+             *[f"--cap {c}" for c in caps], *smoke, *SCALES]
+make_pastes(full_args)
+sh(" ".join(full_args), "dataset tiles", 150)
 sh(f"du -sh {OUT} && ls {OUT}")
 steplog.log(f"done in {(time.time() - T0) / 60:.1f} min")

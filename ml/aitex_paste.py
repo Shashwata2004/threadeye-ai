@@ -4,8 +4,9 @@ defects (fuzzyball, nep, warp ball, knot) the detector misses.
     ml/.venv/bin/python ml/aitex_paste.py --external data/external --n 600
 
 Donors are the defects of at most --max-side px in AITEX images of the train split, and the bases are clean
-AITEX images of the train split (the split is computed as the build computes it, per source, so no val/test
-pixels reach training; fabric 02, the demo roll's fabric, is always test). Each pasted defect keeps its own
+AITEX images of the train split: the build's own split (--splits, written by build_dataset.py --write-splits;
+AITEX images with copies in other sources follow those), so no val/test pixels reach training; fabric 02, the
+demo roll's fabric, is always test. build_dataset.py refuses pastes made from non-train images. Each pasted defect keeps its own
 pixels: it is moved to the brightness of its new place (the mean of a ring around it) and blended in with a
 feathered mask, sometimes flipped. Writes data/external/aitex_paste/{images/, annotations.json, groups.json},
 read by fabricdata.sources.read_aitex_paste; every image is forced into the train split.
@@ -78,11 +79,16 @@ def main() -> None:
     ap.add_argument("--per-image", type=int, default=3, help="defects pasted per image")
     ap.add_argument("--max-side", type=int, default=48, help="largest donor defect (px)")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--splits", type=Path, help="the build's AITEX splits (build_dataset.py --write-splits)")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
     records = list(sources.read_aitex(args.external / "aitex"))
-    split_of = assign_splits(records, seed=0)  # the build's split (per source, seed 0)
+    if args.splits:
+        by_name = json.loads(args.splits.read_text())
+        split_of = {r.key: by_name.get(r.path.name, "none") for r in records}
+    else:  # a split of AITEX alone: equal to the build's only when no AITEX image has a copy in another source
+        split_of = assign_splits(records, seed=0)
     pool = donors(records, split_of, args.max_side)
     bases = [r for r in records if r.defect_free and split_of[r.key] == "train"]
     print(f"{len(pool)} donor defects {sorted({c for c, _, _, _ in pool})}, {len(bases)} clean train images", flush=True)
