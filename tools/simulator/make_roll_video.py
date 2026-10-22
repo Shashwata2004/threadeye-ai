@@ -675,6 +675,28 @@ class Stop:
     defect_id: int | None
 
 
+def plan_linescan(args, end: int, view_h: int, defects: list[dict], rng: random.Random):
+    """--linescan: every frame is the next strip of fabric, exactly one dataset tile high (a line-scan camera
+    sends strips as the fabric passes), so a frame never shows two tiles joined. Realistic mode keeps the
+    operator's stops at defects: the fabric stands still and the same strip repeats."""
+    n = int(end // view_h) + 1
+    lo, hi = (float(v) for v in args.pause_s.split(","))
+    stop_at = {}
+    if args.realistic:
+        for d in defects:
+            if rng.random() < args.stop_prob:
+                stop_at.setdefault(int(((d["y0_px"] + d["y1_px"]) / 2) // view_h), (d["defect_id"], int(rng.uniform(lo, hi) * args.fps)))
+    tops, speeds, paused, events = [], [], [], []
+    for k in range(n):
+        tops.append(float(k * view_h)); speeds.append(args.speed_m_min); paused.append(False)
+        if k in stop_at:
+            did, frames = stop_at[k]
+            events.append({"frame": len(tops), "pause_frames": frames, "defect_id": did, "top": float(k * view_h)})
+            for _ in range(frames):
+                tops.append(float(k * view_h)); speeds.append(0.0); paused.append(True)
+    return np.array(tops), np.array(speeds), np.array(paused), events
+
+
 def plan_motion(args, roll_px: int, view_h: int, px_per_cm: float, defects: list[dict], rng: random.Random):
     """Frame-by-frame fabric position. Clean mode: constant speed.
     Realistic mode: the operator stops when a defect is in view, pauses, then the machine ramps back up;
@@ -683,6 +705,8 @@ def plan_motion(args, roll_px: int, view_h: int, px_per_cm: float, defects: list
     dt = 1.0 / fps
     vmax = args.speed_m_min / 60.0 * 100 * px_per_cm
     end = roll_px - view_h
+    if getattr(args, "linescan", False):
+        return plan_linescan(args, end, view_h, defects, rng)
     if not args.realistic:
         n = int(end // (vmax * dt)) + 1
         tops = np.arange(n, dtype=np.float64) * vmax * dt
@@ -997,6 +1021,8 @@ def main():
     ap.add_argument("--no-stickers", action="store_true", help="do not place stickers at stops")
     ap.add_argument("--tiles-across", default="auto", help="dataset tiles placed side by side across the width")
     ap.add_argument("--overlap", type=int, default=12, help="feathered overlap between dataset tiles (px)")
+    ap.add_argument("--linescan", action="store_true",
+                    help="a line-scan camera: each frame is one dataset tile, untouched (no joins, no blending)")
     ap.add_argument("--seam-cut", action="store_true",
                     help="join stacked tiles along the least visible path, weave lined up, instead of cross-fading")
     ap.add_argument("--tint", help="colourise grayscale datasets, e.g. #3b5b8c")
@@ -1037,6 +1063,14 @@ def main():
         if not args.dataset:
             raise SystemExit("--dataset is required for --source yolo / aitex")
         source = load_yolo(args, req_fab_w) if args.source == "yolo" else load_aitex(args, req_fab_w)
+    if args.linescan:
+        # Tiles stacked edge to edge, never blended; an even height for the H.264 encoder.
+        source.overlap = 0
+        if source.cell_h % 2:
+            source.cell_h += 1
+            source.cache.clear()
+            if hasattr(source, "_target_stats"):
+                source.target = source._target_stats()  # the lighting reference at the new tile height
 
     probe = RollRenderer(source, [[Cell("x")] * source.cols] * 2)
     fab_w = probe.width - probe.width % 2
@@ -1050,6 +1084,11 @@ def main():
     roll_px = int(round(args.roll_length_m * 100 * px_per_cm))
     view_h = int(round(args.view_length_cm * px_per_cm))
     view_h -= view_h % 2
+    if args.linescan:
+        # One strip per frame: the view is one tile high and the camera's frame rate follows the speed.
+        view_h = source.cell_h
+        args.fps = round(args.speed_m_min / 60.0 * 100 * px_per_cm / view_h, 3)
+        print(f"line-scan: strips of {view_h} px ({view_h / px_per_cm:.1f} cm) at {args.fps} frames/s")
     n_rows = int(math.ceil(roll_px / probe.stride_y)) + 1
     cells_per_10m = 1000 * px_per_cm / probe.stride_y * source.cols
     p_defect = min(0.9, args.defects_per_10m / cells_per_10m)
