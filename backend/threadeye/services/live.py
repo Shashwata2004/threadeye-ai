@@ -122,13 +122,20 @@ def build_runner(db: Session, insp: Inspection) -> Runner:
     # A detector that looks at the picture gets the roll video decoded here; the simulated one only
     # needs the positions (its answers come from the answer key).
     source = datasets.video_source(info) if snap["info"].get("requires_image") else datasets.track_source(info)
-    return Runner(
-        source,
-        provider,
-        RuleProfile(**profile_row.rules),
-        roll_spec(insp, roll, info),
-        inspection_id=str(insp.id),
-    )
+    try:
+        return Runner(
+            source,
+            provider,
+            RuleProfile(**profile_row.rules),
+            roll_spec(insp, roll, info),
+            inspection_id=str(insp.id),
+        )
+    except ProviderNotConfigured as exc:
+        # An inspection keeps the detector it started with (the model file is pinned by its SHA-256): after
+        # a new model is installed, an inspection left open on the old one cannot go on.
+        raise InspectionError(
+            409, f"this inspection's detector is not available any more ({exc}); abort it and inspect the roll again"
+        ) from exc
 
 
 def runner_for(db: Session, insp: Inspection) -> Runner:

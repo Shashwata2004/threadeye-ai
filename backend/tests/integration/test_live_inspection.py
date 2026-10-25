@@ -380,3 +380,22 @@ def test_advance_can_start_the_inspection_in_the_same_request(client: TestClient
     assert score["payload"]["at_frame"] == 120
     snap = client.get(f"/api/v1/inspections/{insp['id']}").json()
     assert snap["status"] == "running" and snap["driver_session"] is True
+
+
+def test_an_inspection_whose_detector_is_gone_says_so_and_can_be_aborted(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A new model replaced the one an open inspection started with: a clear 409, not a server error."""
+    from threadeye.core.providers import ProviderNotConfigured
+
+    insp_id = _start(client, _lot_with_roll(client))["id"]
+    live._cache.clear()  # the next request rebuilds the runner, as after a restart
+
+    def gone(*_: Any, **__: Any) -> Any:
+        raise ProviderNotConfigured("LocalModelDetector: threadeye_s.onnx SHA-256 601ba676a688… != 243d6e4ddc6f…")
+
+    monkeypatch.setattr(live.Runner, "__init__", gone)
+    r = client.post(f"/api/v1/inspections/{insp_id}/advance", json={"until_frame": 40, "after_seq": 0})
+    assert r.status_code == 409 and "abort it and inspect the roll again" in r.text
+    r = client.post(f"/api/v1/inspections/{insp_id}/abort", headers={"Idempotency-Key": "abort-0001"})
+    assert r.status_code == 200 and r.json()["status"] == "aborted"

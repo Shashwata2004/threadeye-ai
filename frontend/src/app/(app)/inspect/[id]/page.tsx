@@ -322,6 +322,24 @@ export default function LiveInspectionPage() {
     void refetchInsp();
   }
 
+  /** Give up on an open inspection (e.g. its detector model was replaced): the roll can be inspected again. */
+  async function abort() {
+    if (!window.confirm(t("live.abortConfirm"))) return;
+    stopDriving();
+    setBusy(true);
+    const { error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/abort", {
+      params: { path: { inspection_id: id } },
+      headers: { "Idempotency-Key": idempotencyKey() },
+    });
+    setBusy(false);
+    if (response.ok) {
+      setError(null);
+      router.push("/inspect");
+      return;
+    }
+    setError(errorDetail(err, response.status));
+  }
+
   async function onEnded() {
     setEnded(true);
     setPlaying(false);
@@ -640,15 +658,28 @@ export default function LiveInspectionPage() {
                   ? t("live.pausedBanner", { yd: resumeYd })
                   : t("live.resumeBanner")}
           </p>
-          <Button onClick={() => void begin(leaseElsewhere)} disabled={busy} data-testid="start">
-            {leaseElsewhere
-              ? t("live.takeOver")
-              : starting
-                ? t("live.starting")
-                : status === "created"
-                ? t("live.start")
-                : t("live.resumeButton", { yd: resumeYd })}
-          </Button>
+          <div className="flex items-center gap-3">
+            {status !== "created" && (
+              <button
+                type="button"
+                onClick={() => void abort()}
+                disabled={busy}
+                data-testid="abort"
+                className="text-sm font-semibold text-red-700 underline-offset-2 hover:underline disabled:opacity-50"
+              >
+                {t("live.abort")}
+              </button>
+            )}
+            <Button onClick={() => void begin(leaseElsewhere)} disabled={busy} data-testid="start">
+              {leaseElsewhere
+                ? t("live.takeOver")
+                : starting
+                  ? t("live.starting")
+                  : status === "created"
+                  ? t("live.start")
+                  : t("live.resumeButton", { yd: resumeYd })}
+            </Button>
+          </div>
         </div>
       )}
 

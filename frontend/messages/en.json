@@ -223,6 +223,8 @@
     "resumeButton": "Resume from {yd} yd",
     "leaseLost": "Another device is running this inspection. You are watching only.",
     "takeOver": "Run it on this device",
+    "abort": "Abort inspection",
+    "abortConfirm": "Abort this inspection? Its defects stay in the record and the roll can be inspected again.",
     "ended": "The whole roll has passed the camera.",
     "finish": "Finish roll",
     "pendingLeft": "Defects still needing a decision: {n}",
