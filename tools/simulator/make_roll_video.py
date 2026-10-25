@@ -629,7 +629,10 @@ class VideoSink:
         if use_ffmpeg and shutil.which("ffmpeg"):
             cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24",
                    "-s", f"{w}x{h}", "-r", str(fps), "-i", "-", "-c:v", "libx264", "-preset", "veryfast",
-                   "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(path)]
+                   "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                   # A keyframe about every second: the live screen seeks to any frame quickly (resume, replay,
+                   # a line-scan strip the browser skipped).
+                   "-g", str(max(1, round(fps))), str(path)]
             self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         else:
             self.writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
