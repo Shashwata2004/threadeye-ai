@@ -40,6 +40,12 @@ export function defectBox(d: Pick<Defect, "start_yd" | "end_yd" | "across_start_
   };
 }
 
+/** A line-scan camera's frames: strips far wider than high (each frame is the next strip of fabric). */
+export function isLineScan(track: Track): boolean {
+  const [, , vw, vh] = track.view_region;
+  return vw > 4 * vh;
+}
+
 /** Is any part of the box inside the camera view (excluding the label bar)? */
 export function inView(b: Box, track: Track): boolean {
   const [vx, vy, vw, vh] = track.view_region;

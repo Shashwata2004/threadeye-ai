@@ -669,7 +669,8 @@ export default function LiveInspectionPage() {
                   onEnded={() => void onEnded()}
                   drawing={addOpen}
                   draft={draft?.box ?? null}
-                  onDrawn={(box) => setDraft({ frame: frameRef.current, box })}
+                  draftFrame={draft?.frame ?? null}
+                  onDrawn={(box, frame) => setDraft({ frame, box })}
                 />
               ) : (
                 <p className="rounded bg-slate-100 p-6 text-slate-600">{t("live.videoMissing", { id: track.dataset_id })}</p>
