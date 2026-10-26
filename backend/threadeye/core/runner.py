@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from threadeye.core.dedupe import DedupeConfig, Deduper, DefectTrack, Sighting
-from threadeye.core.frames import FramePosition, FrameSource, SourceInfo
+from threadeye.core.frames import FrameImage, FramePosition, FrameSource, SourceInfo
 from threadeye.core.geometry import INCH_CM, YARD_CM, RollBox, clip_to_view, view_to_roll
 from threadeye.core.geometry import truncation as truncation_of
 from threadeye.core.nondefect import NonDefectFilter, NonDefectVerdict
@@ -152,6 +152,8 @@ class Runner:
         self._progress = _Progress()
         self._emitted: dict[str, dict[str, Any]] = {}
         """Last defect view sent per defect: only changes are emitted as events."""
+        self._evidence: dict[int, FrameImage] = {}
+        """Pictures of frames the detector found a defect on (not only non-defects), until take_evidence()."""
 
     # ------------------------------------------------------------------------------------ helpers
     def _key(self, frame: int, kind: str, suffix: str = "") -> str:
@@ -267,6 +269,13 @@ class Runner:
             )
         )
 
+    def take_evidence(self) -> dict[int, FrameImage]:
+        """The pictures of the frames the detector found a defect on since the last call (for their evidence
+        photos; frames with only non-defects, such as the selvage weave on every strip, wait for the browser's
+        capture), cleared on reading."""
+        evidence, self._evidence = self._evidence, {}
+        return evidence
+
     def advance(self, until_frame: int) -> list[RunnerEvent]:
         """Process frames (checkpoint, until_frame]. Idempotent: re-processing returns no events."""
         until_frame = min(until_frame, len(self.track) - 1)
@@ -310,6 +319,7 @@ class Runner:
                 result = self.provider.detect(packet)
                 scale = packet.image.scale if packet.image else 1.0
                 mapped = []
+                shows_defect = False
                 for det in result.detections:
                     raw = {
                         "cls": det.cls,
@@ -318,11 +328,14 @@ class Runner:
                         "bbox_px": [round(v, 1) for v in det.bbox_px],
                     }
                     track, is_new = self._ingest(pos, raw, scale)
+                    shows_defect = shows_defect or self._verdict(track).category is None
                     if is_new:
                         created.add(track.defect_no)
                     raw["truncated"] = track.sightings[-1].truncated
                     raw["defect_no"] = track.defect_no
                     mapped.append(raw)
+                if shows_defect and packet.image is not None:
+                    self._evidence[pos.frame] = packet.image
                 progress.detections += len(mapped)
                 events.append(
                     self._event(

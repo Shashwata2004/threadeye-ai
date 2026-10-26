@@ -399,3 +399,30 @@ def test_an_inspection_whose_detector_is_gone_says_so_and_can_be_aborted(
     assert r.status_code == 409 and "abort it and inspect the roll again" in r.text
     r = client.post(f"/api/v1/inspections/{insp_id}/abort", headers={"Idempotency-Key": "abort-0001"})
     assert r.status_code == 200 and r.json()["status"] == "aborted"
+
+
+def test_the_servers_larger_photo_of_a_frame_is_not_replaced_by_a_smaller_capture(client: TestClient) -> None:
+    import uuid
+
+    from threadeye.core.frames import FrameImage
+    from threadeye.db.models import Inspection, InspectionFrame
+
+    insp_id = uuid.UUID(_start(client, _lot_with_roll(client))["id"])
+
+    def jpeg(w: int, h: int) -> bytes:
+        buf = io.BytesIO()
+        Image.new("RGB", (w, h), (200, 190, 170)).save(buf, "JPEG")
+        return buf.getvalue()
+
+    with get_sessionmaker()() as db:
+        insp = db.get(Inspection, insp_id)
+        assert insp is not None
+        runner = live.runner_for(db, insp)
+        # The server's own picture of a 3840-px view is kept at 1920 px; the browser sends 960 px.
+        server = live._evidence_photo(10, FrameImage(jpeg(3840, 248), 3840, 248, 1.0))
+        assert server[2:] == (1920, 124)
+        live.store_frame_photos(db, insp, runner, [server])
+        live.store_frame_photos(db, insp, runner, [(10, jpeg(960, 62), 960, 62)])
+        db.commit()
+        where = (InspectionFrame.inspection_id == insp_id, InspectionFrame.frame == 10)
+        assert db.scalars(select(InspectionFrame).where(*where)).one().width == 1920

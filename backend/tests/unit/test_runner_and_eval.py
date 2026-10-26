@@ -180,3 +180,45 @@ def test_sample_roll_end_to_end_matches_roll_meta() -> None:
     assert (run.score.total_points, round(run.score.per_100, 2), run.score.verdict) == (10, 46.45, "FAIL")
     assert run.matches_expected
     assert run.evaluation.recall == 1.0
+
+
+def test_frames_with_detections_keep_their_picture_for_evidence() -> None:
+    """A detector that looks at the picture: the frames it found something on hand their picture to the
+    evidence photos (taken once), so a defect card does not wait for the browser's capture."""
+    import dataclasses
+    from collections.abc import Callable, Iterator
+
+    from threadeye.core.frames import FrameImage, FramePosition
+    from threadeye.core.providers import DetectionResult, ProviderInfo
+
+    class Pictures(TrackFrameSource):
+        def read(self, start: int, stop: int | None, want: Callable[[FramePosition], bool]) -> Iterator[FramePacket]:
+            for packet in super().read(start, stop, want):
+                image = FrameImage(b"jpeg", 1920, 1008, 1.0) if want(packet.pos) else None
+                yield FramePacket(packet.pos, image)
+
+    class Looking(SimulatedDetector):
+        @property
+        def info(self) -> ProviderInfo:
+            return dataclasses.replace(super().info, requires_image=True)
+
+        def detect(self, frame: FramePacket) -> DetectionResult:
+            assert frame.image is not None
+            return super().detect(frame)
+
+    key = load_answer_key(MICRO_ROLL, require_media=False)
+    source = Pictures(MICRO_ROLL)
+    meta = source.parsed.meta
+    r = Runner(
+        source,
+        Looking(PERFECT, ProviderContext(answer_key=key)),
+        simulator_parity_profile(),
+        RollSpec(width_in=meta.fabric_width_in, declared_length_yd=meta.roll_length_yd),
+        inspection_id="t",
+    )
+    events = r.advance(len(r.track) - 1)
+    found = {e.payload["frame"] for e in events if e.type == "detection.batch" and e.payload["detections"]}
+    evidence = r.take_evidence()
+    assert found and set(evidence) == found
+    assert all(img.jpeg == b"jpeg" for img in evidence.values())
+    assert r.take_evidence() == {}

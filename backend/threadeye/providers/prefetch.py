@@ -15,13 +15,28 @@ The thread stays at most ``window`` frames ahead of the last frame asked for, an
 
 from __future__ import annotations
 
+import atexit
 import threading
 import time
+import weakref
 from collections.abc import Callable, Iterable
 from typing import Any
 
 from threadeye.core.frames import FramePacket, SourceInfo
 from threadeye.core.providers import DetectionResult, DetectorProvider, ProviderInfo
+
+_RUNNING: weakref.WeakSet[PrefetchingDetector] = weakref.WeakSet()
+
+
+@atexit.register
+def _stop_all() -> None:
+    """Stop the threads before the interpreter goes: one killed inside ONNX Runtime aborts the process."""
+    for d in list(_RUNNING):
+        d.close()
+    for d in list(_RUNNING):
+        if d._thread is not None:
+            d._thread.join(timeout=5)
+
 
 WAIT_S = 30.0
 """Longest a request waits for the thread to finish a frame it is working towards."""
@@ -81,6 +96,7 @@ class PrefetchingDetector(DetectorProvider):
                 self._pos = f
                 self._thread = threading.Thread(target=self._run, args=(f,), name="detector-prefetch", daemon=True)
                 self._thread.start()
+                _RUNNING.add(self)
             self._cond.notify_all()
             deadline = time.monotonic() + WAIT_S
             # Wait only for a frame the thread will still reach.
