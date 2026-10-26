@@ -2250,6 +2250,46 @@
         }
       }
     },
+    "/api/v1/lots/{lot_id}/claim-pack.zip": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Claim Pack",
+        "description": "Claim pack for the failed rolls of a delivery (M5): an English claim letter to the mill, each failed roll's inspection report, every defect photo, manifest.json and SHA256SUMS.txt (the checksum of every file, and the head of the audit chain when the pack was made). 409 when no roll failed. Audited.",
+        "operationId": "claim_pack_api_v1_lots__lot_id__claim_pack_zip_get",
+        "parameters": [
+          {
+            "name": "lot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ZIP archive",
+            "content": {
+              "application/zip": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/inspections/{inspection_id}/defects": {
       "get": {
         "tags": [

@@ -6,10 +6,16 @@ Every command takes a row lock on the inspection and commits once.
 
 from __future__ import annotations
 
+import hashlib
+import io
+import json
 import re
 import time
 import uuid
+import zipfile
+from collections import Counter
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
@@ -44,7 +50,9 @@ from threadeye.api.schemas.inspection import (
     ScoreSummary,
     TrackOut,
 )
+from threadeye.db import audit
 from threadeye.db.models import (
+    AuditLog,
     Buyer,
     DefectRow,
     Inspection,
@@ -56,9 +64,10 @@ from threadeye.db.models import (
     User,
 )
 from threadeye.db.session import get_db, get_sessionmaker
+from threadeye.reports.claim_letter import ClaimData, ClaimRoll, build_claim_letter
 from threadeye.reports.roll_report import build_roll_report
 from threadeye.security.rbac import Perm
-from threadeye.services import datasets, evidence, live, storage
+from threadeye.services import datasets, evidence, live, receiving, storage
 from threadeye.services.inspection_store import events_after
 
 router = APIRouter(tags=["inspections"])
@@ -665,19 +674,8 @@ def decide(
     return _snapshot(db, insp, session_id)
 
 
-@router.get(
-    "/inspections/{inspection_id}/report.pdf",
-    response_class=Response,
-    responses=PDF,
-    dependencies=[Depends(require(Perm.REPORTS_READ))],
-    description="Roll inspection report (PDF). Marked SIMULATED with the provider label when applicable.",
-)
-def roll_report(
-    inspection_id: uuid.UUID,
-    lang: str = Query("en", pattern="^(en|bn)$"),
-    db: Session = Depends(get_db),
-) -> Response:
-    insp = _get(db, inspection_id)
+def _roll_report(db: Session, insp: Inspection, lang: str) -> tuple[bytes, dict[str, bytes], InspectionSnapshot]:
+    """The roll report PDF, the evidence crop of each defect it shows (by defect no.) and the snapshot."""
     snapshot = _snapshot(db, insp, None)
     rows = live.defects(db, insp)
     info = _dataset(insp)
@@ -696,7 +694,22 @@ def roll_report(
                     )
                 except (OSError, ValueError):
                     continue
-    content = build_roll_report(snapshot, [_defect_out(d, False) for d in rows], crops, lang=lang)
+    return build_roll_report(snapshot, [_defect_out(d, False) for d in rows], crops, lang=lang), crops, snapshot
+
+
+@router.get(
+    "/inspections/{inspection_id}/report.pdf",
+    response_class=Response,
+    responses=PDF,
+    dependencies=[Depends(require(Perm.REPORTS_READ))],
+    description="Roll inspection report (PDF). Marked SIMULATED with the provider label when applicable.",
+)
+def roll_report(
+    inspection_id: uuid.UUID,
+    lang: str = Query("en", pattern="^(en|bn)$"),
+    db: Session = Depends(get_db),
+) -> Response:
+    content, _, snapshot = _roll_report(db, _get(db, inspection_id), lang)
     return Response(
         content,
         media_type="application/pdf",
@@ -704,6 +717,146 @@ def roll_report(
             "Content-Disposition": f'inline; filename="roll-report-{snapshot.roll_code}.pdf"',
             "Cache-Control": "no-store",
         },
+    )
+
+
+# ------------------------------------------------------------------------------------------ claim pack
+ZIP: dict[int | str, dict[str, Any]] = {200: {"content": {"application/zip": {}}, "description": "ZIP archive"}}
+
+
+@router.get(
+    "/lots/{lot_id}/claim-pack.zip",
+    response_class=Response,
+    responses=ZIP,
+    description="Claim pack for the failed rolls of a delivery (M5): an English claim letter to the mill, each "
+    "failed roll's inspection report, every defect photo, manifest.json and SHA256SUMS.txt (the checksum of "
+    "every file, and the head of the audit chain when the pack was made). 409 when no roll failed. Audited.",
+)
+def claim_pack(
+    lot_id: uuid.UUID,
+    request: Request,
+    actor: User = Depends(require(Perm.CLAIMS_WRITE)),
+    db: Session = Depends(get_db),
+) -> Response:
+    lot = db.get(Lot, lot_id)
+    if lot is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "lot not found")
+    summary = receiving.lot_summary(db, lot)
+    failed = [i for i in summary.rolls if i.verdict == "FAIL" and i.inspection is not None]
+    if not failed:
+        raise HTTPException(status.HTTP_409_CONFLICT, "no failed roll in this delivery: nothing to claim")
+    files: dict[str, bytes] = {}
+    rolls: list[ClaimRoll] = []
+    sim_video = sim_detections = False
+    provider = ""
+    for item in failed:
+        insp = item.inspection
+        assert insp is not None
+        report, crops, snap = _roll_report(db, insp, "en")
+        files[f"rolls/{item.roll.roll_code}/report.pdf"] = report
+        for no, jpeg in sorted(crops.items()):
+            files[f"photos/{item.roll.roll_code}/{no}.jpg"] = jpeg
+        confirmed = Counter(
+            d.current_cls for d in live.defects(db, insp) if d.kind == "defect" and d.status == "confirmed"
+        )
+        rolls.append(
+            ClaimRoll(
+                roll_code=item.roll.roll_code,
+                mill_roll_no=item.roll.mill_roll_no,
+                declared_length_yd=item.roll.declared_length_yd,
+                yards_inspected=insp.yards_inspected,
+                points_total=insp.points_total,
+                points_per_100=insp.points_per_100,
+                final_verdict=insp.final_verdict,
+                decision_reason=insp.decision_reason,
+                defects=dict(confirmed),
+            )
+        )
+        sim_video |= snap.is_simulated
+        sim_detections |= snap.provider.is_simulated
+        provider = f"{snap.provider.display_name} ({snap.provider.provider_id}@{snap.provider.version})"
+    supplier = db.get(Supplier, lot.supplier_id)
+    buyer = db.get(Buyer, lot.buyer_id)
+    profile = db.get(RuleProfileRow, lot.rule_profile_id)
+    signer = db.get(User, lot.decision_by) if lot.decision_by else actor
+    assert supplier and buyer
+    now = datetime.now(UTC)
+    photos = sum(1 for f in files if f.startswith("photos/"))
+    enclosed = [
+        *(f for f in files if f.endswith("report.pdf")),
+        *([f"photos/ ({photos} defect photos)"] if photos else []),
+        "manifest.json",
+        "SHA256SUMS.txt",
+    ]
+    files["claim_letter.pdf"] = build_claim_letter(
+        ClaimData(
+            challan=lot.challan_no,
+            order_ref=lot.order_ref,
+            fabric=lot.fabric_type,
+            colour=lot.colour,
+            received=lot.received_at,
+            declared_rolls=lot.declared_rolls,
+            mill=supplier.name,
+            mill_country=supplier.country,
+            buyer=buyer.name,
+            profile=f"{profile.name} v{profile.version}" if profile else "",
+            threshold_per_100=float(profile.rules.get("threshold_per_100", 40.0)) if profile else 40.0,
+            inspected=summary.result.inspected,
+            rolls=rolls,
+            lot_decision=lot.decision,
+            lot_decision_reason=lot.decision_reason,
+            signed_by=(signer or actor).display_name,
+            generated_at=now,
+            simulated_video=sim_video,
+            simulated_detections=sim_detections,
+            provider_label=provider,
+            demo_data=lot.is_sample_data or supplier.is_sample_data,
+            files=enclosed,
+        )
+    )
+    chain_head = db.scalar(select(AuditLog.hash).order_by(AuditLog.id.desc()).limit(1))
+    manifest = {
+        "lot_id": str(lot.id),
+        "challan": lot.challan_no,
+        "mill": supplier.name,
+        "generated_at": now.isoformat(),
+        "generated_by": actor.display_name,
+        "audit_chain_head": chain_head,
+        "inspections": {i.roll.roll_code: str(i.inspection.id) for i in failed if i.inspection},
+        "files": [
+            {"path": path, "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+            for path, data in sorted(files.items())
+        ],
+    }
+    files["manifest.json"] = json.dumps(manifest, indent=1).encode()
+    files["SHA256SUMS.txt"] = "".join(
+        f"{hashlib.sha256(data).hexdigest()}  {path}\n" for path, data in sorted(files.items())
+    ).encode()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for path, data in sorted(files.items()):
+            packed = zipfile.ZIP_STORED if path.endswith((".jpg", ".pdf")) else zipfile.ZIP_DEFLATED
+            z.writestr(zipfile.ZipInfo(path, date_time=now.timetuple()[:6]), data, compress_type=packed)
+    audit.record(
+        db,
+        action="claim.pack",
+        actor_user_id=actor.id,
+        actor_role=actor.role,
+        entity_type="lot",
+        entity_id=str(lot.id),
+        after={
+            "rolls": [r.roll_code for r in rolls],
+            "files": len(files),
+            "manifest_sha256": hashlib.sha256(files["manifest.json"]).hexdigest(),
+        },
+        ip=client_ip(request),
+    )
+    db.commit()
+    name = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in lot.challan_no)
+    return Response(
+        buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="claim-pack-{name}.zip"', "Cache-Control": "no-store"},
     )
 
 

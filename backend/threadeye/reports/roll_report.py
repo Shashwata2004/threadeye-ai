@@ -51,6 +51,8 @@ TEXT = {
         "photo": "Evidence photos",
         "simNote": "SIMULATED: the video and the detections are simulated, not real AI. "
         "Scores follow the rule profile shown above.",
+        "simVideoNote": "SIMULATED VIDEO: the roll video is simulated from a public fabric dataset; the defects "
+        "were found by our trained model ({provider}). Scores follow the rule profile shown above.",
         "status_confirmed": "confirmed",
         "status_rejected": "rejected",
         "status_pending": "pending",
@@ -95,6 +97,8 @@ TEXT = {
         "notFinal": "রায় এখনো হিসাব হয়নি: এটি অস্থায়ী রিপোর্ট।",
         "photo": "প্রমাণের ছবি",
         "simNote": "সিমুলেটেড: ভিডিও ও শনাক্তকরণ সিমুলেটেড, বাস্তব AI নয়। পয়েন্ট উপরের নিয়ম অনুযায়ী হিসাব করা।",
+        "simVideoNote": "সিমুলেটেড ভিডিও: রোলের ভিডিও একটি পাবলিক কাপড়ের ডেটাসেট থেকে সিমুলেট করা; ত্রুটিগুলো খুঁজেছে "
+        "আমাদের প্রশিক্ষিত মডেল ({provider})। পয়েন্ট উপরের নিয়ম অনুযায়ী হিসাব করা।",
         "status_confirmed": "নিশ্চিত",
         "status_rejected": "বাতিল",
         "status_pending": "বাকি",
@@ -152,7 +156,12 @@ def build_roll_report(
         return dc.label_bn if lang == "bn" else dc.label_en
 
     provider = f"{snap.provider.display_name} ({snap.provider.provider_id}@{snap.provider.version})"
-    pdf = ThreadEyePDF(simulated=snap.is_simulated, provider_label=provider, title=t["title"])
+    pdf = ThreadEyePDF(
+        simulated=snap.is_simulated,
+        provider_label=provider,
+        title=t["title"],
+        detections_simulated=snap.provider.is_simulated,
+    )
     pdf.alias_nb_pages()
     pdf.add_page()
 
@@ -311,7 +320,8 @@ def build_roll_report(
         pdf.ln(2)
         pdf.set_text_color(160, 90, 0)
         pdf.use_font(8, bold=True)
-        _wrapped(pdf, t["simNote"], 4.5)
+        note = t["simNote"] if snap.provider.is_simulated else t["simVideoNote"].format(provider=provider)
+        _wrapped(pdf, note, 4.5)
         pdf.set_text_color(0, 0, 0)
     pdf.use_font(7)
     pdf.set_text_color(110, 110, 110)

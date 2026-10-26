@@ -28,9 +28,14 @@ BENGALI = "NotoSansBengali"
 
 
 class ThreadEyePDF(FPDF):
-    def __init__(self, *, simulated: bool, provider_label: str, title: str) -> None:
+    def __init__(
+        self, *, simulated: bool, provider_label: str, title: str, detections_simulated: bool | None = None
+    ) -> None:
+        """``simulated``: the roll video is simulated (watermark). ``detections_simulated``: the detector is the
+        simulated one too (default: as ``simulated``); with our trained model only the video is."""
         super().__init__(orientation="P", unit="mm", format="A4")
         self.simulated = simulated
+        self.detections_simulated = simulated if detections_simulated is None else detections_simulated
         self.provider_label = provider_label
         self.report_title = title
         self.set_title(title)
@@ -71,7 +76,12 @@ class ThreadEyePDF(FPDF):
         self.set_y(-14)
         self.set_font(LATIN, size=8)
         self.set_text_color(90, 90, 90)
-        mode = "SIMULATED DETECTIONS (not real AI)" if self.simulated else "Detections"
+        if self.detections_simulated:
+            mode = "SIMULATED DETECTIONS (not real AI)"
+        elif self.simulated:
+            mode = "SIMULATED VIDEO · detections by the trained model"
+        else:
+            mode = "Detections"
         self.cell(0, 5, f"{mode} · provider: {self.provider_label}", new_x="LMARGIN", new_y="NEXT")
         self.cell(0, 5, f"Page {self.page_no()}/{{nb}}", align="R")
         self.set_text_color(0, 0, 0)

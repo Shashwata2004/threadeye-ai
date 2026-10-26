@@ -161,7 +161,7 @@ const VERDICT_STYLE: Record<string, string> = {
 const LOT_DECISIONS = ["ACCEPT", "ACCEPT_WITH_REJECTS", "REJECT", "INSPECT_ALL"] as const;
 
 /** The lot verdict from the rolls inspected so far, and the supervisor's decision on the delivery. */
-function LotVerdictCard({ lotId, canDecide }: { lotId: string; canDecide: boolean }) {
+function LotVerdictCard({ lotId, canDecide, canClaim }: { lotId: string; canDecide: boolean; canClaim: boolean }) {
   const t = useTranslations("lotVerdict");
   const format = useFormatter();
   const queryClient = useQueryClient();
@@ -211,6 +211,18 @@ function LotVerdictCard({ lotId, canDecide }: { lotId: string; canDecide: boolea
       <p className="text-xs opacity-80">
         {t("rules", { hold: v.rules.hold_if_fail_pct_over, reject: v.rules.reject_if_fail_pct_over })}
       </p>
+      {canClaim && v.failed > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => window.open(`/api/v1/lots/${lotId}/claim-pack.zip`, "_blank", "noopener")}
+            data-testid="lot-claim-pack"
+          >
+            {t("claimPack")}
+          </Button>
+          <span className="text-xs opacity-80">{t("claimPackHint")}</span>
+        </div>
+      )}
       <div className="rounded-md bg-white/70 p-3 text-slate-800">
         <h3 className="text-sm font-semibold">{t("decisionTitle")}</h3>
         {d ? (
@@ -318,7 +330,7 @@ export default function LotDetailPage() {
         )}
       </div>
 
-      <LotVerdictCard lotId={lot.id} canDecide={hasPerm(me, "verdict.decide")} />
+      <LotVerdictCard lotId={lot.id} canDecide={hasPerm(me, "verdict.decide")} canClaim={hasPerm(me, "claims.write")} />
 
       {sampling && (
         <section className="rounded-lg border border-teal-200 bg-teal-50 p-4" data-testid="sampling">

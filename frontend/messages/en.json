@@ -365,6 +365,8 @@
     "decidedOn": "taken on the verdict “{verdict}”",
     "waitSample": "A decision can be recorded once the sample is inspected.",
     "noDecision": "No decision yet.",
-    "rollVerdict": "Roll verdict"
+    "rollVerdict": "Roll verdict",
+    "claimPack": "Claim pack (ZIP)",
+    "claimPackHint": "Letter to the mill, the failed rolls' reports and photos, every file's SHA-256."
   }
 }

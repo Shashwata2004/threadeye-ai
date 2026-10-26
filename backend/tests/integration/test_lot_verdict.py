@@ -126,3 +126,38 @@ def test_supplier_scorecard_from_finalized_rolls(client: TestClient) -> None:
     assert summary == ("CH-SCORE-1", 1, 1, "review")
     # The roll covers less than the declared 100 yd: the gap is the shortage.
     assert delivery["shortage_yd"] > 0 and 0 < mill["shortage"] <= 1
+
+
+def test_claim_pack_holds_the_letter_reports_photos_and_their_checksums(client: TestClient) -> None:
+    import hashlib
+    import io
+    import json
+    import zipfile
+
+    lot_id, codes = _lot(client, "CH-CLAIM-1", 2)
+    login(client, "merchandiser")
+    assert client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip").status_code == 409  # nothing failed yet
+    _inspect_to_verdict(client, codes[0])  # FAIL; its run captured frame 110 (the stain's photo)
+
+    login(client, "store")
+    assert client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip").status_code == 403
+    login(client, "merchandiser")
+    r = client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip")
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"] == "application/zip"
+    assert "claim-pack-CH-CLAIM-1.zip" in r.headers["content-disposition"]
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    names = set(z.namelist())
+    assert {"claim_letter.pdf", f"rolls/{codes[0]}/report.pdf", "manifest.json", "SHA256SUMS.txt"} <= names
+    assert any(n.startswith(f"photos/{codes[0]}/") and n.endswith(".jpg") for n in names)
+    assert z.read("claim_letter.pdf").startswith(b"%PDF")
+    # Every checksum holds: the manifest's for every other file, SHA256SUMS for every file but itself.
+    manifest = json.loads(z.read("manifest.json"))
+    assert manifest["audit_chain_head"] and manifest["inspections"].keys() == {codes[0]}
+    for f in manifest["files"]:
+        assert hashlib.sha256(z.read(f["path"])).hexdigest() == f["sha256"]
+    sums = dict(reversed(line.split("  ")) for line in z.read("SHA256SUMS.txt").decode().splitlines())
+    assert set(sums) == names - {"SHA256SUMS.txt"}
+    assert all(hashlib.sha256(z.read(n)).hexdigest() == h for n, h in sums.items())
+    with get_sessionmaker()() as db:
+        assert "claim.pack" in set(db.scalars(select(AuditLog.action)).all())
