@@ -181,7 +181,13 @@ class Lot(Base):
     """A delivery (challan) of rolls from one mill for one buyer."""
 
     __tablename__ = "lots"
-    __table_args__ = (UniqueConstraint("supplier_id", "challan_no", name="uq_lots_supplier_id_challan_no"),)
+    __table_args__ = (
+        UniqueConstraint("supplier_id", "challan_no", name="uq_lots_supplier_id_challan_no"),
+        CheckConstraint(
+            "decision IS NULL OR decision IN ('ACCEPT', 'ACCEPT_WITH_REJECTS', 'REJECT', 'INSPECT_ALL')",
+            name="decision_valid",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid7)
     challan_no: Mapped[str] = mapped_column(String(64))
@@ -197,6 +203,12 @@ class Lot(Base):
     sampling_pct: Mapped[float] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(32), default="registered", server_default="registered")
     lot_verdict: Mapped[str | None] = mapped_column(String(32))
+    """The computed lot verdict when last decided on (``lot_verdict`` of the rolls' verdicts)."""
+    decision: Mapped[str | None] = mapped_column(String(32))
+    """The supervisor's decision on the delivery (M4): ACCEPT | ACCEPT_WITH_REJECTS | REJECT | INSPECT_ALL."""
+    decision_reason: Mapped[str | None] = mapped_column(Text)
+    decision_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    decision_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_sample_data: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

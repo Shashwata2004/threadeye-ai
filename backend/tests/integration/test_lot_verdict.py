@@ -1,0 +1,105 @@
+"""Lot verdict (PLAN.md §7.2 step 10) through the API: computed from the rolls' finalized verdicts, decided by a
+supervisor, audited."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+
+from tests.conftest import login
+from tests.integration.test_live_inspection import META, _run_to_end, _start
+from threadeye.db.models import AuditLog
+from threadeye.db.session import get_sessionmaker
+
+
+def _lot(client: TestClient, challan: str, rolls: int) -> tuple[str, list[str]]:
+    login(client, "store")
+    supplier = client.get("/api/v1/suppliers").json()[0]["id"]
+    buyer = client.get("/api/v1/buyers").json()[0]["id"]
+    profile = next(p["id"] for p in client.get("/api/v1/rule-profiles").json() if p["name"] == "Simulator parity")
+    lot = client.post(
+        "/api/v1/lots",
+        json={
+            "challan_no": challan,
+            "supplier_id": supplier,
+            "buyer_id": buyer,
+            "fabric_type": "Cotton twill",
+            "received_at": "2026-10-26",
+            "declared_rolls": rolls,
+            "rule_profile_id": profile,
+        },
+    ).json()
+    created = client.post(
+        f"/api/v1/lots/{lot['id']}/rolls",
+        json={
+            "rolls": [
+                {"mill_roll_no": f"R{i}", "declared_length_yd": 100, "declared_width_in": META["fabric_width_in"]}
+                for i in range(rolls)
+            ]
+        },
+    ).json()
+    return lot["id"], [r["roll_code"] for r in created]
+
+
+def _inspect_to_verdict(client: TestClient, roll_code: str) -> str:
+    insp_id = _start(client, roll_code)["id"]
+    _run_to_end(client, insp_id)
+    assert client.post(f"/api/v1/inspections/{insp_id}/complete").status_code == 200
+    defects: list[dict[str, Any]] = client.get(f"/api/v1/inspections/{insp_id}/defects").json()
+    for d in defects:
+        if d["kind"] == "defect" and d["status"] == "pending":
+            client.post(f"/api/v1/defects/{d['id']}/confirm", json={}, headers={"Idempotency-Key": f"k-{d['id']}"})
+    final = client.post(f"/api/v1/inspections/{insp_id}/finalize")
+    assert final.status_code == 200, final.text
+    assert final.json()["system_verdict"] == META["expected_score"]["verdict"] == "FAIL"
+    return str(insp_id)
+
+
+def test_lot_verdict_follows_the_rolls_and_a_supervisor_decides(client: TestClient) -> None:
+    lot_id, codes = _lot(client, "CH-LOT-1", 2)
+
+    # Nothing inspected yet: the sample is pending and no decision can be taken.
+    login(client, "supervisor")
+    v = client.get(f"/api/v1/lots/{lot_id}/verdict").json()
+    assert (v["status"], v["required_sample"], v["inspected"], v["total_rolls"]) == ("PENDING_SAMPLE", 1, 0, 2)
+    early = client.post(f"/api/v1/lots/{lot_id}/decision", json={"decision": "ACCEPT", "reason": "looks fine"})
+    assert early.status_code == 409
+
+    # One of two rolls fails: above the 20 % hold limit while rolls remain, so every roll must be inspected.
+    insp_id = _inspect_to_verdict(client, codes[0])
+    login(client, "supervisor")
+    v = client.get(f"/api/v1/lots/{lot_id}/verdict").json()
+    assert (v["status"], v["inspected"], v["failed"], v["fail_pct"]) == ("HOLD_INSPECT_ALL", 1, 1, 100.0)
+    assert [(r["roll_code"], r["verdict"]) for r in v["rolls"]] == [(codes[0], "FAIL"), (codes[1], None)]
+
+    # The supervisor's roll decision counts over the system verdict.
+    client.post(f"/api/v1/inspections/{insp_id}/decision", json={"final_verdict": "ACCEPT", "reason": "minor, ok"})
+    v = client.get(f"/api/v1/lots/{lot_id}/verdict").json()
+    assert (v["status"], v["failed"]) == ("ACCEPT", 0) and v["rolls"][0]["verdict"] == "PASS"
+
+    # Only a role that decides verdicts may decide the lot; the decision is kept with its verdict and audited.
+    login(client, "store")
+    denied = client.post(f"/api/v1/lots/{lot_id}/decision", json={"decision": "ACCEPT", "reason": "x" * 5})
+    assert denied.status_code == 403
+    login(client, "supervisor")
+    r = client.post(f"/api/v1/lots/{lot_id}/decision", json={"decision": "ACCEPT", "reason": "sample passed"})
+    assert r.status_code == 200, r.text
+    d = r.json()["decision"]
+    assert (d["decision"], d["reason"], d["lot_verdict"]) == ("ACCEPT", "sample passed", "ACCEPT")
+    assert d["decided_by"] and d["decided_at"]
+    assert client.get(f"/api/v1/lots/{lot_id}/verdict").json()["decision"]["decision"] == "ACCEPT"
+    with get_sessionmaker()() as db:
+        assert "lot.decision" in set(db.scalars(select(AuditLog.action)).all())
+
+
+def test_a_failed_roll_counts_as_failed_when_accepted_with_a_claim(client: TestClient) -> None:
+    lot_id, codes = _lot(client, "CH-LOT-2", 1)
+    insp_id = _inspect_to_verdict(client, codes[0])
+    login(client, "supervisor")
+    claim = {"final_verdict": "ACCEPT_WITH_CLAIM", "reason": "claim"}
+    assert client.post(f"/api/v1/inspections/{insp_id}/decision", json=claim).status_code == 200
+    v = client.get(f"/api/v1/lots/{lot_id}/verdict").json()
+    # Every roll inspected, the only one failed: above the 50 % reject limit.
+    assert (v["status"], v["failed"], v["rolls"][0]["verdict"]) == ("REJECT", 1, "FAIL")

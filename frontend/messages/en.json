@@ -339,5 +339,32 @@
     "board": "Board",
     "not_visible": "Nothing there",
     "other": "Other"
+  },
+  "lotVerdict": {
+    "title": "Lot verdict",
+    "summary": "{inspected} of {total} rolls inspected (the sample needs {required}) · {failed} failed ({pct}%)",
+    "rules": "Hold for full inspection above {hold}% failed while rolls remain; reject above {reject}% once every roll is inspected.",
+    "status": {
+      "PENDING_SAMPLE": "Sample not inspected yet",
+      "ACCEPT": "Accept",
+      "HOLD_INSPECT_ALL": "Hold: inspect every roll",
+      "ACCEPT_WITH_REJECTS": "Accept, return the failed rolls",
+      "REJECT": "Reject the delivery"
+    },
+    "decisionTitle": "Supervisor's decision",
+    "decisions": {
+      "ACCEPT": "Accept",
+      "ACCEPT_WITH_REJECTS": "Accept with rejects",
+      "REJECT": "Reject",
+      "INSPECT_ALL": "Inspect all rolls"
+    },
+    "reason": "Reason",
+    "reasonHint": "Why (kept in the change ledger)",
+    "record": "Record decision",
+    "decided": "{decision} — {by}, {date}",
+    "decidedOn": "taken on the verdict “{verdict}”",
+    "waitSample": "A decision can be recorded once the sample is inspected.",
+    "noDecision": "No decision yet.",
+    "rollVerdict": "Roll verdict"
   }
 }

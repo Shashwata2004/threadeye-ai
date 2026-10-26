@@ -110,6 +110,55 @@ class RollOut(ApiModel):
     is_sample_data: bool
 
 
+LotDecision = Literal["ACCEPT", "ACCEPT_WITH_REJECTS", "REJECT", "INSPECT_ALL"]
+
+
+class LotRollVerdict(ApiModel):
+    roll_id: uuid.UUID
+    roll_code: str
+    inspection_id: uuid.UUID | None
+    """The roll's latest finalized inspection."""
+    verdict: Literal["PASS", "FAIL", "BORDERLINE"] | None
+    system_verdict: str | None
+    final_verdict: str | None
+    points_per_100: float | None
+
+
+class LotRulesOut(ApiModel):
+    min_sample_pct: float
+    min_sample_rolls: int
+    hold_if_fail_pct_over: float
+    reject_if_fail_pct_over: float
+    borderline_counts_as: Literal["fail", "pass"]
+
+
+class LotDecisionOut(ApiModel):
+    decision: LotDecision
+    reason: str | None
+    decided_by: str | None
+    """Display name of the supervisor."""
+    decided_at: datetime | None
+    lot_verdict: LotVerdict | None
+    """The computed verdict the decision was taken on."""
+
+
+class LotVerdictOut(ApiModel):
+    status: LotVerdict
+    required_sample: int
+    inspected: int
+    failed: int
+    fail_pct: float
+    total_rolls: int
+    rules: LotRulesOut
+    rolls: list[LotRollVerdict]
+    decision: LotDecisionOut | None
+
+
+class LotDecisionIn(ApiModel):
+    decision: LotDecision
+    reason: str = Field(min_length=3, max_length=1000)
+
+
 class SamplingSuggestionOut(ApiModel):
     total_rolls: int
     registered_rolls: int

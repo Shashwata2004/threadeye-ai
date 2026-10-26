@@ -99,6 +99,13 @@ export function useSampling(id: string) {
   });
 }
 
+export function useLotVerdict(id: string) {
+  return useQuery({
+    queryKey: ["lot-verdict", id],
+    queryFn: () => must(api.GET("/api/v1/lots/{lot_id}/verdict", { params: { path: { lot_id: id } } }), "lot verdict"),
+  });
+}
+
 export function useMasterData(enabled = true) {
   const suppliers = useQuery({
     queryKey: ["suppliers"],

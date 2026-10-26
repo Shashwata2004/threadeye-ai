@@ -8,7 +8,7 @@ import { useState, type ClipboardEvent } from "react";
 import { SampleBadge } from "@/components/badges";
 import { Button, inputClass } from "@/components/form";
 import { api, hasPerm } from "@/lib/api/client";
-import { errorDetail, useInspections, useLot, useLotRolls, useMe, useSampling } from "@/lib/api/hooks";
+import { errorDetail, useInspections, useLot, useLotRolls, useLotVerdict, useMe, useSampling } from "@/lib/api/hooks";
 
 type Row = { mill_roll_no: string; declared_length_yd: string; declared_width_in: string; dye_lot: string };
 const blank = (): Row => ({ mill_roll_no: "", declared_length_yd: "", declared_width_in: "", dye_lot: "" });
@@ -151,6 +151,115 @@ function AddRolls({ lotId, onSaved }: { lotId: string; onSaved: () => void }) {
   );
 }
 
+const VERDICT_STYLE: Record<string, string> = {
+  PENDING_SAMPLE: "border-slate-300 bg-slate-50 text-slate-800",
+  ACCEPT: "border-green-300 bg-green-50 text-green-900",
+  ACCEPT_WITH_REJECTS: "border-amber-300 bg-amber-50 text-amber-900",
+  HOLD_INSPECT_ALL: "border-orange-300 bg-orange-50 text-orange-900",
+  REJECT: "border-red-300 bg-red-50 text-red-900",
+};
+const LOT_DECISIONS = ["ACCEPT", "ACCEPT_WITH_REJECTS", "REJECT", "INSPECT_ALL"] as const;
+
+/** The lot verdict from the rolls inspected so far, and the supervisor's decision on the delivery. */
+function LotVerdictCard({ lotId, canDecide }: { lotId: string; canDecide: boolean }) {
+  const t = useTranslations("lotVerdict");
+  const format = useFormatter();
+  const queryClient = useQueryClient();
+  const { data: v } = useLotVerdict(lotId);
+  const [decision, setDecision] = useState<(typeof LOT_DECISIONS)[number] | "">("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!v) return null;
+
+  async function record() {
+    if (!decision) return;
+    setBusy(true);
+    setError(null);
+    const { data, error: err, response } = await api.POST("/api/v1/lots/{lot_id}/decision", {
+      params: { path: { lot_id: lotId } },
+      body: { decision, reason: reason.trim() },
+    });
+    setBusy(false);
+    if (!data) {
+      setError(errorDetail(err, response.status));
+      return;
+    }
+    queryClient.setQueryData(["lot-verdict", lotId], data);
+    setDecision("");
+    setReason("");
+  }
+
+  const d = v.decision;
+  return (
+    <section className={`space-y-3 rounded-lg border p-4 ${VERDICT_STYLE[v.status] ?? ""}`} data-testid="lot-verdict">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-semibold">{t("title")}</h2>
+        <span className="text-lg font-bold" data-testid="lot-verdict-status">
+          {t(`status.${v.status}`)}
+        </span>
+      </div>
+      <p className="text-sm">
+        {t("summary", {
+          inspected: v.inspected,
+          total: v.total_rolls,
+          required: v.required_sample,
+          failed: v.failed,
+          pct: v.fail_pct,
+        })}
+      </p>
+      <p className="text-xs opacity-80">
+        {t("rules", { hold: v.rules.hold_if_fail_pct_over, reject: v.rules.reject_if_fail_pct_over })}
+      </p>
+      <div className="rounded-md bg-white/70 p-3 text-slate-800">
+        <h3 className="text-sm font-semibold">{t("decisionTitle")}</h3>
+        {d ? (
+          <p className="text-sm" data-testid="lot-decision">
+            <span className="font-semibold">{t(`decisions.${d.decision}`)}</span>
+            {" — "}
+            {d.decided_by ?? ""}
+            {d.decided_at && `, ${format.dateTime(new Date(d.decided_at), { dateStyle: "medium", timeStyle: "short" })}`}
+            {d.lot_verdict && ` · ${t("decidedOn", { verdict: t(`status.${d.lot_verdict}`) })}`}
+            {d.reason && <span className="block text-slate-600">“{d.reason}”</span>}
+          </p>
+        ) : (
+          <p className="text-sm text-slate-600">{v.status === "PENDING_SAMPLE" ? t("waitSample") : t("noDecision")}</p>
+        )}
+        {canDecide && v.status !== "PENDING_SAMPLE" && (
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <select
+              value={decision}
+              onChange={(e) => setDecision(e.target.value as typeof decision)}
+              className={inputClass}
+              aria-label={t("decisionTitle")}
+              data-testid="lot-decision-choice"
+            >
+              <option value="">—</option>
+              {LOT_DECISIONS.map((x) => (
+                <option key={x} value={x}>
+                  {t(`decisions.${x}`)}
+                </option>
+              ))}
+            </select>
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={t("reasonHint")}
+              aria-label={t("reason")}
+              className={`${inputClass} min-w-64 flex-1`}
+              data-testid="lot-decision-reason"
+            />
+            <Button onClick={() => void record()} disabled={busy || !decision || reason.trim().length < 3}>
+              {t("record")}
+            </Button>
+          </div>
+        )}
+        {error && <p className="mt-1 text-sm text-red-700">{error}</p>}
+      </div>
+    </section>
+  );
+}
+
 export default function LotDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations();
@@ -167,7 +276,7 @@ export default function LotDetailPage() {
 
   const refresh = () =>
     Promise.all(
-      [["lot", id], ["lot-rolls", id], ["lot-sampling", id], ["lots"]].map((queryKey) =>
+      [["lot", id], ["lot-rolls", id], ["lot-sampling", id], ["lot-verdict", id], ["lots"]].map((queryKey) =>
         queryClient.invalidateQueries({ queryKey }),
       ),
     );
@@ -208,6 +317,8 @@ export default function LotDetailPage() {
           <Button onClick={() => openPdf(`/api/v1/lots/${lot.id}/labels.pdf`)}>{t("lots.printAll")}</Button>
         )}
       </div>
+
+      <LotVerdictCard lotId={lot.id} canDecide={hasPerm(me, "verdict.decide")} />
 
       {sampling && (
         <section className="rounded-lg border border-teal-200 bg-teal-50 p-4" data-testid="sampling">

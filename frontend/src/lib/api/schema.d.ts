@@ -300,6 +300,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lots/{lot_id}/verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lot Verdict
+         * @description The lot verdict from the rolls inspected so far (each roll's latest finalized inspection; a supervisor's
+         *     roll decision counts over the system verdict), and the supervisor's decision on the lot, if taken.
+         */
+        get: operations["get_lot_verdict_api_v1_lots__lot_id__verdict_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lots/{lot_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Lot
+         * @description The supervisor's decision on the delivery (409 until the sample is inspected); audited.
+         */
+        post: operations["decide_lot_api_v1_lots__lot_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lots/{lot_id}/rolls": {
         parameters: {
             query?: never;
@@ -1508,6 +1549,32 @@ export interface components {
             /** Sampling Pct */
             sampling_pct?: number | null;
         };
+        /** LotDecisionIn */
+        LotDecisionIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "ACCEPT" | "ACCEPT_WITH_REJECTS" | "REJECT" | "INSPECT_ALL";
+            /** Reason */
+            reason: string;
+        };
+        /** LotDecisionOut */
+        LotDecisionOut: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "ACCEPT" | "ACCEPT_WITH_REJECTS" | "REJECT" | "INSPECT_ALL";
+            /** Reason */
+            reason: string | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /** Lot Verdict */
+            lot_verdict: ("PENDING_SAMPLE" | "ACCEPT" | "HOLD_INSPECT_ALL" | "ACCEPT_WITH_REJECTS" | "REJECT") | null;
+        };
         /** LotOut */
         LotOut: {
             /**
@@ -1550,6 +1617,64 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** LotRollVerdict */
+        LotRollVerdict: {
+            /**
+             * Roll Id
+             * Format: uuid
+             */
+            roll_id: string;
+            /** Roll Code */
+            roll_code: string;
+            /** Inspection Id */
+            inspection_id: string | null;
+            /** Verdict */
+            verdict: ("PASS" | "FAIL" | "BORDERLINE") | null;
+            /** System Verdict */
+            system_verdict: string | null;
+            /** Final Verdict */
+            final_verdict: string | null;
+            /** Points Per 100 */
+            points_per_100: number | null;
+        };
+        /** LotRulesOut */
+        LotRulesOut: {
+            /** Min Sample Pct */
+            min_sample_pct: number;
+            /** Min Sample Rolls */
+            min_sample_rolls: number;
+            /** Hold If Fail Pct Over */
+            hold_if_fail_pct_over: number;
+            /** Reject If Fail Pct Over */
+            reject_if_fail_pct_over: number;
+            /**
+             * Borderline Counts As
+             * @enum {string}
+             */
+            borderline_counts_as: "fail" | "pass";
+        };
+        /** LotVerdictOut */
+        LotVerdictOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING_SAMPLE" | "ACCEPT" | "HOLD_INSPECT_ALL" | "ACCEPT_WITH_REJECTS" | "REJECT";
+            /** Required Sample */
+            required_sample: number;
+            /** Inspected */
+            inspected: number;
+            /** Failed */
+            failed: number;
+            /** Fail Pct */
+            fail_pct: number;
+            /** Total Rolls */
+            total_rolls: number;
+            rules: components["schemas"]["LotRulesOut"];
+            /** Rolls */
+            rolls: components["schemas"]["LotRollVerdict"][];
+            decision: components["schemas"]["LotDecisionOut"] | null;
         };
         /** MachineOut */
         MachineOut: {
@@ -2746,6 +2871,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LotOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lot_verdict_api_v1_lots__lot_id__verdict_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotVerdictOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_lot_api_v1_lots__lot_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LotDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotVerdictOut"];
                 };
             };
             /** @description Validation Error */

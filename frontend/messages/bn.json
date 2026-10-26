@@ -339,5 +339,32 @@
     "board": "বোর্ড",
     "not_visible": "কিছু নেই",
     "other": "অন্য কারণ"
+  },
+  "lotVerdict": {
+    "title": "লটের রায়",
+    "summary": "{total}টি রোলের {inspected}টি পরিদর্শন হয়েছে (স্যাম্পলে লাগবে {required}টি) · {failed}টি ফেল ({pct}%)",
+    "rules": "রোল বাকি থাকতে {hold}%-এর বেশি ফেল হলে সব রোল পরিদর্শনের জন্য হোল্ড; সব রোল দেখার পর {reject}%-এর বেশি ফেল হলে বাতিল।",
+    "status": {
+      "PENDING_SAMPLE": "স্যাম্পল পরিদর্শন বাকি",
+      "ACCEPT": "গ্রহণযোগ্য",
+      "HOLD_INSPECT_ALL": "হোল্ড: সব রোল পরিদর্শন করুন",
+      "ACCEPT_WITH_REJECTS": "গ্রহণ, ফেল রোলগুলো ফেরত",
+      "REJECT": "পুরো চালান বাতিল"
+    },
+    "decisionTitle": "সুপারভাইজারের সিদ্ধান্ত",
+    "decisions": {
+      "ACCEPT": "গ্রহণ",
+      "ACCEPT_WITH_REJECTS": "ফেল রোল বাদে গ্রহণ",
+      "REJECT": "বাতিল",
+      "INSPECT_ALL": "সব রোল পরিদর্শন"
+    },
+    "reason": "কারণ",
+    "reasonHint": "কেন (পরিবর্তনের খাতায় থাকবে)",
+    "record": "সিদ্ধান্ত লিখুন",
+    "decided": "{decision} — {by}, {date}",
+    "decidedOn": "রায় তখন ছিল “{verdict}”",
+    "waitSample": "স্যাম্পল পরিদর্শনের পর সিদ্ধান্ত লেখা যাবে।",
+    "noDecision": "এখনো সিদ্ধান্ত হয়নি।",
+    "rollVerdict": "রোলের রায়"
   }
 }

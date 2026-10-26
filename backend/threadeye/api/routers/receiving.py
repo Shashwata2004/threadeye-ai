@@ -15,7 +15,12 @@ from threadeye.api.deps import client_ip, require
 from threadeye.api.schemas.receiving import (
     BuyerOut,
     LotCreate,
+    LotDecisionIn,
+    LotDecisionOut,
     LotOut,
+    LotRollVerdict,
+    LotRulesOut,
+    LotVerdictOut,
     MachineOut,
     NamedRef,
     RollOut,
@@ -193,6 +198,68 @@ def create_lot(
 @router.get("/lots/{lot_id}", response_model=LotOut, dependencies=[Depends(require(Perm.LOTS_READ))])
 def get_lot(lot_id: uuid.UUID, db: Session = Depends(get_db)) -> LotOut:
     return _lot_out(db, _get_lot(db, lot_id))
+
+
+def _verdict_out(db: Session, lot: Lot, summary: svc.LotSummary) -> LotVerdictOut:
+    r = summary.result
+    decision = None
+    if lot.decision:
+        by = db.get(User, lot.decision_by) if lot.decision_by else None
+        decision = LotDecisionOut(
+            decision=lot.decision,
+            reason=lot.decision_reason,
+            decided_by=by.display_name if by else None,
+            decided_at=lot.decision_at,
+            lot_verdict=lot.lot_verdict,
+        )
+    return LotVerdictOut(
+        status=r.status,
+        required_sample=r.required_sample,
+        inspected=r.inspected,
+        failed=r.failed,
+        fail_pct=r.fail_pct,
+        total_rolls=summary.total_rolls,
+        rules=LotRulesOut(**summary.rules.model_dump()),
+        rolls=[
+            LotRollVerdict(
+                roll_id=i.roll.id,
+                roll_code=i.roll.roll_code,
+                inspection_id=i.inspection.id if i.inspection else None,
+                verdict=i.verdict,
+                system_verdict=i.inspection.system_verdict if i.inspection else None,
+                final_verdict=i.inspection.final_verdict if i.inspection else None,
+                points_per_100=i.inspection.points_per_100 if i.inspection else None,
+            )
+            for i in summary.rolls
+        ],
+        decision=decision,
+    )
+
+
+@router.get("/lots/{lot_id}/verdict", response_model=LotVerdictOut, dependencies=[Depends(require(Perm.LOTS_READ))])
+def get_lot_verdict(lot_id: uuid.UUID, db: Session = Depends(get_db)) -> LotVerdictOut:
+    """The lot verdict from the rolls inspected so far (each roll's latest finalized inspection; a supervisor's
+    roll decision counts over the system verdict), and the supervisor's decision on the lot, if taken."""
+    lot = _get_lot(db, lot_id)
+    return _verdict_out(db, lot, svc.lot_summary(db, lot))
+
+
+@router.post("/lots/{lot_id}/decision", response_model=LotVerdictOut)
+def decide_lot(
+    lot_id: uuid.UUID,
+    body: LotDecisionIn,
+    request: Request,
+    actor: User = Depends(require(Perm.VERDICT_DECIDE)),
+    db: Session = Depends(get_db),
+) -> LotVerdictOut:
+    """The supervisor's decision on the delivery (409 until the sample is inspected); audited."""
+    lot = _get_lot(db, lot_id)
+    try:
+        summary = svc.decide_lot(db, lot, body.decision, body.reason, actor, ip=client_ip(request))
+    except svc.ReceivingError as exc:
+        raise _fail(exc) from exc
+    db.commit()
+    return _verdict_out(db, lot, summary)
 
 
 @router.post("/lots/{lot_id}/rolls", response_model=list[RollOut], status_code=status.HTTP_201_CREATED)

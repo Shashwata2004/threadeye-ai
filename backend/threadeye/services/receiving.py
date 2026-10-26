@@ -13,8 +13,8 @@ from datetime import UTC, date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from threadeye.core.scoring.lot import required_sample
-from threadeye.core.scoring.profile import RuleProfile, default_profile, simulator_parity_profile
+from threadeye.core.scoring.lot import LotResult, lot_verdict, required_sample
+from threadeye.core.scoring.profile import LotRules, RuleProfile, default_profile, simulator_parity_profile
 from threadeye.db import audit
 from threadeye.db.models import (
     ROLL_CODE_SEQ,
@@ -230,6 +230,88 @@ def mark_labels_printed(db: Session, rolls: Sequence[Roll], actor: User, *, ip: 
         after={"count": len(rolls)},
         ip=ip,
     )
+
+
+# ------------------------------------------------------------------------------------------- lot verdict
+ROLL_FAILED_DECISIONS = frozenset({"REJECT", "ACCEPT_WITH_CLAIM"})
+"""A supervisor's roll decisions that count as a failed roll for the lot: accepted with a claim is still a roll
+the mill delivered below standard."""
+LOT_DECISIONS = ("ACCEPT", "ACCEPT_WITH_REJECTS", "REJECT", "INSPECT_ALL")
+
+
+def roll_verdict(insp: Inspection) -> str | None:
+    """PASS | FAIL | BORDERLINE of a finalized inspection: the supervisor's decision when there is one."""
+    if insp.final_verdict:
+        return "FAIL" if insp.final_verdict in ROLL_FAILED_DECISIONS else "PASS"
+    return insp.system_verdict
+
+
+@dataclass(frozen=True)
+class LotRoll:
+    roll: Roll
+    inspection: Inspection | None
+    """The roll's latest finalized inspection."""
+    verdict: str | None
+
+
+@dataclass(frozen=True)
+class LotSummary:
+    result: LotResult
+    total_rolls: int
+    rules: LotRules
+    rolls: list[LotRoll]
+
+
+def lot_summary(db: Session, lot: Lot) -> LotSummary:
+    """The lot verdict from the verdicts of its rolls (each roll's latest finalized inspection), under the lot's
+    rule profile. The delivery counts as many rolls as declared, or as registered if more."""
+    rolls = list(db.scalars(select(Roll).where(Roll.lot_id == lot.id).order_by(Roll.roll_code)))
+    latest: dict[uuid.UUID, Inspection] = {}
+    if rolls:
+        done = db.scalars(
+            select(Inspection)
+            .where(Inspection.roll_id.in_([r.id for r in rolls]), Inspection.finalized_at.is_not(None))
+            .order_by(Inspection.finalized_at)
+        )
+        for insp in done:
+            latest[insp.roll_id] = insp
+    items = [LotRoll(r, latest.get(r.id), roll_verdict(latest[r.id]) if r.id in latest else None) for r in rolls]
+    row = db.get(RuleProfileRow, lot.rule_profile_id)
+    rules = profile_of(row).lot if row else default_profile().lot
+    total = max(lot.declared_rolls, len(rolls))
+    result = lot_verdict(total, [i.verdict for i in items if i.verdict], rules)
+    return LotSummary(result, total, rules, items)
+
+
+def decide_lot(db: Session, lot: Lot, decision: str, reason: str, actor: User, *, ip: str | None = None) -> LotSummary:
+    """The supervisor's decision on the delivery. Not before the sample is inspected; the verdict it was taken
+    on is kept with it."""
+    if decision not in LOT_DECISIONS:
+        raise ReceivingError(422, f"unknown lot decision {decision!r}")
+    summary = lot_summary(db, lot)
+    if summary.result.status == "PENDING_SAMPLE":
+        raise ReceivingError(
+            409, f"inspect the sample first: {summary.result.inspected} of {summary.result.required_sample} rolls"
+        )
+    before = {"decision": lot.decision, "lot_verdict": lot.lot_verdict}
+    lot.decision = decision
+    lot.decision_reason = reason
+    lot.decision_by = actor.id
+    lot.decision_at = datetime.now(UTC)
+    lot.lot_verdict = summary.result.status
+    audit.record(
+        db,
+        action="lot.decision",
+        actor_user_id=actor.id,
+        actor_role=actor.role,
+        entity_type="lot",
+        entity_id=str(lot.id),
+        before=before,
+        after={"decision": decision, "reason": reason, "lot_verdict": summary.result.status,
+               "inspected": summary.result.inspected, "failed": summary.result.failed},
+        ip=ip,
+    )
+    return summary
 
 
 # ------------------------------------------------------------------------------------------- seed

@@ -744,6 +744,104 @@
         }
       }
     },
+    "/api/v1/lots/{lot_id}/verdict": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Get Lot Verdict",
+        "description": "The lot verdict from the rolls inspected so far (each roll's latest finalized inspection; a supervisor's\nroll decision counts over the system verdict), and the supervisor's decision on the lot, if taken.",
+        "operationId": "get_lot_verdict_api_v1_lots__lot_id__verdict_get",
+        "parameters": [
+          {
+            "name": "lot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotVerdictOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lots/{lot_id}/decision": {
+      "post": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Decide Lot",
+        "description": "The supervisor's decision on the delivery (409 until the sample is inspected); audited.",
+        "operationId": "decide_lot_api_v1_lots__lot_id__decision_post",
+        "parameters": [
+          {
+            "name": "lot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotDecisionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotVerdictOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/lots/{lot_id}/rolls": {
       "post": {
         "tags": [
@@ -4348,6 +4446,107 @@
         ],
         "title": "LotCreate"
       },
+      "LotDecisionIn": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPT",
+              "ACCEPT_WITH_REJECTS",
+              "REJECT",
+              "INSPECT_ALL"
+            ],
+            "title": "Decision"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "title": "LotDecisionIn"
+      },
+      "LotDecisionOut": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPT",
+              "ACCEPT_WITH_REJECTS",
+              "REJECT",
+              "INSPECT_ALL"
+            ],
+            "title": "Decision"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "lot_verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PENDING_SAMPLE",
+                  "ACCEPT",
+                  "HOLD_INSPECT_ALL",
+                  "ACCEPT_WITH_REJECTS",
+                  "REJECT"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lot Verdict"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision",
+          "reason",
+          "decided_by",
+          "decided_at",
+          "lot_verdict"
+        ],
+        "title": "LotDecisionOut"
+      },
       "LotOut": {
         "properties": {
           "id": {
@@ -4482,6 +4681,196 @@
           "created_at"
         ],
         "title": "LotOut"
+      },
+      "LotRollVerdict": {
+        "properties": {
+          "roll_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Roll Id"
+          },
+          "roll_code": {
+            "type": "string",
+            "title": "Roll Code"
+          },
+          "inspection_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inspection Id"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "BORDERLINE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          },
+          "system_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Verdict"
+          },
+          "final_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Verdict"
+          },
+          "points_per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points Per 100"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roll_id",
+          "roll_code",
+          "inspection_id",
+          "verdict",
+          "system_verdict",
+          "final_verdict",
+          "points_per_100"
+        ],
+        "title": "LotRollVerdict"
+      },
+      "LotRulesOut": {
+        "properties": {
+          "min_sample_pct": {
+            "type": "number",
+            "title": "Min Sample Pct"
+          },
+          "min_sample_rolls": {
+            "type": "integer",
+            "title": "Min Sample Rolls"
+          },
+          "hold_if_fail_pct_over": {
+            "type": "number",
+            "title": "Hold If Fail Pct Over"
+          },
+          "reject_if_fail_pct_over": {
+            "type": "number",
+            "title": "Reject If Fail Pct Over"
+          },
+          "borderline_counts_as": {
+            "type": "string",
+            "enum": [
+              "fail",
+              "pass"
+            ],
+            "title": "Borderline Counts As"
+          }
+        },
+        "type": "object",
+        "required": [
+          "min_sample_pct",
+          "min_sample_rolls",
+          "hold_if_fail_pct_over",
+          "reject_if_fail_pct_over",
+          "borderline_counts_as"
+        ],
+        "title": "LotRulesOut"
+      },
+      "LotVerdictOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_SAMPLE",
+              "ACCEPT",
+              "HOLD_INSPECT_ALL",
+              "ACCEPT_WITH_REJECTS",
+              "REJECT"
+            ],
+            "title": "Status"
+          },
+          "required_sample": {
+            "type": "integer",
+            "title": "Required Sample"
+          },
+          "inspected": {
+            "type": "integer",
+            "title": "Inspected"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "fail_pct": {
+            "type": "number",
+            "title": "Fail Pct"
+          },
+          "total_rolls": {
+            "type": "integer",
+            "title": "Total Rolls"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/LotRulesOut"
+          },
+          "rolls": {
+            "items": {
+              "$ref": "#/components/schemas/LotRollVerdict"
+            },
+            "type": "array",
+            "title": "Rolls"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LotDecisionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "required_sample",
+          "inspected",
+          "failed",
+          "fail_pct",
+          "total_rolls",
+          "rules",
+          "rolls",
+          "decision"
+        ],
+        "title": "LotVerdictOut"
       },
       "MachineOut": {
         "properties": {
