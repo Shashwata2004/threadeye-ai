@@ -106,6 +106,14 @@ export function useLotVerdict(id: string) {
   });
 }
 
+export function useScorecards(enabled = true) {
+  return useQuery({
+    queryKey: ["scorecards"],
+    enabled,
+    queryFn: () => must(api.GET("/api/v1/suppliers/scorecard"), "scorecards"),
+  });
+}
+
 export function useMasterData(enabled = true) {
   const suppliers = useQuery({
     queryKey: ["suppliers"],

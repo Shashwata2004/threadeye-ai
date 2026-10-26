@@ -103,3 +103,26 @@ def test_a_failed_roll_counts_as_failed_when_accepted_with_a_claim(client: TestC
     v = client.get(f"/api/v1/lots/{lot_id}/verdict").json()
     # Every roll inspected, the only one failed: above the 50 % reject limit.
     assert (v["status"], v["failed"], v["rolls"][0]["verdict"]) == ("REJECT", 1, "FAIL")
+
+
+def test_supplier_scorecard_from_finalized_rolls(client: TestClient) -> None:
+    _, codes = _lot(client, "CH-SCORE-1", 2)
+    insp_id = _inspect_to_verdict(client, codes[0])  # FAIL, 46.45 points per 100 sq yd
+    login(client, "supervisor")
+    claim = {"final_verdict": "ACCEPT_WITH_CLAIM", "reason": "claim the mill"}
+    assert client.post(f"/api/v1/inspections/{insp_id}/decision", json=claim).status_code == 200
+
+    login(client, "store")
+    assert client.get("/api/v1/suppliers/scorecard").status_code == 403  # not the store's business
+    login(client, "merchandiser")
+    cards = client.get("/api/v1/suppliers/scorecard").json()
+    mill = next(m for m in cards if m["rolls_inspected"])
+    assert (mill["rolls_inspected"], mill["acceptance"], mill["claims"]) == (1, 0.0, 1)
+    assert mill["avg_points_per_100"] == META["expected_score"]["points_per_100_sq_yd"]
+    assert len(mill["trend"]) == 6 and mill["trend"][-1]["rolls"] == 1  # this month
+    assert mill["mix"] and abs(sum(x["share"] for x in mill["mix"]) - 100) < 0.5
+    (delivery,) = mill["deliveries"]
+    summary = (delivery["challan"], delivery["failed"], delivery["claims"], delivery["status"])
+    assert summary == ("CH-SCORE-1", 1, 1, "review")
+    # The roll covers less than the declared 100 yd: the gap is the shortage.
+    assert delivery["shortage_yd"] > 0 and 0 < mill["shortage"] <= 1

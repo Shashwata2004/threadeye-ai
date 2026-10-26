@@ -27,6 +27,8 @@ export function hasPerm(me: Me | null | undefined, perm: string): boolean {
   return !!me && me.permissions.includes(perm);
 }
 export type Lot = components["schemas"]["LotOut"];
+export type LotVerdict = components["schemas"]["LotVerdictOut"];
+export type MillScorecard = components["schemas"]["MillScorecard"];
 export type Roll = components["schemas"]["RollOut"];
 export type RollCreate = components["schemas"]["RollCreate"];
 export type Inspection = components["schemas"]["InspectionSnapshot"];

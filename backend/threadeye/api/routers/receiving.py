@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -22,11 +23,15 @@ from threadeye.api.schemas.receiving import (
     LotRulesOut,
     LotVerdictOut,
     MachineOut,
+    MillScorecard,
     NamedRef,
     RollOut,
     RollsBulkCreate,
     RuleProfileSummary,
     SamplingSuggestionOut,
+    ScorecardDelivery,
+    ScorecardMonth,
+    ScorecardShare,
     SupplierIn,
     SupplierOut,
 )
@@ -36,6 +41,7 @@ from threadeye.db.session import get_db
 from threadeye.reports.labels import LabelData, build_labels_pdf
 from threadeye.security.rbac import Perm
 from threadeye.services import receiving as svc
+from threadeye.services import scorecard as sc
 
 router = APIRouter(tags=["receiving"])
 PDF: dict[int | str, dict[str, Any]] = {200: {"content": {"application/pdf": {}}, "description": "PDF document"}}
@@ -234,6 +240,58 @@ def _verdict_out(db: Session, lot: Lot, summary: svc.LotSummary) -> LotVerdictOu
         ],
         decision=decision,
     )
+
+
+@router.get(
+    "/suppliers/scorecard",
+    response_model=list[MillScorecard],
+    dependencies=[Depends(require(Perm.SUPPLIERS_SCORECARD))],
+)
+def supplier_scorecards(db: Session = Depends(get_db)) -> list[MillScorecard]:
+    """Every mill's record from its finalized inspections (each roll's latest): acceptance, points, claims,
+    yardage shortage, a six-month trend, the defect mix and the deliveries."""
+    months = sc.months_back(datetime.now(UTC).date())
+    out = []
+    for m in sc.scorecards(db):
+        total = sum(m.mix.values())
+        out.append(
+            MillScorecard(
+                id=m.id,
+                name=m.name,
+                country=m.country,
+                rolls_inspected=m.rolls,
+                acceptance=m.acceptance,
+                avg_points_per_100=m.avg_points,
+                claims=m.claims,
+                shortage=m.shortage,
+                trend=[
+                    ScorecardMonth(
+                        month=mo,
+                        avg_points_per_100=m.month_avg(mo),
+                        rolls=len(m.by_month[mo]),
+                    )
+                    for mo in months
+                ],
+                mix=[ScorecardShare(cls=c, share=round(100 * n / total, 1)) for c, n in m.mix.most_common()],
+                deliveries=[
+                    ScorecardDelivery(
+                        lot_id=d.lot_id,
+                        challan=d.challan,
+                        received=d.received,
+                        fabric=d.fabric,
+                        passed=d.passed,
+                        review=d.review,
+                        failed=d.failed,
+                        avg_points_per_100=d.avg_points,
+                        shortage_yd=d.shortage_yd,
+                        claims=d.claims,
+                        status=d.status,
+                    )
+                    for d in m.deliveries
+                ],
+            )
+        )
+    return out
 
 
 @router.get("/lots/{lot_id}/verdict", response_model=LotVerdictOut, dependencies=[Depends(require(Perm.LOTS_READ))])

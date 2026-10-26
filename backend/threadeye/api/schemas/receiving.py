@@ -159,6 +159,50 @@ class LotDecisionIn(ApiModel):
     reason: str = Field(min_length=3, max_length=1000)
 
 
+class ScorecardDelivery(ApiModel):
+    lot_id: uuid.UUID
+    challan: str
+    received: date
+    fabric: str
+    passed: int
+    review: int
+    failed: int
+    avg_points_per_100: float | None
+    shortage_yd: float
+    claims: int
+    status: Literal["accepted", "review", "rejected"]
+
+
+class ScorecardMonth(ApiModel):
+    month: str
+    """YYYY-MM"""
+    avg_points_per_100: float | None
+    rolls: int
+
+
+class ScorecardShare(ApiModel):
+    cls: str
+    share: float
+    """Percent of the mill's confirmed defects."""
+
+
+class MillScorecard(ApiModel):
+    id: uuid.UUID
+    name: str
+    country: str | None
+    rolls_inspected: int
+    acceptance: float | None
+    """Share (0-1) of inspected rolls that passed."""
+    avg_points_per_100: float | None
+    claims: int
+    """Rolls the supervisor accepted with a claim or rejected."""
+    shortage: float | None
+    """Share (0-1) of the declared yards missing on inspection."""
+    trend: list[ScorecardMonth]
+    mix: list[ScorecardShare]
+    deliveries: list[ScorecardDelivery]
+
+
 class SamplingSuggestionOut(ApiModel):
     total_rolls: int
     registered_rolls: int

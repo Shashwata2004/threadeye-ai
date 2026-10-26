@@ -744,6 +744,32 @@
         }
       }
     },
+    "/api/v1/suppliers/scorecard": {
+      "get": {
+        "tags": [
+          "receiving"
+        ],
+        "summary": "Supplier Scorecards",
+        "description": "Every mill's record from its finalized inspections (each roll's latest): acceptance, points, claims,\nyardage shortage, a six-month trend, the defect mix and the deliveries.",
+        "operationId": "supplier_scorecards_api_v1_suppliers_scorecard_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MillScorecard"
+                  },
+                  "type": "array",
+                  "title": "Response Supplier Scorecards Api V1 Suppliers Scorecard Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/lots/{lot_id}/verdict": {
       "get": {
         "tags": [
@@ -5164,6 +5190,107 @@
         ],
         "title": "MeasurementIn"
       },
+      "MillScorecard": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "rolls_inspected": {
+            "type": "integer",
+            "title": "Rolls Inspected"
+          },
+          "acceptance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acceptance"
+          },
+          "avg_points_per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Points Per 100"
+          },
+          "claims": {
+            "type": "integer",
+            "title": "Claims"
+          },
+          "shortage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shortage"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/ScorecardMonth"
+            },
+            "type": "array",
+            "title": "Trend"
+          },
+          "mix": {
+            "items": {
+              "$ref": "#/components/schemas/ScorecardShare"
+            },
+            "type": "array",
+            "title": "Mix"
+          },
+          "deliveries": {
+            "items": {
+              "$ref": "#/components/schemas/ScorecardDelivery"
+            },
+            "type": "array",
+            "title": "Deliveries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "country",
+          "rolls_inspected",
+          "acceptance",
+          "avg_points_per_100",
+          "claims",
+          "shortage",
+          "trend",
+          "mix",
+          "deliveries"
+        ],
+        "title": "MillScorecard"
+      },
       "ModelEvaluationOut": {
         "properties": {
           "model": {
@@ -6107,6 +6234,131 @@
           "coverage_pct"
         ],
         "title": "ScoreSummary"
+      },
+      "ScorecardDelivery": {
+        "properties": {
+          "lot_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Lot Id"
+          },
+          "challan": {
+            "type": "string",
+            "title": "Challan"
+          },
+          "received": {
+            "type": "string",
+            "format": "date",
+            "title": "Received"
+          },
+          "fabric": {
+            "type": "string",
+            "title": "Fabric"
+          },
+          "passed": {
+            "type": "integer",
+            "title": "Passed"
+          },
+          "review": {
+            "type": "integer",
+            "title": "Review"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "avg_points_per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Points Per 100"
+          },
+          "shortage_yd": {
+            "type": "number",
+            "title": "Shortage Yd"
+          },
+          "claims": {
+            "type": "integer",
+            "title": "Claims"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "review",
+              "rejected"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lot_id",
+          "challan",
+          "received",
+          "fabric",
+          "passed",
+          "review",
+          "failed",
+          "avg_points_per_100",
+          "shortage_yd",
+          "claims",
+          "status"
+        ],
+        "title": "ScorecardDelivery"
+      },
+      "ScorecardMonth": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "avg_points_per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Points Per 100"
+          },
+          "rolls": {
+            "type": "integer",
+            "title": "Rolls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "avg_points_per_100",
+          "rolls"
+        ],
+        "title": "ScorecardMonth"
+      },
+      "ScorecardShare": {
+        "properties": {
+          "cls": {
+            "type": "string",
+            "title": "Cls"
+          },
+          "share": {
+            "type": "number",
+            "title": "Share"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cls",
+          "share"
+        ],
+        "title": "ScorecardShare"
       },
       "SourceResultOut": {
         "properties": {

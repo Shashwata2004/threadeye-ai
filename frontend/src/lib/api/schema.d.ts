@@ -300,6 +300,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/suppliers/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Supplier Scorecards
+         * @description Every mill's record from its finalized inspections (each roll's latest): acceptance, points, claims,
+         *     yardage shortage, a six-month trend, the defect mix and the deliveries.
+         */
+        get: operations["supplier_scorecards_api_v1_suppliers_scorecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lots/{lot_id}/verdict": {
         parameters: {
             query?: never;
@@ -1769,6 +1790,34 @@ export interface components {
              */
             unit: "in" | "yd" | "cm" | "m";
         };
+        /** MillScorecard */
+        MillScorecard: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Country */
+            country: string | null;
+            /** Rolls Inspected */
+            rolls_inspected: number;
+            /** Acceptance */
+            acceptance: number | null;
+            /** Avg Points Per 100 */
+            avg_points_per_100: number | null;
+            /** Claims */
+            claims: number;
+            /** Shortage */
+            shortage: number | null;
+            /** Trend */
+            trend: components["schemas"]["ScorecardMonth"][];
+            /** Mix */
+            mix: components["schemas"]["ScorecardShare"][];
+            /** Deliveries */
+            deliveries: components["schemas"]["ScorecardDelivery"][];
+        };
         /**
          * ModelEvaluationOut
          * @description The trained detector measured on the held-out test split (never seen in training).
@@ -2120,6 +2169,56 @@ export interface components {
             cells?: {
                 [key: string]: number;
             };
+        };
+        /** ScorecardDelivery */
+        ScorecardDelivery: {
+            /**
+             * Lot Id
+             * Format: uuid
+             */
+            lot_id: string;
+            /** Challan */
+            challan: string;
+            /**
+             * Received
+             * Format: date
+             */
+            received: string;
+            /** Fabric */
+            fabric: string;
+            /** Passed */
+            passed: number;
+            /** Review */
+            review: number;
+            /** Failed */
+            failed: number;
+            /** Avg Points Per 100 */
+            avg_points_per_100: number | null;
+            /** Shortage Yd */
+            shortage_yd: number;
+            /** Claims */
+            claims: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "accepted" | "review" | "rejected";
+        };
+        /** ScorecardMonth */
+        ScorecardMonth: {
+            /** Month */
+            month: string;
+            /** Avg Points Per 100 */
+            avg_points_per_100: number | null;
+            /** Rolls */
+            rolls: number;
+        };
+        /** ScorecardShare */
+        ScorecardShare: {
+            /** Cls */
+            cls: string;
+            /** Share */
+            share: number;
         };
         /** SourceResultOut */
         SourceResultOut: {
@@ -2880,6 +2979,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    supplier_scorecards_api_v1_suppliers_scorecard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MillScorecard"][];
                 };
             };
         };
