@@ -10,8 +10,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ENV_FILE="${CLOUD_ENV:-.env.cloud}"
-API_PORT="${API_PORT:-8099}"
 WEB_PORT="${WEB_PORT:-3000}"
+
+# The API's port: API_PORT if given, else 8099 or the next free one (another program, e.g. a Docker
+# container, may hold 8099; the web app is told the port, so nothing else needs it).
+port_free() { ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+if [ -z "${API_PORT:-}" ]; then
+  API_PORT=8099
+  while ! port_free "$API_PORT"; do API_PORT=$((API_PORT + 1)); done
+  [ "$API_PORT" = 8099 ] || echo "port 8099 is in use: the API takes port $API_PORT"
+fi
 
 python3 scripts/check_cloud_env.py "$ENV_FILE" || exit 1
 
