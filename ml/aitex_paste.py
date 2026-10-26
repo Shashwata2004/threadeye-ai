@@ -1,5 +1,6 @@
 """Real AITEX defects, cut out along their masks, pasted onto clean AITEX weave: more examples of the tiny
-defects (fuzzyball, nep, warp ball, knot) the detector misses.
+defects (fuzzyball, nep, warp ball, knot) the detector misses, and with --long-codes of the long thin ones
+(broken and missing yarns, up to --long-max px; the demo roll's two broken yarns were never found, 2026-10-26).
 
     ml/.venv/bin/python ml/aitex_paste.py --external data/external --n 600
 
@@ -34,9 +35,10 @@ EDGE = 0.1
 """Share of an AITEX image's width at each end left alone: the left end of the strips is the selvage."""
 
 
-def donors(records: list, split_of: dict, max_side: int) -> list[tuple[str, np.ndarray, np.ndarray, str]]:
+def donors(records: list, split_of: dict, max_side: int, long_codes: frozenset[str] = frozenset(),
+           long_max: int = 0) -> list[tuple[str, np.ndarray, np.ndarray, str]]:
     """(AITEX code, patch, defect mask, image name) of every small train-split defect, cut from its image and
-    mask files."""
+    mask files; with ``long_codes``, also the longer ones of those codes (up to ``long_max`` px)."""
     out = []
     for r in records:
         if not r.boxes or split_of[r.key] != "train":
@@ -48,7 +50,9 @@ def donors(records: list, split_of: dict, max_side: int) -> list[tuple[str, np.n
             mask |= np.asarray(Image.open(mp).convert("L")) > 0
         h, w = img.shape
         for b in r.boxes:
-            if max(b.w, b.h) > max_side or b.src_cls == "022":  # 022 is cut selvage: an edge, not a spot
+            if b.src_cls == "022":  # cut selvage: an edge, not a spot
+                continue
+            if max(b.w, b.h) > (long_max if b.src_cls in long_codes else max_side):
                 continue
             x0, y0 = max(0, int(b.x0) - MARGIN), max(0, int(b.y0) - MARGIN)
             x1, y1 = min(w, int(np.ceil(b.x1)) + MARGIN), min(h, int(np.ceil(b.y1)) + MARGIN)
@@ -80,6 +84,10 @@ def main() -> None:
     ap.add_argument("--max-side", type=int, default=48, help="largest donor defect (px)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--splits", type=Path, help="the build's AITEX splits (build_dataset.py --write-splits)")
+    ap.add_argument("--long-codes", default="", help="AITEX codes also pasted when longer, e.g. 002,006,010,036 "
+                    "(broken and missing yarns: thin lines the detector misses)")
+    ap.add_argument("--long-max", type=int, default=256, help="longest side of such a long donor (px)")
+    ap.add_argument("--long-share", type=float, default=0.34, help="share of pastes that are long donors")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
@@ -89,9 +97,13 @@ def main() -> None:
         split_of = {r.key: by_name.get(r.path.name, "none") for r in records}
     else:  # a split of AITEX alone: equal to the build's only when no AITEX image has a copy in another source
         split_of = assign_splits(records, seed=0)
-    pool = donors(records, split_of, args.max_side)
+    long_codes = frozenset(c for c in args.long_codes.split(",") if c)
+    everything = donors(records, split_of, args.max_side, long_codes, args.long_max)
+    pool = [d for d in everything if max(d[1].shape) - 2 * MARGIN <= args.max_side]
+    longs = [d for d in everything if max(d[1].shape) - 2 * MARGIN > args.max_side]
     bases = [r for r in records if r.defect_free and split_of[r.key] == "train"]
-    print(f"{len(pool)} donor defects {sorted({c for c, _, _, _ in pool})}, {len(bases)} clean train images", flush=True)
+    print(f"{len(pool)} small donors {sorted({c for c, _, _, _ in pool})}, {len(longs)} long donors "
+          f"{sorted({c for c, _, _, _ in longs})}, {len(bases)} clean train images", flush=True)
     out = args.external / "aitex_paste"
     (out / "images").mkdir(parents=True, exist_ok=True)
     coco: dict = {"images": [], "annotations": [], "categories": []}
@@ -105,7 +117,7 @@ def main() -> None:
         boxes = []
         used: set[str] = set()
         for _ in range(args.per_image):
-            code, patch, m, donor = rng.choice(pool)
+            code, patch, m, donor = rng.choice(longs if longs and rng.random() < args.long_share else pool)
             if rng.random() < 0.5:
                 patch, m = patch[:, ::-1], m[:, ::-1]
             if rng.random() < 0.5:

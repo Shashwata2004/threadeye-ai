@@ -8,6 +8,7 @@ params.json "build" chooses what is built:
 - "scales": {"aitex": [1, 2]} — those sources also tiled enlarged (tiny defects; the app's infer_scale);
 - "bg_ratio_for": {"aitex": 2} — that source keeps more defect-free tiles (against false alarms on its weave);
 - "aitex_paste": N — N images of real AITEX defects pasted onto clean AITEX weave (patch it as "aitex_paste");
+- "aitex_paste_args": extra ml/aitex_paste.py options, e.g. "--long-codes 002,006,010,036" (long yarn faults);
 - "smoke": N — N images per source and kind, a few non-defect tiles: every step runs, each one's time is
   measured, before a long build.
 
@@ -192,7 +193,7 @@ def make_pastes(build_args: list[str]) -> None:
     splits = EXT / "aitex_splits.json"
     sh(" ".join([*build_args, "--dry-run", "--write-splits", str(splits), "> /dev/null"]), "AITEX splits", 60)
     sh(f"{sys.executable} {CODE / 'aitex_paste.py'} --external {EXT} --splits {splits} "
-       f"--n {40 if SMOKE else BUILD.get('aitex_paste', 600)}", "AITEX pastes", 30)
+       f"--n {40 if SMOKE else BUILD.get('aitex_paste', 600)} {BUILD.get('aitex_paste_args', '')}", "AITEX pastes", 30)
 
 
 if PATCH:
