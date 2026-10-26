@@ -33,9 +33,16 @@ const MAX_CAPTURES = 8;
 const SPEEDS = [1, 2, 4];
 // The server works ahead of the video the inspector watches, like a camera mounted before the
 // inspection board: a defect is already known when its fabric reaches the view, so its box shows at
-// once even over a slow link. How far ahead follows the measured round-trip time.
+// once even over a slow link. How far ahead follows the measured round-trip time. The trained model too:
+// the server decodes the roll video itself (the browser's photos are evidence only), and its model runs
+// ahead in the background (backend PrefetchingDetector), faster than the camera's frame rate.
+// A request to a far database (Supabase in Tokyo from Dhaka: 0.5 s a round trip) takes 4-6 s; at most 8 s
+// ahead left boxes arriving after their fabric (2026-10-26), so the cap leaves room for two slow requests.
 const AHEAD_MIN_S = 1;
-const AHEAD_MAX_S = 8;
+const AHEAD_MAX_S = 20;
+// Before the video starts: the trained model is only a little faster than the camera, so it cannot build a
+// lead once the fabric moves. Its head start is made here (while the first, slowest request runs anyway).
+const START_AHEAD_S = 8;
 
 export default function LiveInspectionPage() {
   const { id } = useParams<{ id: string }>();
@@ -71,7 +78,6 @@ export default function LiveInspectionPage() {
   const latencyRef = useRef(0.5); // seconds per /advance round trip (moving average)
   /** Scores the server computed ahead of the video: shown when the video reaches their frame. */
   const heldScoresRef = useRef<ScoreSummary[]>([]);
-  const workAheadRef = useRef(true);
 
   const [frame, setFrame] = useState(0);
   const [score, setScore] = useState<ScoreSummary | null>(null);
@@ -172,10 +178,9 @@ export default function LiveInspectionPage() {
   }, []);
 
   // ------------------------------------------------------------------------- the advance loop
-  /** How many frames ahead of the video the server should work (0 for detectors that need the picture:
-   * they can only see frames the browser has shown). */
+  /** How many frames ahead of the video the server should work. */
   const aheadFrames = useCallback(() => {
-    if (!track || !workAheadRef.current) return 0;
+    if (!track) return 0;
     const seconds = Math.min(AHEAD_MAX_S, AHEAD_MIN_S + 2 * latencyRef.current);
     return Math.round(seconds * track.fps * rateRef.current);
   }, [track]);
@@ -242,10 +247,6 @@ export default function LiveInspectionPage() {
     return () => clearInterval(timer);
   }, [syncFrame]);
 
-  useEffect(() => {
-    if (insp) workAheadRef.current = !insp.provider.requires_image;
-  }, [insp]);
-
   const onFrame = useCallback(
     (f: number) => {
       frameRef.current = f;
@@ -286,7 +287,7 @@ export default function LiveInspectionPage() {
     if (nextSampleRef.current < 0) nextSampleRef.current = samples.length;
     // One request starts (or resumes) the inspection and already processes the fabric ahead, so the
     // video plays with its defect boxes from the first frame.
-    const until = Math.min(from + aheadFrames(), track.frame_count - 1);
+    const until = Math.min(from + Math.max(aheadFrames(), Math.round(START_AHEAD_S * track.fps)), track.frame_count - 1);
     const sent = performance.now();
     const { data, error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/advance", {
       params: { path: { inspection_id: id } },

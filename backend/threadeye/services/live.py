@@ -46,6 +46,7 @@ from threadeye.db.models import (
     RuleProfileRow,
     User,
 )
+from threadeye.providers.prefetch import PrefetchingDetector
 from threadeye.providers.registry import REGISTRY, create_provider
 from threadeye.providers.simulated import PRESETS
 from threadeye.services import datasets, storage
@@ -53,6 +54,8 @@ from threadeye.services.inspection_store import append_events, events_after
 from threadeye.settings import get_settings
 
 LEASE_SECONDS = 30
+MIN_STEP_FRAMES = 3
+"""A request to a detector still working through the frames waits for at least this many (about 1 s)."""
 OPEN = ("created", "running", "paused", "interrupted")
 CACHE_SIZE = 16
 
@@ -123,7 +126,7 @@ def build_runner(db: Session, insp: Inspection) -> Runner:
     # needs the positions (its answers come from the answer key).
     source = datasets.video_source(info) if snap["info"].get("requires_image") else datasets.track_source(info)
     try:
-        return Runner(
+        runner = Runner(
             source,
             provider,
             RuleProfile(**profile_row.rules),
@@ -136,6 +139,11 @@ def build_runner(db: Session, insp: Inspection) -> Runner:
         raise InspectionError(
             409, f"this inspection's detector is not available any more ({exc}); abort it and inspect the roll again"
         ) from exc
+    if snap["info"].get("requires_image"):
+        # The model works through the coming frames in the background, so a request waits on the database
+        # only (PrefetchingDetector); the detections are the same.
+        runner.provider = PrefetchingDetector(provider, lambda: datasets.video_source(info), runner.plan.frames)
+    return runner
 
 
 def runner_for(db: Session, insp: Inspection) -> Runner:
@@ -413,41 +421,52 @@ class CaptureIn:
 
 
 def store_captures(db: Session, insp: Inspection, runner: Runner, captures: Sequence[CaptureIn]) -> int:
-    """Evidence images captured by the browser (the view region of the frames it sampled)."""
+    """Evidence images captured by the browser (the view region of the frames it sampled). All of them in
+    one statement per table: each round trip to a remote database costs (0.5 s to Supabase from Dhaka; one
+    per photo made a request of five photos 3 s slower, 2026-10-26)."""
     view_w = runner.calibration.view_region[2]
-    stored = 0
+    latest: dict[int, CaptureIn] = {}
     for c in captures:
         if not 0 <= c.frame < len(runner.track):
             raise InspectionError(422, f"frame {c.frame} is outside this roll")
+        latest[c.frame] = c
+    files: list[tuple[str, bytes]] = []
+    sizes: list[tuple[int, int]] = []
+    for c in latest.values():
         try:
             raw = base64.b64decode(c.jpeg_b64, validate=True)
             jpeg, w, h = storage.clean_jpeg(raw)
         except (binascii.Error, storage.StorageError) as exc:
             raise InspectionError(422, f"capture of frame {c.frame}: {exc}") from exc
-        key = f"inspections/{insp.id}/frames/{c.frame:06d}.jpg"
-        sha = storage.put(db, key, jpeg)
+        files.append((f"inspections/{insp.id}/frames/{c.frame:06d}.jpg", jpeg))
+        sizes.append((w, h))
+    if not files:
+        return 0
+    shas = storage.put_many(db, files)
+    rows = []
+    for c, (key, _), sha, (w, h) in zip(latest.values(), files, shas, sizes, strict=True):
         pos = runner.track[c.frame]
-        image = {
-            "image_key": key,
-            "image_sha256": sha,
-            "width": w,
-            "height": h,
-            "image_scale": w / view_w,
-            "captured_at": now(),
-        }
-        # One statement (no read first): every round trip to a remote database costs.
-        stmt = pg_insert(InspectionFrame).values(
-            inspection_id=insp.id,
-            frame=c.frame,
-            top_yd=pos.top_yd,
-            bottom_yd=pos.bottom_yd,
-            hand_visible=bool(pos.hand_visible),
-            sample_reason="capture",
-            **image,
+        rows.append(
+            {
+                "inspection_id": insp.id,
+                "frame": c.frame,
+                "top_yd": pos.top_yd,
+                "bottom_yd": pos.bottom_yd,
+                "hand_visible": bool(pos.hand_visible),
+                "sample_reason": "capture",
+                "image_key": key,
+                "image_sha256": sha,
+                "width": w,
+                "height": h,
+                "image_scale": w / view_w,
+                "captured_at": now(),
+            }
         )
-        db.execute(stmt.on_conflict_do_update(constraint="uq_inspection_frames_inspection_id_frame", set_=image))
-        stored += 1
-    return stored
+    stmt = pg_insert(InspectionFrame).values(rows)
+    image = {k: stmt.excluded[k] for k in ("image_key", "image_sha256", "width", "height", "image_scale")}
+    image["captured_at"] = stmt.excluded.captured_at
+    db.execute(stmt.on_conflict_do_update(constraint="uq_inspection_frames_inspection_id_frame", set_=image))
+    return len(rows)
 
 
 @dataclass(frozen=True)
@@ -465,7 +484,10 @@ def advance(
     captures: Sequence[CaptureIn],
     session_id: uuid.UUID | None,
     runner: Runner | None = None,
+    wait_for_detector: bool = False,
 ) -> AdvanceResult:
+    """``wait_for_detector``: process every frame up to ``until_frame`` even where the detector is still
+    working (the request that starts the video: it gives the model its head start)."""
     status = effective_status(insp)
     if status != "running" or not holds_lease(insp, session_id):
         if status in ("running", "interrupted") and not holds_lease(insp, session_id):
@@ -474,6 +496,9 @@ def advance(
     insp.driver_expires_at = now() + timedelta(seconds=LEASE_SECONDS)
     runner = runner or runner_for(db, insp)
     store_captures(db, insp, runner, captures)
+    if isinstance(runner.provider, PrefetchingDetector) and not wait_for_detector:
+        # Hand back what the model has finished instead of waiting for the rest: the next request takes it.
+        until_frame = min(until_frame, max(runner.provider.ready_until, runner.checkpoint + MIN_STEP_FRAMES))
     events = runner.advance(until_frame)
     result = append_events(db, insp.id, events, checkpoint_frame=runner.checkpoint, locked=insp)
     _give_back_after_commit(db, insp, runner)

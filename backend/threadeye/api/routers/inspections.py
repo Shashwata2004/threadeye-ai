@@ -517,6 +517,7 @@ def advance(
             captures=[live.CaptureIn(c.frame, c.jpeg_b64, c.width, c.height) for c in body.captures],
             session_id=session_id,
             runner=runner,
+            wait_for_detector=bool(body.start_key),
         )
     except live.InspectionError as exc:
         db.rollback()

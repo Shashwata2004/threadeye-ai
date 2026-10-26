@@ -62,6 +62,24 @@ def put(db: Session, key: str, data: bytes, content_type: str = "image/jpeg") ->
     return sha
 
 
+def put_many(db: Session, items: list[tuple[str, bytes]], content_type: str = "image/jpeg") -> list[str]:
+    """``put`` for several files: on the cloud one statement for all of them (one round trip to a remote
+    database, not one per file). Returns their SHA-256s."""
+    if not get_settings().is_cloud:
+        return [put(db, key, data, content_type) for key, data in items]
+    if not items:
+        return []
+    shas = [hashlib.sha256(data).hexdigest() for _, data in items]
+    rows = []
+    for (key, data), sha in zip(items, shas, strict=True):
+        _check_key(key)
+        rows.append({"key": key, "data": data, "sha256": sha, "size": len(data), "content_type": content_type})
+    stmt = insert(Blob).values(rows)
+    update = {c: getattr(stmt.excluded, c) for c in ("data", "sha256", "size", "content_type")}
+    db.execute(stmt.on_conflict_do_update(index_elements=[Blob.key], set_=update))
+    return shas
+
+
 def get(db: Session, key: str) -> bytes:
     if get_settings().is_cloud:
         _check_key(key)
