@@ -211,6 +211,7 @@ def _snapshot(db: Session, insp: Inspection, session_id: uuid.UUID | None) -> In
             rule_profile=f"{profile.name} v{profile.version}" if profile else "",
             threshold_per_100=float(profile.rules.get("threshold_per_100", 40.0)) if profile else 40.0,
         ),
+        model_outdated=live.model_outdated(insp),
     )
 
 
@@ -370,6 +371,7 @@ def list_inspections(
             created_at=i.created_at,
             inspector=names.get(i.inspector_id) if i.inspector_id else None,
             is_simulated=i.is_simulated,
+            model_outdated=live.model_outdated(i),
         )
         for i, code in rows
     ]

@@ -222,6 +222,18 @@ def _sha256(path: Path) -> str:
     return _sha256_cached(str(path), st.st_mtime, st.st_size)
 
 
+def model_outdated(insp: Inspection) -> bool:
+    """An open inspection pinned to a trained model that is no longer the installed one: it cannot go on
+    (build_runner refuses it), only be aborted and the roll inspected again on the new model."""
+    snap = insp.provider_snapshot or {}
+    if insp.status not in OPEN or snap.get("provider_id") != "local_model":
+        return False
+    try:
+        return bool(_local_model_config()["sha256"] != (snap.get("config") or {}).get("sha256"))
+    except InspectionError:
+        return True
+
+
 def provider_snapshot(preset: str) -> dict[str, Any]:
     """The detector pinned on a new inspection: the trained model when THREADEYE_DETECTOR_PROVIDER is
     local_model, otherwise the simulated detector with the given imperfection preset."""

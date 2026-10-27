@@ -157,6 +157,8 @@
     "returned": "Returned"
   },
   "inspect": {
+    "restartNewModel": "Restart on the new model",
+    "oldModel": "old model",
     "title": "Inspect a roll",
     "subtitle": "Scan the roll's QR label or type its code, then load it on the machine.",
     "rollCode": "Roll code",
@@ -180,6 +182,9 @@
     "readOnly": "You can view inspections. Running one needs the Inspector or QC Supervisor role."
   },
   "live": {
+    "outdatedBanner": "This inspection was started on the previous model, which has been replaced. It cannot continue: restart the roll on the new model (this one is aborted, its record is kept).",
+    "restartNewModel": "Restart on the new model",
+    "restartConfirm": "Abort this inspection and inspect the roll again from the start on the new model?",
     "start": "Start inspection",
     "running": "Machine running",
     "stopped": "Machine stopped",

@@ -129,6 +129,8 @@ class InspectionSnapshot(ApiModel):
     dataset_id: str | None
     frame_count: int
     roll: RollContext
+    model_outdated: bool = False
+    """Open, but started on a trained model that has since been replaced: abort it and inspect the roll again."""
 
 
 class InspectionListItem(ApiModel):
@@ -145,6 +147,7 @@ class InspectionListItem(ApiModel):
     created_at: datetime
     inspector: str | None
     is_simulated: bool
+    model_outdated: bool = False
 
 
 class Capture(ApiModel):

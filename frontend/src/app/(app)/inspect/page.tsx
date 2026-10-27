@@ -25,12 +25,13 @@ function InspectionList({ items, title }: { items: InspectionListItem[]; title: 
                   <span className="font-mono font-semibold">{i.roll_code}</span> · {t(`istatus.${i.status}`)}
                   {i.system_verdict && ` · ${t(`verdicts.${i.system_verdict}`)}`}
                   {i.inspector && <span className="text-slate-500"> · {i.inspector}</span>}
+                  {live && i.model_outdated && <span className="text-amber-700"> · {t("inspect.oldModel")}</span>}
                 </span>
                 <Link
                   href={live ? `/inspect/${i.id}` : `/inspections/${i.id}`}
                   className="font-semibold text-brand-blue hover:underline"
                 >
-                  {live ? t("inspect.continue") : t("inspect.view")}
+                  {live ? t(i.model_outdated ? "inspect.restartNewModel" : "inspect.continue") : t("inspect.view")}
                 </Link>
               </li>
             );

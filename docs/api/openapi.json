@@ -4022,6 +4022,11 @@
           "is_simulated": {
             "type": "boolean",
             "title": "Is Simulated"
+          },
+          "model_outdated": {
+            "type": "boolean",
+            "title": "Model Outdated",
+            "default": false
           }
         },
         "type": "object",
@@ -4329,6 +4334,11 @@
           },
           "roll": {
             "$ref": "#/components/schemas/RollContext"
+          },
+          "model_outdated": {
+            "type": "boolean",
+            "title": "Model Outdated",
+            "default": false
           }
         },
         "type": "object",

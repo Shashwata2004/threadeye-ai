@@ -341,6 +341,37 @@ export default function LiveInspectionPage() {
     setError(errorDetail(err, response.status));
   }
 
+  /** The inspection's model was replaced: abort it and load the same roll again, on the new model. */
+  async function restart() {
+    if (!insp || !window.confirm(t("live.restartConfirm"))) return;
+    stopDriving();
+    setBusy(true);
+    const aborted = await api.POST("/api/v1/inspections/{inspection_id}/abort", {
+      params: { path: { inspection_id: id } },
+      headers: { "Idempotency-Key": idempotencyKey() },
+    });
+    if (!aborted.response.ok) {
+      setBusy(false);
+      setError(errorDetail(aborted.error, aborted.response.status));
+      return;
+    }
+    const { data, error: err, response } = await api.POST("/api/v1/inspections", {
+      body: {
+        roll_code: insp.roll_code,
+        machine_id: insp.machine_id,
+        source: { kind: "video_file", dataset_id: insp.dataset_id ?? "" },
+        preset: insp.provider.preset === "perfect" ? "perfect" : "realistic",
+      },
+    });
+    setBusy(false);
+    if (data) {
+      setError(null);
+      router.push(`/inspect/${data.id}`);
+      return;
+    }
+    setError(errorDetail(err, response.status));
+  }
+
   async function onEnded() {
     setEnded(true);
     setPlaying(false);
@@ -651,7 +682,9 @@ export default function LiveInspectionPage() {
       {canRun && open && !driving && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
           <p className="text-amber-900">
-            {leaseElsewhere
+            {insp.model_outdated
+              ? t("live.outdatedBanner")
+              : leaseElsewhere
               ? t("live.leaseLost")
               : status === "created"
                 ? ""
@@ -660,7 +693,7 @@ export default function LiveInspectionPage() {
                   : t("live.resumeBanner")}
           </p>
           <div className="flex items-center gap-3">
-            {status !== "created" && (
+            {status !== "created" && !insp.model_outdated && (
               <button
                 type="button"
                 onClick={() => void abort()}
@@ -671,6 +704,11 @@ export default function LiveInspectionPage() {
                 {t("live.abort")}
               </button>
             )}
+            {insp.model_outdated ? (
+              <Button onClick={() => void restart()} disabled={busy} data-testid="restart">
+                {t("live.restartNewModel")}
+              </Button>
+            ) : (
             <Button onClick={() => void begin(leaseElsewhere)} disabled={busy} data-testid="start">
               {leaseElsewhere
                 ? t("live.takeOver")
@@ -680,6 +718,7 @@ export default function LiveInspectionPage() {
                   ? t("live.start")
                   : t("live.resumeButton", { yd: resumeYd })}
             </Button>
+            )}
           </div>
         </div>
       )}

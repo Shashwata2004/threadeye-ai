@@ -1449,6 +1449,11 @@ export interface components {
             inspector: string | null;
             /** Is Simulated */
             is_simulated: boolean;
+            /**
+             * Model Outdated
+             * @default false
+             */
+            model_outdated: boolean;
         };
         /** InspectionSnapshot */
         InspectionSnapshot: {
@@ -1543,6 +1548,11 @@ export interface components {
             /** Frame Count */
             frame_count: number;
             roll: components["schemas"]["RollContext"];
+            /**
+             * Model Outdated
+             * @default false
+             */
+            model_outdated: boolean;
         };
         /** LengthIn */
         LengthIn: {

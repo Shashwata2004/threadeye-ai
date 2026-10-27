@@ -401,6 +401,24 @@ def test_an_inspection_whose_detector_is_gone_says_so_and_can_be_aborted(
     assert r.status_code == 200 and r.json()["status"] == "aborted"
 
 
+def test_an_open_inspection_on_a_replaced_model_is_flagged(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The list and the live page show "restart on the new model" instead of a resume that cannot work."""
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(live, "_local_model_config", lambda: {"sha256": "new"})
+
+    def insp(status: str, provider: str, sha: str) -> Any:
+        return SimpleNamespace(status=status, provider_snapshot={"provider_id": provider, "config": {"sha256": sha}})
+
+    assert live.model_outdated(insp("paused", "local_model", "old"))
+    assert not live.model_outdated(insp("paused", "local_model", "new"))
+    assert not live.model_outdated(insp("finalized", "local_model", "old"))  # a closed one keeps its model
+    assert not live.model_outdated(insp("paused", "simulated", "old"))
+    insp_id = _start(client, _lot_with_roll(client))["id"]  # the simulated detector
+    assert client.get(f"/api/v1/inspections/{insp_id}").json()["model_outdated"] is False
+    assert all(i["model_outdated"] is False for i in client.get("/api/v1/inspections?open_only=true").json())
+
+
 def test_the_servers_larger_photo_of_a_frame_is_not_replaced_by_a_smaller_capture(client: TestClient) -> None:
     import uuid
 
