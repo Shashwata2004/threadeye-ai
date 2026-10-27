@@ -2,8 +2,8 @@
  "framework": "YOLOX (Apache-2.0)",
  "yolox_commit": "6ddff4824372906469a7fae2dc3206c7aa4bbaee",
  "size": "s",
- "epochs": 28,
- "fine_tuned_from": "20-epoch model (threadeye-train-2), then 8 epochs at half learning rate on the dataset with real AITEX tiny defects pasted onto clean AITEX weave (600 images), more clean AITEX weave and AITEX at 1x and 2x (2026-10-22)",
+ "epochs": 44,
+ "fine_tuned_from": "the AITEX paste model (28 epochs: 20-epoch model, then 8 epochs on real AITEX tiny defects pasted onto clean weave), then 16 epochs at half learning rate on the dataset with long broken and missing yarns pasted too (800 paste images, 2026-10-26)",
  "batch": 16,
  "input": [
   640,
@@ -29,17 +29,17 @@
   "hole": 0.6,
   "stain": 0.2,
   "slub": 0.2,
-  "broken_yarn": 0.4,
-  "missing_yarn": 0.2,
+  "broken_yarn": 0.35,
+  "missing_yarn": 0.35,
   "knot": 0.35,
-  "crease_mark": 0.25,
-  "contamination": 0.45,
+  "crease_mark": 0.35,
+  "contamination": 0.5,
   "shade_bar": 0.1,
-  "other_defect": 0.2,
+  "other_defect": 0.3,
   "sticker": 0.25,
-  "loose_thread": 0.7,
-  "wrinkle": 0.35,
-  "hand": 0.45
+  "loose_thread": 0.2,
+  "wrinkle": 0.25,
+  "hand": 0.3
  },
  "run_status": [
   "training: finished all epochs",
@@ -135,10 +135,12 @@
     "line->broken_yarn": 12
    },
    "aitex_paste": {
-    "019->slub": 1087,
-    "030->slub": 480,
-    "027->knot": 164,
-    "029->contamination": 69
+    "019->slub": 864,
+    "002->broken_yarn": 827,
+    "030->slub": 407,
+    "027->knot": 144,
+    "006->broken_yarn": 103,
+    "029->contamination": 55
    }
   },
   "clean_images_per_source": {
@@ -205,17 +207,17 @@
     "test": 224
    },
    "aitex_paste": {
-    "train": 600
+    "train": 800
    }
   },
   "groups": 10913,
   "tiles": {
-   "train": 43464,
+   "train": 46073,
    "test": 10988,
    "val": 9893
   },
   "defect_tiles": {
-   "train": 30285,
+   "train": 31992,
    "test": 2781,
    "val": 3642
   },
@@ -223,11 +225,11 @@
    "train": {
     "stain": 9879,
     "other_defect": 8218,
-    "slub": 7354,
-    "knot": 4032,
+    "slub": 6608,
+    "broken_yarn": 4243,
+    "knot": 3985,
     "shade_bar": 2219,
-    "contamination": 2030,
-    "broken_yarn": 1576,
+    "contamination": 2014,
     "hole": 1257,
     "crease_mark": 1209,
     "loose_thread": 819,
@@ -299,5 +301,5 @@
    ]
   }
  },
- "minutes": 158.4
+ "minutes": 280.0
 }
