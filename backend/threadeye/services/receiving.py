@@ -307,8 +307,13 @@ def decide_lot(db: Session, lot: Lot, decision: str, reason: str, actor: User, *
         entity_type="lot",
         entity_id=str(lot.id),
         before=before,
-        after={"decision": decision, "reason": reason, "lot_verdict": summary.result.status,
-               "inspected": summary.result.inspected, "failed": summary.result.failed},
+        after={
+            "decision": decision,
+            "reason": reason,
+            "lot_verdict": summary.result.status,
+            "inspected": summary.result.inspected,
+            "failed": summary.result.failed,
+        },
         ip=ip,
     )
     return summary

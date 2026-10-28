@@ -115,8 +115,9 @@ def scorecards(db: Session) -> list[MillCard]:
             continue
         card = cards.get(lot.id)
         if card is None:
-            card = cards[lot.id] = DeliveryCard(lot.id, lot.challan_no, lot.received_at, lot.fabric_type,
-                                                status=_status(lot))
+            card = cards[lot.id] = DeliveryCard(
+                lot.id, lot.challan_no, lot.received_at, lot.fabric_type, status=_status(lot)
+            )
             mill.deliveries.append(card)
         verdict = roll_verdict(insp)
         if verdict == "PASS":
