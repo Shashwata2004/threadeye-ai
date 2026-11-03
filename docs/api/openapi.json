@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ThreadEye AI API",
-    "description": "\nThreadEye AI: fabric inspection assistant. **API contract v0, implemented through M2.**\n\nEndpoints that return **501** are part of the agreed contract and are implemented in the milestone\nnamed in the response (`planned_milestone`). Every mutating endpoint is permission-checked\nserver-side and writes an append-only audit row.\n\n**SIMULATED MODE:** only the simulated detector exists in this phase. It is not AI, and every\nscreen and report says so.\n",
+    "description": "\nThreadEye AI: fabric inspection assistant. Core inspection and M4–M6 operational features.\n\nEndpoints that return **501** are part of the agreed contract and are implemented in the milestone\nnamed in the response (`planned_milestone`). Every mutating endpoint is permission-checked\nserver-side and writes an append-only audit row.\n\nAll demonstration video is simulated. The answer-key-based simulated detector is not AI;\nthe local YOLOX-S provider runs trained-model inference. Mode and provider are disclosed separately.\nVerification checks reference-video pipeline behaviour, not physical camera calibration.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -259,6 +259,1120 @@
                 "schema": {
                   "$ref": "#/components/schemas/UserOut"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/demo-archive": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Archive Samples",
+        "operationId": "archive_samples_api_v1_admin_demo_archive_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Archive Samples Api V1 Admin Demo Archive Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/demo-archive/schedule": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Archive Schedule",
+        "operationId": "archive_schedule_api_v1_admin_demo_archive_schedule_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Archive Schedule Api V1 Admin Demo Archive Schedule Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Configure Archive",
+        "operationId": "configure_archive_api_v1_admin_demo_archive_schedule_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoScheduleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Configure Archive Api V1 Admin Demo Archive Schedule Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/provider": {
+      "put": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Select Provider",
+        "operationId": "select_provider_api_v1_admin_provider_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Select Provider Api V1 Admin Provider Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verification/schedules": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Schedules",
+        "operationId": "schedules_api_v1_verification_schedules_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Schedules Api V1 Verification Schedules Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Save Schedule",
+        "operationId": "save_schedule_api_v1_verification_schedules_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Save Schedule Api V1 Verification Schedules Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verification/runs": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Verify",
+        "operationId": "verify_api_v1_verification_runs_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Verification History",
+        "operationId": "verification_history_api_v1_verification_runs_get",
+        "parameters": [
+          {
+            "name": "machine_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Machine Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunOut"
+                  },
+                  "title": "Response Verification History Api V1 Verification Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmark/runs": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Benchmark",
+        "operationId": "benchmark_api_v1_benchmark_runs_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Benchmark History",
+        "operationId": "benchmark_history_api_v1_benchmark_runs_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunOut"
+                  },
+                  "title": "Response Benchmark History Api V1 Benchmark Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Dashboard",
+        "operationId": "dashboard_api_v1_dashboard_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Dashboard Api V1 Dashboard Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/machines": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Machines",
+        "operationId": "machines_api_v1_admin_machines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MachineDetail"
+                  },
+                  "type": "array",
+                  "title": "Response Machines Api V1 Admin Machines Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Add Machine",
+        "operationId": "add_machine_api_v1_admin_machines_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/machines/{machine_id}": {
+      "patch": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Edit Machine",
+        "operationId": "edit_machine_api_v1_admin_machines__machine_id__patch",
+        "parameters": [
+          {
+            "name": "machine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Machine Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/rule-profiles": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Profiles",
+        "operationId": "profiles_api_v1_admin_rule_profiles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileOut"
+                  },
+                  "type": "array",
+                  "title": "Response Profiles Api V1 Admin Rule Profiles Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Save Profile",
+        "operationId": "save_profile_api_v1_admin_rule_profiles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/rule-profiles/preview": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_api_v1_admin_rule_profiles_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Preview Api V1 Admin Rule Profiles Preview Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/cutting": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Get Cutting",
+        "operationId": "get_cutting_api_v1_inspections__inspection_id__cutting_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Cutting Api V1 Inspections  Inspection Id  Cutting Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/cutting/policy": {
+      "put": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Select Cutting Policy",
+        "operationId": "select_cutting_policy_api_v1_inspections__inspection_id__cutting_policy_put",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuttingPolicyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Select Cutting Policy Api V1 Inspections  Inspection Id  Cutting Policy Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/cutting/fabric.jpg": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Cutting Fabric",
+        "operationId": "cutting_fabric_api_v1_inspections__inspection_id__cutting_fabric_jpg_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/cutting/approve": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Approve Cutting",
+        "operationId": "approve_cutting_api_v1_inspections__inspection_id__cutting_approve_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Approve Cutting Api V1 Inspections  Inspection Id  Cutting Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/cutting/acknowledge": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Acknowledge Cutting",
+        "operationId": "acknowledge_cutting_api_v1_inspections__inspection_id__cutting_acknowledge_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Acknowledge Cutting Api V1 Inspections  Inspection Id  Cutting Acknowledge Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/cutting.pdf": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Cutting Pdf",
+        "operationId": "cutting_pdf_api_v1_inspections__inspection_id__cutting_pdf_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(en|bn)$",
+              "default": "en",
+              "title": "Lang"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/defects/{defect_id}/clip": {
+      "post": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Export Clip",
+        "operationId": "export_clip_api_v1_inspections__inspection_id__defects__defect_id__clip_post",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "defect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Defect Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/clips": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "List Clips",
+        "operationId": "list_clips_api_v1_inspections__inspection_id__clips_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunOut"
+                  },
+                  "title": "Response List Clips Api V1 Inspections  Inspection Id  Clips Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/clips/{run_id}.mp4": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Download Clip",
+        "operationId": "download_clip_api_v1_inspections__inspection_id__clips__run_id__mp4_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspection_id}/labels.zip": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Labels",
+        "operationId": "labels_api_v1_inspections__inspection_id__labels_zip_get",
+        "parameters": [
+          {
+            "name": "inspection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Inspection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -644,17 +1758,39 @@
         ],
         "summary": "List Lots",
         "operationId": "list_lots_api_v1_lots_get",
+        "parameters": [
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/LotOut"
                   },
-                  "type": "array",
                   "title": "Response List Lots Api V1 Lots Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -668,14 +1804,14 @@
         "summary": "Create Lot",
         "operationId": "create_lot_api_v1_lots_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/LotCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1318,6 +2454,16 @@
               "type": "boolean",
               "default": false,
               "title": "Open Only"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
             }
           },
           {
@@ -2074,16 +3220,10 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "501": {
-            "description": "Contract v0: not implemented yet",
-            "content": {
-              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotImplementedOut"
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Add Measurement Api V1 Inspections  Inspection Id  Measurements Post"
                 }
               }
             }
@@ -2151,7 +3291,7 @@
           "inspections"
         ],
         "summary": "Decide",
-        "description": "Supervisor decision on the roll (required for BORDERLINE; any override needs a reason).",
+        "description": "Record and lock the supervisor decision. Exact retries are safe; a later change is rejected.",
         "operationId": "decide_api_v1_inspections__inspection_id__decision_post",
         "parameters": [
           {
@@ -3138,6 +4278,25 @@
         ],
         "title": "AuditVerifyOut"
       },
+      "BorderlineBand": {
+        "properties": {
+          "below": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Below",
+            "default": 2.0
+          },
+          "above": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Above",
+            "default": 2.0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BorderlineBand"
+      },
       "BuyerOut": {
         "properties": {
           "id": {
@@ -3161,6 +4320,33 @@
           "name"
         ],
         "title": "BuyerOut"
+      },
+      "Calibration": {
+        "properties": {
+          "px_per_cm": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Px Per Cm"
+          },
+          "view_width_px": {
+            "type": "integer",
+            "maximum": 16384.0,
+            "exclusiveMinimum": 0.0,
+            "title": "View Width Px"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "px_per_cm",
+          "view_width_px"
+        ],
+        "title": "Calibration"
       },
       "Capture": {
         "properties": {
@@ -3311,6 +4497,87 @@
           "confirmed"
         ],
         "title": "ConfirmPendingOut"
+      },
+      "ContinuousRule": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "min_along_in": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Min Along In",
+            "default": 36.0
+          },
+          "points_per_yard": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Points Per Yard",
+            "default": 4
+          },
+          "classes_always": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Classes Always",
+            "default": [
+              "shade_bar"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ContinuousRule"
+      },
+      "CuttingPolicy": {
+        "properties": {
+          "min_points_to_cut": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Min Points To Cut",
+            "default": 2
+          },
+          "margin_in": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Margin In",
+            "default": 2.0
+          },
+          "min_piece_yd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Min Piece Yd",
+            "default": 1.0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CuttingPolicy"
+      },
+      "CuttingPolicyIn": {
+        "properties": {
+          "selection": {
+            "type": "string",
+            "enum": [
+              "buyer",
+              "all",
+              "two_plus",
+              "three_plus",
+              "four_plus"
+            ],
+            "title": "Selection"
+          }
+        },
+        "type": "object",
+        "required": [
+          "selection"
+        ],
+        "title": "CuttingPolicyIn"
       },
       "DatasetOut": {
         "properties": {
@@ -3676,6 +4943,93 @@
           "decided_at"
         ],
         "title": "DefectOut"
+      },
+      "DemoScheduleIn": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "DemoScheduleIn"
+      },
+      "EvaluationIn": {
+        "properties": {
+          "dataset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Dataset Ids"
+          },
+          "provider_id": {
+            "type": "string",
+            "enum": [
+              "simulated",
+              "local_model"
+            ],
+            "title": "Provider Id",
+            "default": "simulated"
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "perfect",
+              "realistic"
+            ],
+            "title": "Preset",
+            "default": "realistic"
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "default": 42
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
+          },
+          "min_recall": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Recall",
+            "default": 0.8
+          },
+          "max_false_alarms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Max False Alarms",
+            "default": 0
+          },
+          "max_score_delta": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Max Score Delta",
+            "default": 2.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_ids"
+        ],
+        "title": "EvaluationIn"
       },
       "EventEnvelope": {
         "properties": {
@@ -4049,6 +5403,33 @@
       },
       "InspectionSnapshot": {
         "properties": {
+          "measured_length_yd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Length Yd"
+          },
+          "measured_width_in": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Width In"
+          },
+          "measurement_checks": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Measurement Checks"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -4376,6 +5757,25 @@
           "roll"
         ],
         "title": "InspectionSnapshot"
+      },
+      "LengthCheck": {
+        "properties": {
+          "tolerance_pct": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Tolerance Pct",
+            "default": 0.5
+          },
+          "tolerance_yd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Tolerance Yd",
+            "default": 0.25
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "LengthCheck"
       },
       "LengthIn": {
         "properties": {
@@ -4843,6 +6243,49 @@
         ],
         "title": "LotRollVerdict"
       },
+      "LotRules": {
+        "properties": {
+          "min_sample_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Min Sample Pct",
+            "default": 10.0
+          },
+          "min_sample_rolls": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Min Sample Rolls",
+            "default": 1
+          },
+          "hold_if_fail_pct_over": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Hold If Fail Pct Over",
+            "default": 20.0
+          },
+          "reject_if_fail_pct_over": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Reject If Fail Pct Over",
+            "default": 50.0
+          },
+          "borderline_counts_as": {
+            "type": "string",
+            "enum": [
+              "fail",
+              "pass"
+            ],
+            "title": "Borderline Counts As",
+            "default": "fail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "LotRules"
+      },
       "LotRulesOut": {
         "properties": {
           "min_sample_pct": {
@@ -4947,6 +6390,88 @@
           "decision"
         ],
         "title": "LotVerdictOut"
+      },
+      "MachineDetail": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "calibration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Calibration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "id"
+        ],
+        "title": "MachineDetail"
+      },
+      "MachineIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "calibration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Calibration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "MachineIn"
       },
       "MachineOut": {
         "properties": {
@@ -5513,24 +7038,155 @@
         ],
         "title": "NamedRef"
       },
-      "NotImplementedOut": {
+      "PreviewDefect": {
         "properties": {
-          "detail": {
+          "cls": {
             "type": "string",
-            "title": "Detail"
+            "title": "Cls",
+            "default": "stain"
           },
-          "planned_milestone": {
-            "type": "string",
-            "title": "Planned Milestone"
+          "start_yd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Start Yd"
+          },
+          "end_yd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "End Yd"
+          },
+          "across_start_cm": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Across Start Cm",
+            "default": 10
+          },
+          "across_end_cm": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Across End Cm",
+            "default": 11
+          },
+          "length_in": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Length In"
           }
         },
         "type": "object",
         "required": [
-          "detail",
-          "planned_milestone"
+          "start_yd",
+          "end_yd",
+          "length_in"
         ],
-        "title": "NotImplementedOut",
-        "description": "Returned (HTTP 501) by contract-v0 endpoints that are not built yet."
+        "title": "PreviewDefect"
+      },
+      "PreviewIn": {
+        "properties": {
+          "rules": {
+            "$ref": "#/components/schemas/RuleProfile"
+          },
+          "length_yd": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Length Yd"
+          },
+          "width_in": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Width In"
+          },
+          "defects": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewDefect"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Defects"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rules",
+          "length_yd",
+          "width_in"
+        ],
+        "title": "PreviewIn"
+      },
+      "ProfileIn": {
+        "properties": {
+          "buyer_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Id"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/RuleProfile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rules"
+        ],
+        "title": "ProfileIn"
+      },
+      "ProfileOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "buyer_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/RuleProfile"
+          },
+          "rules_hash": {
+            "type": "string",
+            "title": "Rules Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "buyer_id",
+          "name",
+          "version",
+          "status",
+          "rules",
+          "rules_hash"
+        ],
+        "title": "ProfileOut"
       },
       "PromoteIn": {
         "properties": {
@@ -5609,6 +7265,23 @@
           "active"
         ],
         "title": "ProviderAvailabilityOut"
+      },
+      "ProviderIn": {
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "enum": [
+              "simulated",
+              "local_model"
+            ],
+            "title": "Provider Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id"
+        ],
+        "title": "ProviderIn"
       },
       "ProviderInfoOut": {
         "properties": {
@@ -5983,6 +7656,202 @@
         ],
         "title": "RollsBulkCreate"
       },
+      "RuleProfile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "default": "Default 4-point"
+          },
+          "length_bands_in": {
+            "items": {
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Length Bands In",
+            "default": [
+              [
+                3.0,
+                1
+              ],
+              [
+                6.0,
+                2
+              ],
+              [
+                9.0,
+                3
+              ],
+              [
+                null,
+                4
+              ]
+            ]
+          },
+          "hole_bands_in": {
+            "items": {
+              "prefixItems": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Hole Bands In",
+            "default": [
+              [
+                1.0,
+                2
+              ],
+              [
+                null,
+                4
+              ]
+            ]
+          },
+          "length_rounding_in": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Length Rounding In",
+            "default": 0.01
+          },
+          "max_points_per_yard": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Max Points Per Yard",
+            "default": 4
+          },
+          "continuous": {
+            "$ref": "#/components/schemas/ContinuousRule",
+            "default": {
+              "enabled": true,
+              "min_along_in": 36.0,
+              "points_per_yard": 4,
+              "classes_always": [
+                "shade_bar"
+              ]
+            }
+          },
+          "selvage_exclusion": {
+            "$ref": "#/components/schemas/SelvageRule",
+            "default": {
+              "enabled": true,
+              "distance_in": 1.0,
+              "rule": "entirely_within"
+            }
+          },
+          "threshold_per_100": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Threshold Per 100",
+            "default": 40.0
+          },
+          "borderline": {
+            "$ref": "#/components/schemas/BorderlineBand",
+            "default": {
+              "below": 2.0,
+              "above": 2.0
+            }
+          },
+          "per100_rounding": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Per100 Rounding",
+            "default": 2
+          },
+          "width_basis": {
+            "type": "string",
+            "enum": [
+              "declared",
+              "measured",
+              "cuttable"
+            ],
+            "title": "Width Basis",
+            "default": "declared"
+          },
+          "length_basis": {
+            "type": "string",
+            "enum": [
+              "inspected",
+              "declared"
+            ],
+            "title": "Length Basis",
+            "default": "inspected"
+          },
+          "length_check": {
+            "$ref": "#/components/schemas/LengthCheck",
+            "default": {
+              "tolerance_pct": 0.5,
+              "tolerance_yd": 0.25
+            }
+          },
+          "width_check": {
+            "$ref": "#/components/schemas/WidthCheck",
+            "default": {
+              "tolerance_in": 0.5
+            }
+          },
+          "lot": {
+            "$ref": "#/components/schemas/LotRules",
+            "default": {
+              "min_sample_pct": 10.0,
+              "min_sample_rolls": 1,
+              "hold_if_fail_pct_over": 20.0,
+              "reject_if_fail_pct_over": 50.0,
+              "borderline_counts_as": "fail"
+            }
+          },
+          "cutting": {
+            "$ref": "#/components/schemas/CuttingPolicy",
+            "default": {
+              "min_points_to_cut": 2,
+              "margin_in": 2.0,
+              "min_piece_yd": 1.0
+            }
+          },
+          "report_title": {
+            "type": "string",
+            "title": "Report Title",
+            "default": "4-point inspection report"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RuleProfile"
+      },
       "RuleProfileSummary": {
         "properties": {
           "id": {
@@ -6034,6 +7903,119 @@
           "threshold_per_100"
         ],
         "title": "RuleProfileSummary"
+      },
+      "RunOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
+          },
+          "inspection_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inspection Id"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Inputs"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "machine_id",
+          "inspection_id",
+          "inputs",
+          "result",
+          "error",
+          "created_at",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "RunOut"
       },
       "SamplingPlanOut": {
         "properties": {
@@ -6122,6 +8104,85 @@
           "mill_recent_rolls"
         ],
         "title": "SamplingSuggestionOut"
+      },
+      "ScheduleIn": {
+        "properties": {
+          "dataset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Dataset Ids"
+          },
+          "provider_id": {
+            "type": "string",
+            "enum": [
+              "simulated",
+              "local_model"
+            ],
+            "title": "Provider Id",
+            "default": "simulated"
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "perfect",
+              "realistic"
+            ],
+            "title": "Preset",
+            "default": "realistic"
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "default": 42
+          },
+          "machine_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Machine Id"
+          },
+          "min_recall": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Recall",
+            "default": 0.8
+          },
+          "max_false_alarms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Max False Alarms",
+            "default": 0
+          },
+          "max_score_delta": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Max Score Delta",
+            "default": 2.0
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_ids"
+        ],
+        "title": "ScheduleIn"
       },
       "ScoreSummary": {
         "properties": {
@@ -6409,6 +8470,33 @@
           "share"
         ],
         "title": "ScorecardShare"
+      },
+      "SelvageRule": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "distance_in": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Distance In",
+            "default": 1.0
+          },
+          "rule": {
+            "type": "string",
+            "enum": [
+              "entirely_within",
+              "center_within"
+            ],
+            "title": "Rule",
+            "default": "entirely_within"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SelvageRule"
       },
       "SourceResultOut": {
         "properties": {
@@ -6965,6 +9053,19 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WidthCheck": {
+        "properties": {
+          "tolerance_in": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Tolerance In",
+            "default": 0.5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WidthCheck"
       },
       "WorkerStatus": {
         "properties": {

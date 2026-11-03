@@ -1,0 +1,7 @@
+{
+  "split": "test",
+  "training_excluded": true,
+  "source_groups": ["aitex:fabric-02"],
+  "basis": "ml/fabricdata/split.py AITEX fabric 02 forced test; see ml/DATASETS.md",
+  "limitation": "Repeated development/demo fixture, not a fresh blind evaluation or factory pilot"
+}

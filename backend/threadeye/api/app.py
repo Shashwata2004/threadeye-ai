@@ -8,20 +8,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from threadeye import __version__
 from threadeye.api import errors
 from threadeye.api.middleware import OriginCheckMiddleware, RequestIdMiddleware
-from threadeye.api.routers import auth, health, inspections, receiving, system, users
+from threadeye.api.routers import auth, health, inspections, operations, receiving, system, users
 from threadeye.settings import get_settings
 
 API_PREFIX = "/api/v1"
 
 DESCRIPTION = """
-ThreadEye AI: fabric inspection assistant. **API contract v0, implemented through M2.**
+ThreadEye AI: fabric inspection assistant. Core inspection and M4–M6 operational features.
 
 Endpoints that return **501** are part of the agreed contract and are implemented in the milestone
 named in the response (`planned_milestone`). Every mutating endpoint is permission-checked
 server-side and writes an append-only audit row.
 
-**SIMULATED MODE:** only the simulated detector exists in this phase. It is not AI, and every
-screen and report says so.
+All demonstration video is simulated. The answer-key-based simulated detector is not AI;
+the local YOLOX-S provider runs trained-model inference. Mode and provider are disclosed separately.
+Verification checks reference-video pipeline behaviour, not physical camera calibration.
 """
 
 
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     for r in (
         auth.router,
         users.router,
+        operations.router,
         system.router,
         receiving.router,
         inspections.datasets_router,

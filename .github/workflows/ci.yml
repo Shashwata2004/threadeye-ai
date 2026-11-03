@@ -105,9 +105,12 @@ jobs:
           sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
           pip install numpy opencv-python-headless pyyaml
           python tools/simulator/make_roll_video.py --source synthetic --roll-length-m 5 --seed 3 --out data/ci_roll
+          python -c 'import json,pathlib; pathlib.Path("data/ci_roll/evaluation_manifest.json").write_text(json.dumps({"split":"test","training_excluded":True,"source_groups":["ci-synthetic-seed3"],"purpose":"CI regression only"}))'
       - run: cp .env.example .env
       - name: Build and start the edge stack
-        run: GIT_SHA=${GITHUB_SHA::7} docker compose up -d --build --wait
+        run: |
+          GIT_SHA=${GITHUB_SHA::7} docker compose build api web
+          GIT_SHA=${GITHUB_SHA::7} docker compose up -d --no-build --wait
       - name: Offline check (internal network, no internet, app works)
         run: ./scripts/verify_offline.sh
       - uses: pnpm/action-setup@v4

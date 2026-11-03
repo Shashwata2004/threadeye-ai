@@ -52,6 +52,7 @@ from threadeye.providers.registry import REGISTRY, create_provider
 from threadeye.providers.simulated import PRESETS
 from threadeye.services import datasets, storage
 from threadeye.services.inspection_store import append_events, events_after
+from threadeye.services.provider_config import current_provider
 from threadeye.settings import get_settings
 
 LEASE_SECONDS = 30
@@ -104,10 +105,19 @@ def clear_cache() -> None:
         _cache.clear()
 
 
-def roll_spec(insp: Inspection, roll: Roll, info: datasets.DatasetInfo) -> RollSpec:
-    """Width is the roll's declared width. While the camera is simulated, the roll's length is the
-    simulated roll's length: the score covers what the video shows, not the 100 yd on the label."""
-    return RollSpec(width_in=roll.declared_width_in, declared_length_yd=info.roll_length_yd)
+def roll_spec(insp: Inspection, roll: Roll, info: datasets.DatasetInfo, profile: RuleProfile) -> RollSpec:
+    """Apply the buyer's width basis. A simulated source supplies the reference length unless measured."""
+    width = roll.declared_width_in
+    if profile.width_basis in {"measured", "cuttable"}:
+        width = insp.measured_width_in or width
+    if profile.width_basis == "cuttable" and profile.selvage_exclusion.enabled:
+        width -= 2 * profile.selvage_exclusion.distance_in
+    if width <= 0:
+        raise InspectionError(422, "cuttable width must remain positive after excluding the selvage")
+    return RollSpec(
+        width_in=width,
+        declared_length_yd=insp.measured_length_yd or info.roll_length_yd,
+    )
 
 
 def build_runner(db: Session, insp: Inspection) -> Runner:
@@ -126,12 +136,13 @@ def build_runner(db: Session, insp: Inspection) -> Runner:
     # A detector that looks at the picture gets the roll video decoded here; the simulated one only
     # needs the positions (its answers come from the answer key).
     source = datasets.video_source(info) if snap["info"].get("requires_image") else datasets.track_source(info)
+    profile = RuleProfile(**profile_row.rules)
     try:
         runner = Runner(
             source,
             provider,
-            RuleProfile(**profile_row.rules),
-            roll_spec(insp, roll, info),
+            profile,
+            roll_spec(insp, roll, info, profile),
             inspection_id=str(insp.id),
         )
     except ProviderNotConfigured as exc:
@@ -234,10 +245,10 @@ def model_outdated(insp: Inspection) -> bool:
         return True
 
 
-def provider_snapshot(preset: str) -> dict[str, Any]:
+def provider_snapshot(preset: str, db: Session | None = None) -> dict[str, Any]:
     """The detector pinned on a new inspection: the trained model when THREADEYE_DETECTOR_PROVIDER is
     local_model, otherwise the simulated detector with the given imperfection preset."""
-    if get_settings().detector_provider == "local_model":
+    if (current_provider(db) if db is not None else get_settings().detector_provider) == "local_model":
         config = _local_model_config()
         spec = REGISTRY["local_model"]
         try:
@@ -297,8 +308,11 @@ def create(
     roll = db.scalar(select(Roll).where(Roll.roll_code == roll_code.strip().upper()).with_for_update())
     if roll is None:
         raise InspectionError(404, "no roll with this code")
-    if db.get(Machine, machine_id) is None:
+    machine = db.get(Machine, machine_id)
+    if machine is None:
         raise InspectionError(404, "machine not found")
+    if not machine.active:
+        raise InspectionError(409, "machine is disabled")
     try:
         info = datasets.get_dataset(dataset_id)
     except datasets.DatasetNotFound as exc:
@@ -308,7 +322,9 @@ def create(
         raise InspectionError(409, "this roll already has an open inspection", inspection_id=str(open_insp.id))
     lot = db.get(Lot, roll.lot_id)
     assert lot
-    snapshot = provider_snapshot(preset or get_settings().simulated_preset)
+    if lot.status == "archived":
+        raise InspectionError(409, "this sample delivery is archived; register a new delivery")
+    snapshot = provider_snapshot(preset or get_settings().simulated_preset, db)
     source = datasets.track_source(info).open()
     insp = Inspection(
         roll_id=roll.id,
@@ -649,6 +665,8 @@ def finalize(db: Session, insp: Inspection, actor: User, idem: str, ip: str | No
     if insp.status != "completed":
         raise InspectionError(409, "finish the roll first")
     runner = runner_for(db, insp)
+    if runner.profile.width_basis == "measured" and insp.measured_width_in is None:
+        raise InspectionError(409, "this buyer profile requires a measured width before finalization")
     counts = runner.counts()
     # Pending defects block the verdict only while they could still change it (PASS/BORDERLINE/FAIL
     # is the same whether they are all rejected or all confirmed): the rest are recorded as not
@@ -715,6 +733,12 @@ def decide_verdict(
 ) -> None:
     if insp.finalized_at is None:
         raise InspectionError(409, "compute the verdict first")
+    if insp.final_verdict is not None:
+        # Inspection rows are locked by the caller. Exact retries are harmless;
+        # a second decision must never overwrite the signed decision or its reason.
+        if insp.final_verdict == final_verdict and insp.decision_reason == reason and insp.decision_by == actor.id:
+            return
+        raise InspectionError(409, "the supervisor decision is already recorded and cannot be changed")
     override = (insp.system_verdict == "PASS" and final_verdict == "REJECT") or (
         insp.system_verdict == "FAIL" and final_verdict == "ACCEPT"
     )

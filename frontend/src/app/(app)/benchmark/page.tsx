@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Card, CardTitle, KpiCard, PageHeader, pct, screenRoot, useBi } from "@/components/screenKit";
 import { useModelEvaluation } from "@/lib/api/hooks";
+import { EvaluationWorkbench } from "@/components/EvaluationWorkbench";
 
 // The trained detector scored on the held-out test split (ml/kaggle/train.py → test_report.json; the
 // matching rule and the per-class thresholds are in ml/fabricdata/operating.py). Every figure is measured:
@@ -38,6 +39,7 @@ export default function BenchmarkPage() {
 
   return (
     <div className={`${screenRoot} space-y-5`}>
+      <EvaluationWorkbench kind="benchmark" />
       {!ev && (
         <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-brand-amber">
           {isLoading

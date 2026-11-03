@@ -224,6 +224,15 @@ def build_roll_report(
     pdf.ln(2)
 
     # ---------------------------------------------------------------------------------- per yard
+    if snap.measured_width_in is not None or snap.measured_length_yd is not None:
+        pdf.use_font(9)
+        measurement_label = "Measured / মাপা" if lang == "bn" else "Measured"
+        _wrapped(
+            pdf,
+            f"{measurement_label}: width {snap.measured_width_in if snap.measured_width_in is not None else '-'} in; "
+            f"length {snap.measured_length_yd if snap.measured_length_yd is not None else '-'} yd",
+            5,
+        )
     # After the verdict: its own per-yard points (confirmed defects only); before it, the live score.
     raw_cells = snap.verdict_cells if snap.verdict_cells is not None else (score.cells if score else {})
     cells = {int(k): v for k, v in raw_cells.items()}

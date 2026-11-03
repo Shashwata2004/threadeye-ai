@@ -22,6 +22,7 @@ from threadeye.db.session import get_db, ping
 from threadeye.providers.registry import REGISTRY, ProviderSpec
 from threadeye.security.rbac import Perm
 from threadeye.services import model_card
+from threadeye.services.provider_config import current_provider
 from threadeye.settings import get_settings
 
 router = APIRouter(tags=["system"])
@@ -47,7 +48,7 @@ def system_status(_: User = Depends(current_user), db: Session = Depends(get_db)
     s = get_settings()
     hb = db.get(ComponentHeartbeat, "worker")
     alive = hb is not None and datetime.now(UTC) - hb.last_seen_at < WORKER_STALE_AFTER
-    active = REGISTRY.get(s.detector_provider, REGISTRY["simulated"])
+    active = REGISTRY.get(current_provider(db), REGISTRY["simulated"])
     return SystemStatusOut(
         profile=s.deploy_profile,
         version=s.version,
@@ -60,8 +61,8 @@ def system_status(_: User = Depends(current_user), db: Session = Depends(get_db)
 
 
 @router.get("/providers", response_model=list[ProviderAvailabilityOut])
-def list_providers(_: User = Depends(current_user)) -> list[ProviderAvailabilityOut]:
-    active_id = get_settings().detector_provider
+def list_providers(_: User = Depends(current_user), db: Session = Depends(get_db)) -> list[ProviderAvailabilityOut]:
+    active_id = current_provider(db)
     return [_provider_out(spec, active_id) for spec in REGISTRY.values()]
 
 

@@ -1,0 +1,214 @@
+{
+  "measured_at_utc": "2026-11-03T14:05:45.039954+00:00",
+  "code_revision": "3492ec59d82a61fa96ffe2fb75188abff327b344",
+  "implementation_sha256": {
+    "backend/threadeye/__init__.py": "8f5151290263ef4a78443d2511db99c8024339d0c74ee7aed54ba100e68cf8c5",
+    "backend/threadeye/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/api/app.py": "556f420ee0965cf49b29e5f7b18dd174af7f52a4e7fa587e74e10289e4a3b8b5",
+    "backend/threadeye/api/deps.py": "7e4810a2dd8e27739de2a248c5f73dffe70c3421343eb12268caba064855aeb7",
+    "backend/threadeye/api/errors.py": "9353a0d7dd71b920a9519c21b949cb8e75d12229086df8be69b2f3606597f53f",
+    "backend/threadeye/api/introspect.py": "f50dc4b1c42f437ef828b80cad433d153be878ee5cf95c6748b54ef4994c9f6e",
+    "backend/threadeye/api/middleware.py": "d40d7ff44d2000e149aa1f08f186067e9daf28211ff64d64c0a251fd12eabf7c",
+    "backend/threadeye/api/routers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/api/routers/auth.py": "7dc4cf0be1e17a321746191a23881f5a2114818cdc00d93e4b7a987818671f74",
+    "backend/threadeye/api/routers/health.py": "4e213f874e6f91561fd5faa8bc71f8a906dc7da397896be3abc20ddbc770c134",
+    "backend/threadeye/api/routers/inspections.py": "99145e0e04f06f986070e11a5a4deff67293506118e406446eb79d71f8f2adab",
+    "backend/threadeye/api/routers/operations.py": "b14df64b28171b4c37c1049ce9e0bf99ebbf7a5f0fa5dfaf250d336b71bbe3d3",
+    "backend/threadeye/api/routers/receiving.py": "656f7e7b2fc9f0d997ad2d0edecdb211d28cd0cde7704d53ba597adc91ae498a",
+    "backend/threadeye/api/routers/system.py": "290bd15d1aced011646dbaa97fd9512478be091fc613d2b080b5308d6d99fa65",
+    "backend/threadeye/api/routers/users.py": "305194338ec003f38d56b811041ce8522b5cc8d3b6f0c3668839c73367983c27",
+    "backend/threadeye/api/schemas/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/api/schemas/auth.py": "cb544db3e68194af6117ff4630ab9a11f7dd3af8d11a674e1b79b282f89f4066",
+    "backend/threadeye/api/schemas/common.py": "4380dc4cd9a5f394dd42199f4b41f2fe7ab89a6a8e2f9c892c6f69f9feb51ac8",
+    "backend/threadeye/api/schemas/events.py": "66f757f6862a2e70b3d361a25776d000b7a8e27a45991d8eb72d16aa586858eb",
+    "backend/threadeye/api/schemas/inspection.py": "2a5d4849e2ae39d37f6a86cdff3cb12440605be086cfcdd4e82c63f1cff08812",
+    "backend/threadeye/api/schemas/operations.py": "1b1176c9fc9a835661de11d3edc2c703895c545f658142f04982ee4fa51c5dec",
+    "backend/threadeye/api/schemas/receiving.py": "e152e2717ef2af09e8203f99d42a3d9ddfac793485d7ed3d5389ab8f355c0922",
+    "backend/threadeye/api/schemas/system.py": "be0420e64eb0d0978c0ed87109de78a3d5916c482575336a1028764bac9db06f",
+    "backend/threadeye/cli.py": "e3a4830926d6cd0bd5601ecb0a524a98f85c1419e5a186285b932358803f318c",
+    "backend/threadeye/core/__init__.py": "fb75ac1e5e93a568b25288a77f1821fb81a96abbaba4a8ccd4ddd67019c2a75c",
+    "backend/threadeye/core/cutting.py": "7df330f82d329163ad2630ab74fbaffe2cd4f4e51ce596aa4de567fbfcac4f10",
+    "backend/threadeye/core/dedupe.py": "f54b664bba0a1efea0bb867deb12b22135ecb0e3a28931bfa40f44cbdd9a2ee7",
+    "backend/threadeye/core/evaluation.py": "ca42aaca90579155c534d4d59c103240a93bd7baeb0b26cf574bd46faea9a838",
+    "backend/threadeye/core/frames.py": "f78fc675f3c62577ca592a8121e028bdc7fefdd0f68adba8ee1ceb35b6b5d862",
+    "backend/threadeye/core/geometry.py": "d0ca260083f9244e797ab401fb25ef47ef742ce017fda3fab7d1b5a0159f5fe6",
+    "backend/threadeye/core/ids.py": "42687e2a5934c242bd613e5f410c32bbad403ebff569ed3b26806b08c401314d",
+    "backend/threadeye/core/nondefect.py": "bd07a307b80cef69778014a11bca016be9616f26b60ffe174f7eeae9bb8f558b",
+    "backend/threadeye/core/providers.py": "293c3509fcfff31726bf4c392e022ad328d95b79381fc78ca4be6d92d1f4ac9a",
+    "backend/threadeye/core/runner.py": "7b11b7a7781dc2c346447eb42e27596f89688f0fd44acc80ec8cefc7ed9a564f",
+    "backend/threadeye/core/sampling.py": "b05277ef9fa114c1219ad205642079200a7dfae0b332a0a4840e46883b7b26b4",
+    "backend/threadeye/core/scoring/__init__.py": "6ac2fa0e3249cc6b25337007c333b00d5b0669281407678b6f0870f1145f7b0d",
+    "backend/threadeye/core/scoring/four_point.py": "c4ed4d7e633c961707816d2377440cdcdbc39bd0c80bab0be9f183970756c284",
+    "backend/threadeye/core/scoring/lot.py": "b0e932887ca583b8d147f60c987e58c773a40923169aee82780f8fc6ce0a3841",
+    "backend/threadeye/core/scoring/profile.py": "6801303e5ed01f6541133e743cbf6b9c043906d44c1c9421e9889b4319152779",
+    "backend/threadeye/core/scoring/verdict.py": "246dce79c20438d1856f4f8f59b32f15efa53b60439e8fd93193affc1a7afbfe",
+    "backend/threadeye/core/taxonomy.py": "281d7db7144b026c5a3f3fa7d95a434acc621607a0f6d03e29695bac0a4f03da",
+    "backend/threadeye/data/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/datasets/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/datasets/answer_key.py": "a4ae41b203dc2723a9ae4bf62d245ca37cf6686f398b6b22cb05179fdec01a46",
+    "backend/threadeye/datasets/contracts.py": "f9d6dc9663ccb8fd775912b13c49308ceb90057ac817a8cf0307fb58ab691205",
+    "backend/threadeye/db/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/db/audit.py": "afe8080aeb2d44b45394090ceab2a9ec9cefa3b7c6b4463111801b37a7befd7e",
+    "backend/threadeye/db/base.py": "eb6b11b1c73167bc4cea3cb5b1ede2f07672642050c209f609cd82ce886cbb67",
+    "backend/threadeye/db/cloud_check.py": "288cfb354f1f3afcfba74eaf060ac1fcaab9be54ce5d24162fc607dc09a7c08f",
+    "backend/threadeye/db/migrate.py": "c5ea0e502b48fcf11895581b22dc71ef3fbd780a048de221031cb736bdec4b06",
+    "backend/threadeye/db/migrations/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/db/migrations/env.py": "80b166d247492b067c088b6800615214028c4091324d20dd1c6e0c185f009952",
+    "backend/threadeye/db/migrations/versions/0001_baseline.py": "c2140fbf86d761b09698817ea4c7d37e3ff0f4e698057536981f111ac3fec611",
+    "backend/threadeye/db/migrations/versions/0002_rls.py": "b3b622f46fc4b084418fae6908b2574bcf81c339690e304c66b03172a3f5bd0d",
+    "backend/threadeye/db/migrations/versions/0003_receiving.py": "e37d066014d96cf694068d9b97096d36cacb8d8e7bee53b4c0feb6f4605b6308",
+    "backend/threadeye/db/migrations/versions/0004_live_inspection.py": "e79fdbd1595c8b851d11fad3476547bf6f789e1a17e1254c7f39a41c7c55bd76",
+    "backend/threadeye/db/migrations/versions/0005_blobs.py": "21498b5935d62364e3ef2dfba970045c13af00d3d668136a00c5c5c3cfeb380d",
+    "backend/threadeye/db/migrations/versions/0006_blob_storage.py": "28476298d103e321631d87a567156645a63d3a9063f94f5d5e543526948d021b",
+    "backend/threadeye/db/migrations/versions/0007_lot_decision.py": "a246fef62d20506e866b4354533ee43b91db7c5225847ce8a64906c4ebd49b86",
+    "backend/threadeye/db/migrations/versions/0008_operations.py": "d803fc2c7a8e1a2130c75cf547a34160a959ca27595409eaa89590e03a806f84",
+    "backend/threadeye/db/migrations/versions/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/db/models.py": "e644eb9f800291106fdcb855bd2064837d95121538d502c923f65f8a56154780",
+    "backend/threadeye/db/session.py": "4086a56dde209d192f74e4f4dfec5faab2f412ca08deb2796b8bc086bc73303e",
+    "backend/threadeye/jobs/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/jobs/worker.py": "04f46b354e85bb7290662d52be6a9b5737c7cbad128f903c36a2f13e6d00946b",
+    "backend/threadeye/providers/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/providers/api_detector.py": "ba1c031507aac450a4734d1a41b68fe936444aec073f4eea841147d33f0999ab",
+    "backend/threadeye/providers/local_model.py": "5aa438b41d6c0a984dbaee55a2876ff4d23c2caf113d3a42c7beb2711d0500da",
+    "backend/threadeye/providers/prefetch.py": "446132ab9ebdbc292feb26ab83f52d095fa97556465191406e3b5425f87a22e5",
+    "backend/threadeye/providers/registry.py": "92225bbf78ab9300c718a3d93742ec199c8041b45078d373c1e59db6af818661",
+    "backend/threadeye/providers/simulated.py": "9db1bb0bc54bf235d0156d9b1a254ebdf4cb0747ecec85e667c3cc0a373bea49",
+    "backend/threadeye/reports/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/reports/claim_letter.py": "7fc236598284cb1e1c7ce04af1582c12d3a99a97d7e275a632c74e8540f114c8",
+    "backend/threadeye/reports/labels.py": "3406f814719829e48062068be4875ae75a236c23a8a34b63e38e30603cf5029b",
+    "backend/threadeye/reports/pdf.py": "e315dc92d061baec340bacbb4edd946773c05f61d88e1f40bbc8e1b43a6668f7",
+    "backend/threadeye/reports/roll_report.py": "0da12e36156502a605a6dc5b09f8b26cc6bbeed43756a26bc99c1ca704a6a06e",
+    "backend/threadeye/reports/spike.py": "4a22010962cf9984799d4217a95ab4a9cded2f8405d4ea84d73726ff9e67a61b",
+    "backend/threadeye/security/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backend/threadeye/security/passwords.py": "6f57cc2be53fb562816489680ec7896b399001a68bbaab59ed1bf3cdadc55c3f",
+    "backend/threadeye/security/rbac.py": "02c00191c6f9b363cf51eb212cef1fcda00a024b7a2a352c93c05fc697abaf9f",
+    "backend/threadeye/security/seed.py": "f556ebbc3c6416eb418b9927beafe7b9690affe51d0c73b8b0dab95cbad26137",
+    "backend/threadeye/security/sessions.py": "632ff7592f998397c8e9f6d2dde7473abf8cb0a318200857628eaed2f1c74f0b",
+    "backend/threadeye/services/__init__.py": "3f1f8f4289fa3c046543360605ad52449b10e005f9276a1cb6d5cbc4dca85a9b",
+    "backend/threadeye/services/benchmark.py": "bf04ff869479b7d6379339dbf5564da66e4dd1eb7054326615b7a6872f11cfdf",
+    "backend/threadeye/services/datasets.py": "970907c1aaca34e798532be7c488ea9022f926777f7521e7da7b8898fe160b96",
+    "backend/threadeye/services/demo_archive.py": "43cfb92e152930fcfe848b7bb20ba9850d74f4a42bf757047f2e4dfd9a1ad34f",
+    "backend/threadeye/services/evidence.py": "60dae93dd436b0cd4ff3325543ecad2d1601c48641998aea0e7f3d3c634e4a7b",
+    "backend/threadeye/services/impact.py": "59b3ef4e49d7911cc322ab46bb55772497da2b1a999643429a349d6123f1b73d",
+    "backend/threadeye/services/inspection_store.py": "284b762dcfa05e9e4cd88a7be0d99f5834145c64467e14f6b274ee7f36fe593b",
+    "backend/threadeye/services/live.py": "50a2da18775486607b38d87aea8650fafa44c9cd7d42c6d78b7cc895b95edd79",
+    "backend/threadeye/services/model_card.py": "b6319adb47ac184f48884cea0f5ab6d3742f0c0e6a8399dc91cf521038f64c8c",
+    "backend/threadeye/services/operations.py": "736c08ce2ada6ffa47426dbc0a0eda0b6af4bb2e302cc8d71e9d49dad02bc1d7",
+    "backend/threadeye/services/provider_config.py": "4e16ca31449e2718d284848b0a8bf9b89646189955f68eee35cfcbf3e64f9c3e",
+    "backend/threadeye/services/receiving.py": "1a1ca7dc21ce628957dedf21f4dcc9fd78ec05482709ac41d451074f4ae00738",
+    "backend/threadeye/services/scorecard.py": "6236bbf11a8bca0ee16572ea070313535f9a97f3236156ba2a41cf56122bd6e8",
+    "backend/threadeye/services/storage.py": "73cef84a65aa34edaec17e1ff5dbd040439e49d9994b33b4a4b57d6754c06353",
+    "backend/threadeye/settings.py": "d60a8a4b96f90fed37c11edc003db5ddbda041fd9d7916c149202b01e52f7b3c",
+    "backend/threadeye/sources/__init__.py": "207f1f482acc883f3d4b8171643d29f9a874b795505df5b5d1ae26ce1a975cdb",
+    "backend/threadeye/sources/simulated_roll.py": "b8ac9e37749abd03b30465951a7d539a3fc20392d44e240dfe749a79ada55179",
+    "scripts/measure_impact.py": "254c545cdaec94ca0887a2378bcea57df4c557d4efb53d0070a85314dffe41ef"
+  },
+  "machine": {
+    "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+    "python": "3.12.3",
+    "cpu": "x86_64",
+    "architecture": "x86_64",
+    "logical_cpus": 12
+  },
+  "runtime_versions": {
+    "onnxruntime": "1.31.0",
+    "numpy": "2.5.3",
+    "opencv-python-headless": "5.0.0.93"
+  },
+  "demo": {
+    "dataset": "linescan_roll",
+    "source": "aitex-fabric-02",
+    "simulated_video": true,
+    "real_model_inference": true,
+    "profile": "Simulator parity",
+    "sha256": {
+      "threadeye_s.onnx": "02de7b97544dc5483b7da95972141c329b0fbc8c1bb495246d03165c4a796037",
+      "model_info.json": "acd356cdb10e8713ce2d927bd97299b88498b41383cae977607d710aff11ee9b",
+      "roll_meta.json": "21d1698eb3732bcecb75c2f4802a183fcd428a32fc5fa3c0fc1c1c26800ffe2a",
+      "frames.csv": "9cb636c71da78e3e4520d591f7963ad35adb3508c4de0ed9c19d7dc7c806bfcd",
+      "ground_truth.csv": "be1bcbc4be2fa259f3836f5bfb59058be650ee2444a519ca6ed265667b7dd277",
+      "nuisance.csv": "4a8b429e94f2671f758c283ec8545f80e03e64a77b64af30389dc6a7a3884483",
+      "roll_video.mp4": "66b368a2eb763c61bb02852f3a9a816f2bfc7d4572dad583a006cbd6d6ae58c1"
+    },
+    "evaluation": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 3,
+      "precision": 1.0,
+      "recall": 0.5714,
+      "f1": 0.7273,
+      "class_accuracy": 1.0,
+      "recall_per_class": {
+        "broken_yarn": 0.0,
+        "crease_mark": 0.0,
+        "slub": 1.0
+      },
+      "fp_by_type": {},
+      "nondefects_ignored": {
+        "loose_thread": 7,
+        "selvage_weave": 23
+      },
+      "missed": [
+        "2",
+        "5",
+        "7"
+      ]
+    },
+    "matches": [
+      [
+        "D-04",
+        "1",
+        0.6325
+      ],
+      [
+        "D-28",
+        "6",
+        0.607
+      ],
+      [
+        "D-12",
+        "3",
+        0.4044
+      ],
+      [
+        "D-15",
+        "4",
+        0.4019
+      ]
+    ],
+    "missed_defects": [
+      {
+        "id": "2",
+        "class": "crease_mark",
+        "yard": 4.291
+      },
+      {
+        "id": "5",
+        "class": "broken_yarn",
+        "yard": 10.468
+      },
+      {
+        "id": "7",
+        "class": "broken_yarn",
+        "yard": 12.853
+      }
+    ],
+    "timing": {
+      "headless_seconds_including_model_setup": 43.461,
+      "video_duration_seconds": 51.789,
+      "sampled_frames": 114
+    },
+    "decision_replay": {
+      "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+      "model_points": 4,
+      "model_per_100": 18.58,
+      "model_verdict": "PASS",
+      "oracle_points": 9,
+      "oracle_per_100": 41.8,
+      "oracle_verdict": "FAIL",
+      "verdict_agrees": false
+    }
+  },
+  "paired_pilot": null,
+  "pilot_csv_sha256": null
+}

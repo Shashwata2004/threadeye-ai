@@ -47,17 +47,20 @@ VENV_BIN="$PWD/backend/.venv/bin"
 
 api_pid=""
 web_pid=""
+worker_pid=""
+command -v setsid >/dev/null || { echo "setsid is required to manage the local app processes" >&2; exit 1; }
 cleanup() {
   trap - EXIT INT TERM
-  [ -n "$api_pid" ] && kill "$api_pid" 2>/dev/null || true
-  [ -n "$web_pid" ] && kill "$web_pid" 2>/dev/null || true
+  for app_pid in "$api_pid" "$web_pid" "$worker_pid"; do
+    [ -n "$app_pid" ] && kill -- "-$app_pid" 2>/dev/null || true
+  done
   wait 2>/dev/null || true
   echo "stopped"
 }
 trap cleanup EXIT INT TERM
 
 echo "starting API on :${API_PORT} (database: Supabase)"
-(cd backend && exec "$VENV_BIN/uvicorn" threadeye.api.app:app \
+(cd backend && exec setsid "$VENV_BIN/uvicorn" threadeye.api.app:app \
   --host 127.0.0.1 --port "$API_PORT" --log-level warning) &
 api_pid=$!
 
@@ -72,7 +75,9 @@ case "$health" in
 esac
 
 echo "starting the web app on :${WEB_PORT}"
-(cd frontend && API_ORIGIN="http://127.0.0.1:${API_PORT}" exec pnpm dev --port "$WEB_PORT") &
+(cd backend && exec setsid "$VENV_BIN/python" -m threadeye.jobs.worker) &
+worker_pid=$!
+(cd frontend && API_ORIGIN="http://127.0.0.1:${API_PORT}" exec setsid pnpm dev --port "$WEB_PORT") &
 web_pid=$!
 
 echo

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, model_validator
 
@@ -91,6 +91,9 @@ class RollContext(ApiModel):
 
 
 class InspectionSnapshot(ApiModel):
+    measured_length_yd: float | None = None
+    measured_width_in: float | None = None
+    measurement_checks: dict[str, Any] = Field(default_factory=dict)
     id: uuid.UUID
     roll_id: uuid.UUID
     roll_code: str

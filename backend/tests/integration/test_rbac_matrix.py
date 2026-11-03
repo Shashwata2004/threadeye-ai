@@ -62,10 +62,9 @@ def test_anonymous_gets_401_everywhere(client: TestClient) -> None:
         assert r.status_code == 401, f"{method} {path} → {r.status_code}"
 
 
-def test_stub_returns_501_with_planned_milestone(client: TestClient) -> None:
+def test_measurement_requires_a_real_inspection(client: TestClient) -> None:
     login(client, "inspector")
     r = client.post(
         f"/api/v1/inspections/{uuid.uuid4()}/measurements", json={"kind": "width", "value": 58, "unit": "in"}
     )
-    assert r.status_code == 501
-    assert r.json()["planned_milestone"] == "M4"
+    assert r.status_code == 404

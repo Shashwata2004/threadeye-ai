@@ -1,17 +1,16 @@
-# Ethical safeguards (documented)
+# Ethical safeguards and their limits
 
-The judging band 16–20 for *Real-World Impact + Ethical AI* needs **documented** safeguards. Each
-principle below (from the team's Workflow PDF §12) maps to a concrete product mechanism, with its
-status. Owner: D. Completed in M6; kept current every milestone.
+These are implemented controls and explicit evidence limits, not certification of production readiness.
 
-| Principle | Mechanism in ThreadEye | Status |
+| Principle | Mechanism | Evidence / limit |
 |---|---|---|
-| **Humans decide.** AI suggests, the inspector confirms; roll rejection is a human decision | Every defect is `pending` until confirmed, rejected or reclassified. Finalize is blocked while anything is pending. BORDERLINE and any override need a supervisor reason | Designed (contract v0), built M2/M4 |
-| **Worker dignity, no surveillance** | Inspector correction statistics are used for training only. The inspector role has no access to per-inspector dashboards (`dashboard.own_shift` only). The camera points at the fabric, and the sampler avoids frames with the hand in view | RBAC enforced (M0); sampler M1 |
-| **Buyer design confidentiality** | Edge-first: images never leave the factory. The app containers have no internet route (`make verify-offline`). Any future external API is off by default and needs an admin consent record | Enforced (M0) |
-| **Transparency** | Every detection shows its provider, an explanation and a box. `confidence` is `null` unless calibrated (no invented "96 % sure"). A SIMULATED banner shows on every screen and report | Banner + provider contract (M0) |
-| **Honest claims** | "4-point inspection report", never "ASTM/AQL compliant". Simulated results are never presented as factory results. No metric is shown unless measured | Report base + empty-state dashboard (M0) |
-| **Accountability** | Append-only, SHA-256 hash-chained audit log, with a DB trigger blocking edits and a chain-verify endpoint and page | Enforced (M0) |
-| **Bias across fabrics** | Benchmark reports per-segment metrics (dark/light/patterned via `datasets.fabric_attrs`) | Planned M6 |
-| **Learning from mistakes** | Rejections and manual additions become `label_samples`, split by source image. Evaluation refuses training data | Planned M4–M6 |
-| **Data provenance** | PROVENANCE.md lists every dataset, licence, font and tool | Maintained from M0 |
+| **Human control** | Inspector confirms, rejects, reclassifies and adds missed defects. Pending items block finalization while they can change the verdict; otherwise they remain explicitly unreviewed. Supervisor commercial/cutting decisions and cutting-master acknowledgment are recorded. | Integration/browser tests. Model-only scoring can miss faults: the current demo is PASS from detections alone but FAIL from its answer key. Human review remains necessary. |
+| **Worker dignity** | Inspector dashboard scope is their own work; broader visibility is role-controlled. No inspector leaderboard or automated disciplinary decision exists. Fabric is the target of the view and known hands/distractions are filtered. | RBAC and sampler tests. Real-camera placement and factory consent require on-site validation. |
+| **Design confidentiality** | The Docker edge profile runs on an internal network; app containers have no external route. The external-AI provider remains a stub. | Offline checks passed. The Supabase/Vercel demonstration is a separate networked profile and stores evidence remotely; it must not be described as keeping all images on a factory laptop. |
+| **Transparency** | Source simulation and detector simulation are recorded independently. Mode banners, provider labels and reports distinguish answer-key replay from real ONNX inference. Uncalibrated detector confidence remains null. | Both modes tested, including database-error handling and eight browser language/theme combinations. |
+| **Honest impact** | Measured KPI definitions, replay report, raw hashes, paired-pilot protocol and calculator. Unknown measurements remain unknown. | A simulated regression roll and headless timing do not prove factory savings, autonomous safety or real inspection throughput. No ASTM/AQL compliance claim is made. |
+| **Accountability** | Append-only hash-chained audit/events; DB triggers prevent edits. Profile versions are immutable for existing lots, and cutting approvals bind their source hash. | Database/integration tests, role matrix and SIGKILL recovery. A hash chain detects certain tampering; it is not a substitute for access control or external backups. |
+| **Fabric coverage** | Saved benchmark reports expose per-class and per-source performance, misses and false alarms. Test manifests refuse train/validation use at the benchmark boundary. | Dark/light/pattern-specific real-world fairness is not established by these aggregate reports; additional labelled evaluation is required. A curated manifest is not independent proof of source exclusion. |
+| **Learning from corrections** | Permission-controlled COCO/image export preserves human decisions, image scale and source groups. Simulated detector-origin annotations explicitly carry `source=answer_key`; manual/real-model reviewed labels carry human provenance. | Exported splits remain unassigned and require label review, deduplication and source-group splitting. The app does not automatically retrain or install a model. |
+| **Safe demo reset** | Explicitly enabled sample archive, off by default, preserves evidence/audit and excludes unmarked real deliveries. Recurring actions require an active, authorized account. | Archive and revoked-permission tests. Never relabel real factory records as sample data to include them in a demo reset. |
+| **Provenance** | Source-specific records in PROVENANCE.md and ml/DATASETS.md; tooling and prompt disclosure. | Unresolved original-source redistribution terms remain unresolved; no commercial clearance is inferred from a public mirror. |

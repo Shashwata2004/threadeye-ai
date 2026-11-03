@@ -45,7 +45,7 @@ export default function AuditPage() {
   const format = useFormatter();
   const { data: me } = useMe();
   const live = hasPerm(me, "audit.read");
-  const { data: liveRows, isLoading } = useAudit(live);
+  const { data: liveRows, isLoading, isError } = useAudit(live);
   // Names for actor ids: the full user list is admin-only, everyone else at least sees their own name.
   const { data: users } = useQuery({
     queryKey: ["users"],
@@ -129,6 +129,18 @@ export default function AuditPage() {
     }
   }
 
+  if (!me || !live) return (
+    <div className={`${screenRoot} space-y-4`}>
+      <PageHeader title={t("title")} subtitle={t("subtitle")} sample={false} />
+      {!me ? <p className="text-slate-500">{tc("loading")}</p> :
+        <ViewOnlyNote>
+          <p className="font-semibold">{bi("You do not have permission to view audit entries.", "এন্ট্রি দেখার অনুমতি নেই।")}</p>
+          <p>{bi("This does not mean the log is empty. Sign in with an admin or management account to view entries.",
+            "এর অর্থ লগ খালি নয়। এন্ট্রি দেখতে অ্যাডমিন বা ম্যানেজমেন্ট অ্যাকাউন্টে লগইন করুন।")}</p>
+        </ViewOnlyNote>}
+    </div>
+  );
+
   const actorLabel = (r: Row) =>
     r.actor_name ??
     (r.actor_user_id ? (names.get(r.actor_user_id) ?? `${r.actor_user_id.slice(0, 8)}…`) : bi("System", "সিস্টেম"));
@@ -137,15 +149,6 @@ export default function AuditPage() {
   return (
     <div className={`${screenRoot} space-y-4`}>
       <PageHeader title={t("title")} subtitle={t("subtitle")} sample={false} />
-
-      {!live && (
-        <ViewOnlyNote>
-          {bi(
-            "Your role cannot read the change ledger. Ask an admin or management user.",
-            "আপনার ভূমিকায় পরিবর্তনের খাতা দেখা যায় না। অ্যাডমিন বা ম্যানেজমেন্টকে বলুন।",
-          )}
-        </ViewOnlyNote>
-      )}
 
       <Card
         className={
@@ -237,7 +240,9 @@ export default function AuditPage() {
         </label>
       </Card>
 
-      {live && isLoading ? (
+      {isError ? (
+        <p role="alert" className="text-red-700">{bi("Could not load audit entries. Please try again.", "এন্ট্রি লোড করা যায়নি। আবার চেষ্টা করুন।")}</p>
+      ) : isLoading ? (
         <p className="text-slate-500">{tc("loading")}</p>
       ) : !filtered.length ? (
         <p className="text-slate-500">{rows.length ? bi("No entries match these filters.", "এই ফিল্টারে কোনো এন্ট্রি নেই।") : t("empty")}</p>

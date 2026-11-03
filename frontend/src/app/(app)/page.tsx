@@ -1,93 +1,74 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { ProviderBadge } from "@/components/badges";
-import { useMe, useProviders, useSystemStatus } from "@/lib/api/hooks";
-
-function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <p className="text-sm text-slate-600">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-slate-400">{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
-    </div>
-  );
-}
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { useMe, useSystemStatus, useProviders } from "@/lib/api/hooks";
+import { hasPerm } from "@/lib/api/client";
+import { request, type Dashboard } from "@/lib/api/operations";
+import { Card, CardTitle, KpiCard, PageHeader, screenRoot, useBi } from "@/components/screenKit";
+import { ProviderBadge, SampleBadge } from "@/components/badges";
 
 export default function DashboardPage() {
-  const t = useTranslations();
-  const { data: me } = useMe();
-  const { data: status } = useSystemStatus();
-  const { data: providers } = useProviders();
-  const dash = t("common.dash");
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-brand-navy">{t("dashboard.title")}</h1>
-        {me && <p className="text-slate-600">{t("dashboard.welcome", { name: me.display_name })}</p>}
-      </div>
-
-      {/* Empty state: no numbers until they are measured (no fabricated metrics). */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="kpi-tiles">
-        <Tile label={t("dashboard.rollsInspected")} value={dash} hint={t("dashboard.noData")} />
-        <Tile label={t("dashboard.verdicts")} value={`${dash} / ${dash} / ${dash}`} />
-        <Tile label={t("dashboard.avgPer100")} value={dash} />
-        <Tile label={t("dashboard.falseAlarms")} value={dash} />
+  const bi = useBi();
+  const {data: me} = useMe();
+  const {data: status} = useSystemStatus();
+  const {data: providers} = useProviders();
+  const enabled = hasPerm(me, "dashboard.read") || hasPerm(me, "dashboard.own_shift");
+  const query = useQuery({queryKey: ["dashboard"], enabled,
+    queryFn: () => request<Dashboard>("/api/v1/dashboard"), refetchInterval: 15000});
+  const data = query.data;
+  const verification = Object.values(data?.verification ?? {});
+  const failed = verification.some((v) => v.passed === false || v.status === "failed");
+  const running = verification.some((v) => v.status === "running" || v.status === "queued");
+  const checked = verification.length && !failed && !running;
+  return <div className={`${screenRoot} space-y-5`}>
+    <PageHeader title={bi("Dashboard", "ড্যাশবোর্ড")} sample={false}
+      subtitle={`${bi("Today in Dhaka", "ঢাকার আজকের হিসাব")} · ${data?.date ?? "—"} · ${me?.display_name ?? ""}`}/>
+    {enabled && <>
+      {query.isError && <p role="alert" className="text-red-600">{bi("Dashboard could not be loaded.", "হিসাব আনা যায়নি।")}</p>}
+      <p className="text-sm text-slate-500">{bi("Latest finalized inspection per roll today. Inspector accounts see their own work.",
+        "আজ প্রতি রোলের সর্বশেষ চূড়ান্ত পরীক্ষার হিসাব। ইন্সপেক্টর শুধু নিজের কাজ দেখেন।")}</p>
+      {!!data?.simulated_rolls && <p className="flex items-center gap-2 text-sm"><SampleBadge/>{bi(
+        `${data.simulated_rolls} rolls used simulated video; these are not factory impact measurements.`,
+        `${data.simulated_rolls}টি রোলে ভিডিও সিমুলেটেড; এগুলো কারখানার impact-এর মাপ নয়।`)}</p>}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="kpi-tiles">
+        <KpiCard label={bi("Rolls inspected", "পরীক্ষিত রোল")} value={data?.rolls ?? "—"}/>
+        <KpiCard label="PASS / BORDERLINE / FAIL" value={data ?
+          `${data.verdicts.PASS ?? 0} / ${data.verdicts.BORDERLINE ?? 0} / ${data.verdicts.FAIL ?? 0}` : "—"}/>
+        <KpiCard label={bi("Average points / 100 sq yd", "প্রতি ১০০ বর্গগজে গড় পয়েন্ট")} value={data?.avg_per_100?.toFixed(2) ?? "—"}/>
+        <KpiCard label={bi("Average coverage", "গড় কভারেজ")} value={data?.coverage_pct == null ? "—" : `${data.coverage_pct}%`}/>
+        <KpiCard label={bi("Rejected share of reviewed AI flags", "পর্যালোচিত AI সতর্কতার বাতিল অংশ")}
+          value={data?.false_alarm_share == null ? "—" : `${(data.false_alarm_share * 100).toFixed(1)}%`}
+          sub={bi(`${data?.reviewed_detections ?? 0} reviewed flags; not test-set false-positive rate`,
+            `${data?.reviewed_detections ?? 0}টি পর্যালোচিত সতর্কতা; test-set false-positive rate নয়`)}/>
       </section>
-      <p className="text-sm text-slate-500">{t("dashboard.noDataHint")}</p>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="mb-2 font-semibold">{t("dashboard.verification")}</h2>
-          <p className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">
-            {t("dashboard.verificationNone")}
-          </p>
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-4" data-testid="system-status">
-          <h2 className="mb-2 font-semibold">{t("dashboard.system")}</h2>
-          {status ? (
-            <dl className="grid grid-cols-2 gap-y-1 text-sm">
-              <dt className="text-slate-600">{t("dashboard.db")}</dt>
-              <dd className={status.db === "ok" ? "text-teal-700" : "text-red-700"}>
-                {status.db === "ok" ? t("dashboard.ok") : t("dashboard.down")}
-              </dd>
-              <dt className="text-slate-600">{t("dashboard.worker")}</dt>
-              <dd className={status.worker.alive ? "text-teal-700" : "text-red-700"}>
-                {status.worker.alive ? t("dashboard.workerAlive") : t("dashboard.workerDown")}
-              </dd>
-              <dt className="text-slate-600">{t("dashboard.profile")}</dt>
-              <dd>{status.profile === "edge" ? t("mode.edge") : t("mode.cloud")}</dd>
-              <dt className="text-slate-600">{t("dashboard.version")}</dt>
-              <dd className="font-mono text-xs leading-6">{status.version}</dd>
-            </dl>
-          ) : (
-            <p className="text-sm text-slate-500">{t("common.loading")}</p>
-          )}
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="mb-2 font-semibold">{t("dashboard.providers")}</h2>
-          <ul className="space-y-2 text-sm">
-            {providers?.map((p) => (
-              <li key={p.provider_id} className="flex flex-wrap items-center gap-2">
-                {p.active ? (
-                  <ProviderBadge name={p.display_name} simulated={p.is_simulated} />
-                ) : (
-                  <span className="text-slate-700">{p.display_name}</span>
-                )}
-                <span className="text-xs text-slate-500">
-                  {p.active ? `${t("dashboard.active")} · ` : ""}
-                  {p.availability === "planned"
-                    ? t("availability.planned", { milestone: p.milestone })
-                    : t(`availability.${p.availability}`)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card><CardTitle>{bi("Today's verification", "আজকের যাচাই")}</CardTitle>
+          <p data-testid="verification-status" className={failed ? "text-red-600" : checked ? "text-emerald-600" : "text-brand-amber"}>
+            {failed ? bi("RED: check failed", "লাল: যাচাইয়ে সমস্যা") : checked ? bi("GREEN: checked machines passed", "সবুজ: যাচাই করা মেশিন উত্তীর্ণ") :
+              running ? bi("Checks are running", "যাচাই চলছে") : bi("AMBER: no check today", "হলুদ: আজ যাচাই হয়নি")}</p>
+          <Link href="/verification" className="text-brand-teal underline">{bi("Open verification", "যাচাই খুলুন")}</Link>
+        </Card>
+        <Card><CardTitle>{bi("Confirmed defects", "নিশ্চিত ত্রুটি")}</CardTitle>
+          {Object.entries(data?.defect_mix ?? {}).map(([name, n]) => <p key={name}>{name}: {n}</p>)}
+          {!Object.keys(data?.defect_mix ?? {}).length && <p>{bi("No confirmed defects today.", "আজ নিশ্চিত ত্রুটি নেই।")}</p>}
+        </Card>
       </div>
-    </div>
-  );
+      <div className="grid gap-4 sm:grid-cols-2">{[
+        [bi("By machine", "মেশিন অনুযায়ী"), data?.by_machine],
+        [bi("By mill", "মিল অনুযায়ী"), data?.by_supplier],
+      ].map(([label, counts], index) => <Card key={index}><CardTitle>{String(label)}</CardTitle>
+        {Object.entries((counts ?? {}) as Record<string, number>).map(([name, n]) => <p key={name}>{name}: {n}</p>)}
+      </Card>)}</div>
+      <Card><CardTitle>{bi("Open inspections", "অসমাপ্ত পরীক্ষা")}</CardTitle>
+        {data?.active.map((row) => <p key={row.id}><Link className="text-brand-teal underline" href={`/inspect/${row.id}`}>
+          {row.id.slice(0, 8)} · {row.status}</Link></p>)}
+        {data && !data.active.length && <p>{bi("No open inspections.", "অসমাপ্ত পরীক্ষা নেই।")}</p>}
+      </Card>
+    </>}
+    <Card><CardTitle>{bi("System", "সিস্টেম")}</CardTitle>
+      <div data-testid="system-status">{bi("Database", "ডাটাবেজ")}: {status?.db ?? "—"} · {bi("Worker", "ওয়ার্কার")}: {status?.worker.alive ? bi("Online", "চালু") : bi("Not connected", "সংযুক্ত নেই")}</div>
+      {providers?.filter((p) => p.active).map((p) => <ProviderBadge key={p.provider_id} name={p.display_name} simulated={p.is_simulated}/>)}
+    </Card>
+  </div>;
 }

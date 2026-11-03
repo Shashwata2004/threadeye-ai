@@ -327,3 +327,22 @@ exists (M6), and (2) drawing a box on the paused video for a missed defect. The 
 
 - Output: confirm-all-pending endpoint and button, verdict with *not reviewed* defects and their points
   range, missed defects drawn on the video with their own evidence photo.
+
+## #007: Codex continuation — operational milestones (verbatim requests)
+- Date: 2026-11-03
+- Tool: Codex (model identifier not recorded here)
+
+> focus about these 2 now. try fixing this 2 and do the related work to fix this 2
+
+The two selected issues were the incorrect simulation banner and missing comparative impact evidence.
+
+> ei m7 ar m8 bade ja ase ta finish kore felo
+
+Scope: finish the remaining operational features and preparation outside M7 model-improvement/polish
+and M8 final submission. When asked whether repository publication and release publishing were included,
+the owner replied:
+
+> no, not included
+
+Implementation and validation are recorded in docs/MILESTONES.md. Human reviews, field measurements,
+public release and live Congress participation must not be represented as already performed.

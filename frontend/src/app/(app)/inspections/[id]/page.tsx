@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { ProviderBadge } from "@/components/badges";
+import { InspectionEvidenceTools, MeasurementPanel } from "@/components/InspectionOperations";
 import { Button, inputClass } from "@/components/form";
 import { Lightbox, largePhoto } from "@/components/Lightbox";
 import { api, hasPerm, idempotencyKey, type Defect, type Inspection } from "@/lib/api/client";
@@ -22,32 +23,54 @@ const GALLERY_BORDER: Record<string, string> = {
   pending: "border-red-500",
   rejected: "border-slate-300 opacity-70",
 };
+function decisionDraft(id: string): {choice?: string; reason?: string} {
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(`threadeye.decision.${id}`) ?? "{}");
+    return {
+      choice: ["ACCEPT", "ACCEPT_WITH_CLAIM", "REJECT"].includes(draft.choice) ? draft.choice : undefined,
+      reason: typeof draft.reason === "string" ? draft.reason : undefined,
+    };
+  } catch {return {};}
+}
+
 function DecisionPanel({ id, insp }: { id: string; insp: Inspection }) {
   const t = useTranslations();
   const queryClient = useQueryClient();
   const systemVerdict = insp.system_verdict ?? "";
-  const [choice, setChoice] = useState<string>(insp.final_verdict ?? (systemVerdict === "PASS" ? "ACCEPT" : "REJECT"));
-  const [reason, setReason] = useState("");
+  const locked = !!insp.final_verdict;
+  const [choice, setChoice] = useState<string>(() => insp.final_verdict ?? decisionDraft(id).choice ?? (systemVerdict === "PASS" ? "ACCEPT" : "REJECT"));
+  const [reason, setReason] = useState(() => insp.decision_reason ?? decisionDraft(id).reason ?? "");
+  function edit(nextChoice: string, nextReason: string) {
+    setChoice(nextChoice); setReason(nextReason);
+    try {sessionStorage.setItem(`threadeye.decision.${id}`, JSON.stringify({choice: nextChoice, reason: nextReason}));} catch { /* Storage can be disabled by the browser. */ }
+  }
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const override = (systemVerdict === "PASS" && choice === "REJECT") || (systemVerdict === "FAIL" && choice === "ACCEPT");
   async function save() {
+    if (locked || saving) return;
     setSaving(true);
     setSaved(false);
     setError(null);
-    const { data, error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/decision", {
-      params: { path: { inspection_id: id } },
-      headers: { "Idempotency-Key": idempotencyKey() },
-      body: { final_verdict: choice as "ACCEPT" | "ACCEPT_WITH_CLAIM" | "REJECT", reason: reason.trim() },
-    });
-    setSaving(false);
-    if (data) {
-      queryClient.setQueryData(["inspection", id], data);
-      setSaved(true);
-      setReason("");
-    } else setError(errorDetail(err, response.status));
+    try {
+      const { data, error: err, response } = await api.POST("/api/v1/inspections/{inspection_id}/decision", {
+        params: { path: { inspection_id: id } },
+        headers: { "Idempotency-Key": idempotencyKey() },
+        body: { final_verdict: choice as "ACCEPT" | "ACCEPT_WITH_CLAIM" | "REJECT", reason: reason.trim() },
+      });
+      if (data) {
+        queryClient.setQueryData(["inspection", id], data);
+        setSaved(true);
+        try {sessionStorage.removeItem(`threadeye.decision.${id}`);} catch { /* Optional draft storage. */ }
+      } else {
+        setError(errorDetail(err, response.status));
+        if (response.status === 409) await queryClient.invalidateQueries({queryKey: ["inspection", id]});
+      }
+    } catch {setError(t("verdict.saveError"));}
+    finally {setSaving(false);}
   }
+
   return (
     <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4" data-testid="decision">
       <h2 className="font-semibold">{t("verdict.decision")}</h2>
@@ -65,23 +88,27 @@ function DecisionPanel({ id, insp }: { id: string; insp: Inspection }) {
       <div className="flex flex-wrap gap-3">
         {["ACCEPT", "ACCEPT_WITH_CLAIM", "REJECT"].map((v) => (
           <label key={v} className="flex items-center gap-1 text-sm">
-            <input type="radio" name="decision" value={v} checked={choice === v} onChange={() => setChoice(v)} />
+            <input type="radio" name="decision" value={v} checked={(locked ? insp.final_verdict : choice) === v} disabled={locked || saving} onChange={() => edit(v, reason)} />
             {t(`verdicts.${v}`)}
           </label>
         ))}
       </div>
       <textarea
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
+        value={locked ? (insp.decision_reason ?? "") : reason}
+        disabled={locked || saving}
+        aria-label={t("verdict.reason")}
+        onChange={(e) => edit(choice, e.target.value)}
         placeholder={t("verdict.reason")}
         className={inputClass}
         rows={2}
       />
-      {override && <p className="text-xs font-semibold text-amber-800">{t("verdict.override")}</p>}
+      {!locked && override && <p className="text-xs font-semibold text-amber-800">{t("verdict.override")}</p>}
       {error && <p className="text-sm text-red-700">{error}</p>}
-      <Button onClick={() => void save()} disabled={saving || reason.trim().length < 3}>
-        {saving ? t("live.saving") : insp.final_verdict ? t("verdict.change") : t("verdict.decide")}
-      </Button>
+      {locked ? <p className="text-sm text-slate-500" data-testid="decision-locked">{t("verdict.locked")}</p> :
+        <Button onClick={() => void save()} disabled={saving || reason.trim().length < 3}>
+          {saving ? t("live.saving") : t("verdict.decide")}
+        </Button>}
+
     </section>
   );
 }
@@ -193,8 +220,11 @@ export default function VerdictPage() {
       )}
 
       {insp.system_verdict && hasPerm(me, "verdict.decide") && (
-        <DecisionPanel id={id} insp={insp} />
+        <DecisionPanel key={id} id={id} insp={insp} />
       )}
+
+      <MeasurementPanel inspection={insp}/>
+      <InspectionEvidenceTools inspection={insp} defects={real}/>
 
       {cells.length > 0 && (
         <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">

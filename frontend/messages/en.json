@@ -21,7 +21,8 @@
     "suppliers": "Mill scorecards",
     "audit": "Change ledger",
     "admin": "Admin",
-    "logout": "Log out"
+    "logout": "Log out",
+    "about": "About & provenance"
   },
   "login": {
     "title": "Log in",
@@ -179,7 +180,12 @@
     "continue": "Continue",
     "view": "View",
     "noDatasets": "No simulated roll is installed on this server (data/sample_roll).",
-    "readOnly": "You can view inspections. Running one needs the Inspector or QC Supervisor role."
+    "readOnly": "You can view inspections. Running one needs the Inspector or QC Supervisor role.",
+    "aborting": "Aborting…",
+    "abortConfirm": "Abort the unfinished inspection of {roll}? Its record and defects will be kept, and you can start a new inspection.",
+    "abortedNotice": "Inspection aborted. {roll} is ready to load for a new inspection.",
+    "abortError": "Could not abort the inspection: {detail}",
+    "abortNetworkError": "Could not reach the server. Check the connection and try again."
   },
   "live": {
     "outdatedBanner": "This inspection was started on the previous model, which has been replaced. It cannot continue: restart the roll on the new model (this one is aborted, its record is kept).",
@@ -287,6 +293,8 @@
     "roll": "Roll {code} · challan {challan} · {mill} → {buyer}",
     "close": "Close",
     "saved": "Saved.",
+    "locked": "This decision is recorded and locked. It cannot be changed.",
+    "saveError": "Could not save the decision. Check your connection and try again.",
     "change": "Change decision",
     "photos": "Defect photos",
     "photosHint": "In order along the roll. Click a photo for the reason and the points.",

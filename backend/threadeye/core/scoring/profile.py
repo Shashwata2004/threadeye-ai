@@ -82,7 +82,7 @@ def _check_bands(bands: tuple[Band, ...]) -> tuple[Band, ...]:
 
 
 class RuleProfile(_Model):
-    name: str = "Default 4-point"
+    name: str = Field(default="Default 4-point", min_length=1, max_length=128)
     length_bands_in: tuple[Band, ...] = ((3.0, 1), (6.0, 2), (9.0, 3), (None, 4))
     hole_bands_in: tuple[Band, ...] = ((1.0, 2), (None, 4))
     length_rounding_in: float = Field(0.01, gt=0)

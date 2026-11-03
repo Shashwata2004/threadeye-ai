@@ -18,6 +18,7 @@ from sqlalchemy.dialects.postgresql import insert
 from threadeye import __version__
 from threadeye.db.models import ComponentHeartbeat
 from threadeye.db.session import get_sessionmaker
+from threadeye.services import demo_archive, operations
 
 log = logging.getLogger("threadeye.worker")
 HEARTBEAT_SECONDS = 5.0
@@ -33,7 +34,7 @@ class Worker:
 
     def heartbeat(self) -> None:
         now = datetime.now(UTC)
-        details = {"version": __version__, "queue": "not used before M4"}
+        details = {"version": __version__, "queue": "verification, benchmark, clips"}
         stmt = insert(ComponentHeartbeat).values(component="worker", last_seen_at=now, details=details)
         stmt = stmt.on_conflict_do_update(
             index_elements=[ComponentHeartbeat.component],
@@ -50,6 +51,10 @@ class Worker:
         while not self._stop:
             try:
                 self.heartbeat()
+                demo_archive.scheduled()
+                operations.schedule_daily()
+                while not self._stop and operations.work_once():
+                    self.heartbeat()
             except Exception:
                 log.exception("heartbeat failed; retrying")
             deadline = time.monotonic() + HEARTBEAT_SECONDS

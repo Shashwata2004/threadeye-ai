@@ -24,6 +24,7 @@ const NAV: { href: string; key: string; perm: string | string[] }[] = [
   { href: "/suppliers", key: "suppliers", perm: "suppliers.scorecard" },
   { href: "/audit", key: "audit", perm: "audit.read" },
   { href: "/admin", key: "admin", perm: "users.manage" },
+  { href: "/about", key: "about", perm: "inspections.read" },
 ];
 // Every role may open these screens; each one shows view-only or sample data where the role lacks the permission.
 const OPEN_TO_ALL = new Set(["benchmark", "suppliers", "audit", "admin"]);

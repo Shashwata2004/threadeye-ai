@@ -166,7 +166,7 @@ def list_buyers(db: Session = Depends(get_db)) -> list[Buyer]:
 
 @router.get("/machines", response_model=list[MachineOut], dependencies=[Depends(require(Perm.MASTER_DATA_READ))])
 def list_machines(db: Session = Depends(get_db)) -> list[Machine]:
-    return list(db.scalars(select(Machine).order_by(Machine.code)))
+    return list(db.scalars(select(Machine).where(Machine.active.is_(True)).order_by(Machine.code)))
 
 
 @router.get(
@@ -181,8 +181,11 @@ def list_rule_profiles(buyer_id: uuid.UUID | None = None, db: Session = Depends(
 
 # ------------------------------------------------------------------------------------------- lots
 @router.get("/lots", response_model=list[LotOut], dependencies=[Depends(require(Perm.LOTS_READ))])
-def list_lots(db: Session = Depends(get_db)) -> list[LotOut]:
-    lots = db.scalars(select(Lot).order_by(Lot.created_at.desc()).limit(200))
+def list_lots(include_archived: bool = False, db: Session = Depends(get_db)) -> list[LotOut]:
+    query = select(Lot)
+    if not include_archived:
+        query = query.where(Lot.status != "archived")
+    lots = db.scalars(query.order_by(Lot.created_at.desc()).limit(200))
     return [_lot_out(db, lot) for lot in lots]
 
 

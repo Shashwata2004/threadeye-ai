@@ -1,0 +1,15 @@
+name: Demo health
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public demo health
+        env:
+          API_BASE: ${{ vars.THREADEYE_DEMO_API || 'https://threadeye-api.vercel.app' }}
+        run: curl --fail --silent --show-error --retry 2 --max-time 45 "$API_BASE/health"

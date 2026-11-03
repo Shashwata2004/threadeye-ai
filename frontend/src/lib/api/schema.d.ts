@@ -108,6 +108,369 @@ export interface paths {
         patch: operations["patch_user_api_v1_users__user_id__patch"];
         trace?: never;
     };
+    "/api/v1/admin/demo-archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Samples */
+        post: operations["archive_samples_api_v1_admin_demo_archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/demo-archive/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Archive Schedule */
+        get: operations["archive_schedule_api_v1_admin_demo_archive_schedule_get"];
+        /** Configure Archive */
+        put: operations["configure_archive_api_v1_admin_demo_archive_schedule_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/provider": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Select Provider */
+        put: operations["select_provider_api_v1_admin_provider_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/verification/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Schedules */
+        get: operations["schedules_api_v1_verification_schedules_get"];
+        /** Save Schedule */
+        put: operations["save_schedule_api_v1_verification_schedules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/verification/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verification History */
+        get: operations["verification_history_api_v1_verification_runs_get"];
+        put?: never;
+        /** Verify */
+        post: operations["verify_api_v1_verification_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/benchmark/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Benchmark History */
+        get: operations["benchmark_history_api_v1_benchmark_runs_get"];
+        put?: never;
+        /** Benchmark */
+        post: operations["benchmark_api_v1_benchmark_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard */
+        get: operations["dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/machines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Machines */
+        get: operations["machines_api_v1_admin_machines_get"];
+        put?: never;
+        /** Add Machine */
+        post: operations["add_machine_api_v1_admin_machines_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/machines/{machine_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit Machine */
+        patch: operations["edit_machine_api_v1_admin_machines__machine_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/rule-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profiles */
+        get: operations["profiles_api_v1_admin_rule_profiles_get"];
+        put?: never;
+        /** Save Profile */
+        post: operations["save_profile_api_v1_admin_rule_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/rule-profiles/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_api_v1_admin_rule_profiles_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/cutting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cutting */
+        get: operations["get_cutting_api_v1_inspections__inspection_id__cutting_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/cutting/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Select Cutting Policy */
+        put: operations["select_cutting_policy_api_v1_inspections__inspection_id__cutting_policy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/cutting/fabric.jpg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cutting Fabric */
+        get: operations["cutting_fabric_api_v1_inspections__inspection_id__cutting_fabric_jpg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/cutting/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Cutting */
+        post: operations["approve_cutting_api_v1_inspections__inspection_id__cutting_approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/cutting/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge Cutting */
+        post: operations["acknowledge_cutting_api_v1_inspections__inspection_id__cutting_acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/cutting.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cutting Pdf */
+        get: operations["cutting_pdf_api_v1_inspections__inspection_id__cutting_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/defects/{defect_id}/clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export Clip */
+        post: operations["export_clip_api_v1_inspections__inspection_id__defects__defect_id__clip_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/clips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Clips */
+        get: operations["list_clips_api_v1_inspections__inspection_id__clips_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/clips/{run_id}.mp4": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Clip */
+        get: operations["download_clip_api_v1_inspections__inspection_id__clips__run_id__mp4_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inspections/{inspection_id}/labels.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Labels */
+        get: operations["labels_api_v1_inspections__inspection_id__labels_zip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/status": {
         parameters: {
             query?: never;
@@ -812,7 +1175,7 @@ export interface paths {
         put?: never;
         /**
          * Decide
-         * @description Supervisor decision on the roll (required for BORDERLINE; any override needs a reason).
+         * @description Record and lock the supervisor decision. Exact retries are safe; a later change is rejected.
          */
         post: operations["decide_api_v1_inspections__inspection_id__decision_post"];
         delete?: never;
@@ -1140,6 +1503,19 @@ export interface components {
             /** Reason */
             reason: string | null;
         };
+        /** BorderlineBand */
+        BorderlineBand: {
+            /**
+             * Below
+             * @default 2
+             */
+            below: number;
+            /**
+             * Above
+             * @default 2
+             */
+            above: number;
+        };
         /** BuyerOut */
         BuyerOut: {
             /**
@@ -1154,6 +1530,18 @@ export interface components {
              * @default false
              */
             is_sample_data: boolean;
+        };
+        /** Calibration */
+        Calibration: {
+            /** Px Per Cm */
+            px_per_cm: number;
+            /** View Width Px */
+            view_width_px: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** Capture */
         Capture: {
@@ -1197,6 +1585,57 @@ export interface components {
         ConfirmPendingOut: {
             /** Confirmed */
             confirmed: string[];
+        };
+        /** ContinuousRule */
+        ContinuousRule: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Min Along In
+             * @default 36
+             */
+            min_along_in: number;
+            /**
+             * Points Per Yard
+             * @default 4
+             */
+            points_per_yard: number;
+            /**
+             * Classes Always
+             * @default [
+             *       "shade_bar"
+             *     ]
+             */
+            classes_always: string[];
+        };
+        /** CuttingPolicy */
+        CuttingPolicy: {
+            /**
+             * Min Points To Cut
+             * @default 2
+             */
+            min_points_to_cut: number;
+            /**
+             * Margin In
+             * @default 2
+             */
+            margin_in: number;
+            /**
+             * Min Piece Yd
+             * @default 1
+             */
+            min_piece_yd: number;
+        };
+        /** CuttingPolicyIn */
+        CuttingPolicyIn: {
+            /**
+             * Selection
+             * @enum {string}
+             */
+            selection: "buyer" | "all" | "two_plus" | "three_plus" | "four_plus";
         };
         /**
          * DatasetOut
@@ -1316,6 +1755,50 @@ export interface components {
             crop_url: string | null;
             /** Decided At */
             decided_at: string | null;
+        };
+        /** DemoScheduleIn */
+        DemoScheduleIn: {
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** EvaluationIn */
+        EvaluationIn: {
+            /** Dataset Ids */
+            dataset_ids: string[];
+            /**
+             * Provider Id
+             * @default simulated
+             * @enum {string}
+             */
+            provider_id: "simulated" | "local_model";
+            /**
+             * Preset
+             * @default realistic
+             * @enum {string}
+             */
+            preset: "perfect" | "realistic";
+            /**
+             * Seed
+             * @default 42
+             */
+            seed: number;
+            /** Machine Id */
+            machine_id?: string | null;
+            /**
+             * Min Recall
+             * @default 0.8
+             */
+            min_recall: number;
+            /**
+             * Max False Alarms
+             * @default 0
+             */
+            max_false_alarms: number;
+            /**
+             * Max Score Delta
+             * @default 2
+             */
+            max_score_delta: number;
         };
         /** EventEnvelope */
         EventEnvelope: {
@@ -1457,6 +1940,14 @@ export interface components {
         };
         /** InspectionSnapshot */
         InspectionSnapshot: {
+            /** Measured Length Yd */
+            measured_length_yd?: number | null;
+            /** Measured Width In */
+            measured_width_in?: number | null;
+            /** Measurement Checks */
+            measurement_checks?: {
+                [key: string]: unknown;
+            };
             /**
              * Id
              * Format: uuid
@@ -1553,6 +2044,19 @@ export interface components {
              * @default false
              */
             model_outdated: boolean;
+        };
+        /** LengthCheck */
+        LengthCheck: {
+            /**
+             * Tolerance Pct
+             * @default 0.5
+             */
+            tolerance_pct: number;
+            /**
+             * Tolerance Yd
+             * @default 0.25
+             */
+            tolerance_yd: number;
         };
         /** LengthIn */
         LengthIn: {
@@ -1689,6 +2193,35 @@ export interface components {
             /** Points Per 100 */
             points_per_100: number | null;
         };
+        /** LotRules */
+        LotRules: {
+            /**
+             * Min Sample Pct
+             * @default 10
+             */
+            min_sample_pct: number;
+            /**
+             * Min Sample Rolls
+             * @default 1
+             */
+            min_sample_rolls: number;
+            /**
+             * Hold If Fail Pct Over
+             * @default 20
+             */
+            hold_if_fail_pct_over: number;
+            /**
+             * Reject If Fail Pct Over
+             * @default 50
+             */
+            reject_if_fail_pct_over: number;
+            /**
+             * Borderline Counts As
+             * @default fail
+             * @enum {string}
+             */
+            borderline_counts_as: "fail" | "pass";
+        };
         /** LotRulesOut */
         LotRulesOut: {
             /** Min Sample Pct */
@@ -1726,6 +2259,37 @@ export interface components {
             /** Rolls */
             rolls: components["schemas"]["LotRollVerdict"][];
             decision: components["schemas"]["LotDecisionOut"] | null;
+        };
+        /** MachineDetail */
+        MachineDetail: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            calibration?: components["schemas"]["Calibration"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /** MachineIn */
+        MachineIn: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            calibration?: components["schemas"]["Calibration"] | null;
         };
         /** MachineOut */
         MachineOut: {
@@ -1907,15 +2471,64 @@ export interface components {
              */
             is_sample_data: boolean;
         };
-        /**
-         * NotImplementedOut
-         * @description Returned (HTTP 501) by contract-v0 endpoints that are not built yet.
-         */
-        NotImplementedOut: {
-            /** Detail */
-            detail: string;
-            /** Planned Milestone */
-            planned_milestone: string;
+        /** PreviewDefect */
+        PreviewDefect: {
+            /**
+             * Cls
+             * @default stain
+             */
+            cls: string;
+            /** Start Yd */
+            start_yd: number;
+            /** End Yd */
+            end_yd: number;
+            /**
+             * Across Start Cm
+             * @default 10
+             */
+            across_start_cm: number;
+            /**
+             * Across End Cm
+             * @default 11
+             */
+            across_end_cm: number;
+            /** Length In */
+            length_in: number;
+        };
+        /** PreviewIn */
+        PreviewIn: {
+            rules: components["schemas"]["RuleProfile"];
+            /** Length Yd */
+            length_yd: number;
+            /** Width In */
+            width_in: number;
+            /** Defects */
+            defects?: components["schemas"]["PreviewDefect"][];
+        };
+        /** ProfileIn */
+        ProfileIn: {
+            /** Buyer Id */
+            buyer_id?: string | null;
+            rules: components["schemas"]["RuleProfile"];
+        };
+        /** ProfileOut */
+        ProfileOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Buyer Id */
+            buyer_id: string | null;
+            /** Name */
+            name: string;
+            /** Version */
+            version: number;
+            /** Status */
+            status: string;
+            rules: components["schemas"]["RuleProfile"];
+            /** Rules Hash */
+            rules_hash: string;
         };
         /** PromoteIn */
         PromoteIn: {
@@ -1946,6 +2559,14 @@ export interface components {
             note: string;
             /** Active */
             active: boolean;
+        };
+        /** ProviderIn */
+        ProviderIn: {
+            /**
+             * Provider Id
+             * @enum {string}
+             */
+            provider_id: "simulated" | "local_model";
         };
         /** ProviderInfoOut */
         ProviderInfoOut: {
@@ -2081,6 +2702,150 @@ export interface components {
             /** Rolls */
             rolls: components["schemas"]["RollCreate"][];
         };
+        /** RuleProfile */
+        RuleProfile: {
+            /**
+             * Name
+             * @default Default 4-point
+             */
+            name: string;
+            /**
+             * Length Bands In
+             * @default [
+             *       [
+             *         3,
+             *         1
+             *       ],
+             *       [
+             *         6,
+             *         2
+             *       ],
+             *       [
+             *         9,
+             *         3
+             *       ],
+             *       [
+             *         null,
+             *         4
+             *       ]
+             *     ]
+             */
+            length_bands_in: [
+                number | null,
+                number
+            ][];
+            /**
+             * Hole Bands In
+             * @default [
+             *       [
+             *         1,
+             *         2
+             *       ],
+             *       [
+             *         null,
+             *         4
+             *       ]
+             *     ]
+             */
+            hole_bands_in: [
+                number | null,
+                number
+            ][];
+            /**
+             * Length Rounding In
+             * @default 0.01
+             */
+            length_rounding_in: number;
+            /**
+             * Max Points Per Yard
+             * @default 4
+             */
+            max_points_per_yard: number;
+            /**
+             * @default {
+             *       "enabled": true,
+             *       "min_along_in": 36,
+             *       "points_per_yard": 4,
+             *       "classes_always": [
+             *         "shade_bar"
+             *       ]
+             *     }
+             */
+            continuous: components["schemas"]["ContinuousRule"];
+            /**
+             * @default {
+             *       "enabled": true,
+             *       "distance_in": 1,
+             *       "rule": "entirely_within"
+             *     }
+             */
+            selvage_exclusion: components["schemas"]["SelvageRule"];
+            /**
+             * Threshold Per 100
+             * @default 40
+             */
+            threshold_per_100: number;
+            /**
+             * @default {
+             *       "below": 2,
+             *       "above": 2
+             *     }
+             */
+            borderline: components["schemas"]["BorderlineBand"];
+            /**
+             * Per100 Rounding
+             * @default 2
+             */
+            per100_rounding: number;
+            /**
+             * Width Basis
+             * @default declared
+             * @enum {string}
+             */
+            width_basis: "declared" | "measured" | "cuttable";
+            /**
+             * Length Basis
+             * @default inspected
+             * @enum {string}
+             */
+            length_basis: "inspected" | "declared";
+            /**
+             * @default {
+             *       "tolerance_pct": 0.5,
+             *       "tolerance_yd": 0.25
+             *     }
+             */
+            length_check: components["schemas"]["LengthCheck"];
+            /**
+             * @default {
+             *       "tolerance_in": 0.5
+             *     }
+             */
+            width_check: components["schemas"]["WidthCheck"];
+            /**
+             * @default {
+             *       "min_sample_pct": 10,
+             *       "min_sample_rolls": 1,
+             *       "hold_if_fail_pct_over": 20,
+             *       "reject_if_fail_pct_over": 50,
+             *       "borderline_counts_as": "fail"
+             *     }
+             */
+            lot: components["schemas"]["LotRules"];
+            /**
+             * @default {
+             *       "min_points_to_cut": 2,
+             *       "margin_in": 2,
+             *       "min_piece_yd": 1
+             *     }
+             */
+            cutting: components["schemas"]["CuttingPolicy"];
+            /**
+             * Report Title
+             * @default 4-point inspection report
+             */
+            report_title: string;
+        };
         /** RuleProfileSummary */
         RuleProfileSummary: {
             /**
@@ -2101,6 +2866,41 @@ export interface components {
             status: "draft" | "active" | "retired";
             /** Threshold Per 100 */
             threshold_per_100: number;
+        };
+        /** RunOut */
+        RunOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Status */
+            status: string;
+            /** Machine Id */
+            machine_id: string | null;
+            /** Inspection Id */
+            inspection_id: string | null;
+            /** Inputs */
+            inputs: {
+                [key: string]: unknown;
+            };
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Completed At */
+            completed_at: string | null;
         };
         /** SamplingPlanOut */
         SamplingPlanOut: {
@@ -2137,6 +2937,50 @@ export interface components {
             mill_recent_fail_rate: number | null;
             /** Mill Recent Rolls */
             mill_recent_rolls: number;
+        };
+        /** ScheduleIn */
+        ScheduleIn: {
+            /** Dataset Ids */
+            dataset_ids: string[];
+            /**
+             * Provider Id
+             * @default simulated
+             * @enum {string}
+             */
+            provider_id: "simulated" | "local_model";
+            /**
+             * Preset
+             * @default realistic
+             * @enum {string}
+             */
+            preset: "perfect" | "realistic";
+            /**
+             * Seed
+             * @default 42
+             */
+            seed: number;
+            /** Machine Id */
+            machine_id?: string | null;
+            /**
+             * Min Recall
+             * @default 0.8
+             */
+            min_recall: number;
+            /**
+             * Max False Alarms
+             * @default 0
+             */
+            max_false_alarms: number;
+            /**
+             * Max Score Delta
+             * @default 2
+             */
+            max_score_delta: number;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
         };
         /** ScoreSummary */
         ScoreSummary: {
@@ -2249,6 +3093,25 @@ export interface components {
             cls: string;
             /** Share */
             share: number;
+        };
+        /** SelvageRule */
+        SelvageRule: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Distance In
+             * @default 1
+             */
+            distance_in: number;
+            /**
+             * Rule
+             * @default entirely_within
+             * @enum {string}
+             */
+            rule: "entirely_within" | "center_within";
         };
         /** SourceResultOut */
         SourceResultOut: {
@@ -2432,6 +3295,14 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WidthCheck */
+        WidthCheck: {
+            /**
+             * Tolerance In
+             * @default 0.5
+             */
+            tolerance_in: number;
         };
         /** WorkerStatus */
         WorkerStatus: {
@@ -2671,6 +3542,830 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_samples_api_v1_admin_demo_archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
+    archive_schedule_api_v1_admin_demo_archive_schedule_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    configure_archive_api_v1_admin_demo_archive_schedule_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoScheduleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_provider_api_v1_admin_provider_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    schedules_api_v1_verification_schedules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    save_schedule_api_v1_verification_schedules_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verification_history_api_v1_verification_runs_get: {
+        parameters: {
+            query?: {
+                machine_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_api_v1_verification_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    benchmark_history_api_v1_benchmark_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    benchmark_api_v1_benchmark_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    machines_api_v1_admin_machines_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MachineDetail"][];
+                };
+            };
+        };
+    };
+    add_machine_api_v1_admin_machines_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MachineIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MachineDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_machine_api_v1_admin_machines__machine_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                machine_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MachineIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MachineDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profiles_api_v1_admin_rule_profiles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"][];
+                };
+            };
+        };
+    };
+    save_profile_api_v1_admin_rule_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_admin_rule_profiles_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cutting_api_v1_inspections__inspection_id__cutting_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_cutting_policy_api_v1_inspections__inspection_id__cutting_policy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CuttingPolicyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cutting_fabric_api_v1_inspections__inspection_id__cutting_fabric_jpg_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_cutting_api_v1_inspections__inspection_id__cutting_approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_cutting_api_v1_inspections__inspection_id__cutting_acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cutting_pdf_api_v1_inspections__inspection_id__cutting_pdf_get: {
+        parameters: {
+            query?: {
+                lang?: string;
+            };
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_clip_api_v1_inspections__inspection_id__defects__defect_id__clip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+                defect_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_clips_api_v1_inspections__inspection_id__clips_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_clip_api_v1_inspections__inspection_id__clips__run_id__mp4_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    labels_api_v1_inspections__inspection_id__labels_zip_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2931,7 +4626,9 @@ export interface operations {
     };
     list_lots_api_v1_lots_get: {
         parameters: {
-            query?: never;
+            query?: {
+                include_archived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2945,6 +4642,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LotOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3387,6 +5093,7 @@ export interface operations {
             query?: {
                 roll_id?: string | null;
                 open_only?: boolean;
+                include_archived?: boolean;
                 limit?: number;
             };
             header?: never;
@@ -3867,7 +5574,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -3877,15 +5586,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Contract v0: not implemented yet */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedOut"];
                 };
             };
         };

@@ -1,539 +1,200 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMe, useProviders, useMasterData } from "@/lib/api/hooks";
 import { hasPerm, type Role } from "@/lib/api/client";
-import { useMe } from "@/lib/api/hooks";
-import {
-  Card,
-  CardTitle,
-  Field,
-  PageHeader,
-  Pill,
-  ViewOnlyNote,
-  ghostBtn,
-  inputCls,
-  primaryBtn,
-  screenRoot,
-  useBi,
-} from "@/components/screenKit";
-
-// Plant settings: no data yet (the M4 admin endpoints fill the lists below). Edits stay in this tab.
-type TabId = "users" | "machines" | "profiles" | "detectors";
-
-interface UserRow {
-  name: string;
-  username: string;
-  role: Role;
-  shift: "A" | "B" | "C" | "General";
-  lang: "en" | "bn";
-  digits: "latin" | "bangla";
-  active: boolean;
-}
-
-// Filled from the users endpoint (M4).
-const USERS: UserRow[] = [];
+import { request, type User, type MachineDetail, type Profile, type Rules } from "@/lib/api/operations";
+import { Card, CardTitle, Field, PageHeader, inputCls, primaryBtn, ghostBtn, screenRoot, useBi } from "@/components/screenKit";
 
 const ROLES: Role[] = ["inspector", "qc_supervisor", "store_incharge", "cutting_master", "merchandiser", "management", "admin"];
 
-interface MachineRow {
-  code: string;
-  nameEn: string;
-  nameBn: string;
-  pxPerCm: number;
-  viewPx: number;
-  source: string;
-  calibrated: string;
-  status: "online" | "calibration_due";
-}
-
-// Filled from the machines endpoint (M4).
-const MACHINES: MachineRow[] = [];
-
-interface Profile {
-  id: string;
-  name: string;
-  buyerEn: string;
-  buyerBn: string;
-  lengthBands: [number, number][]; // [max inches, points]; the last band is "longer than that"
-  holeBands: [number, number][];
-  continuousIn: number;
-  selvageIn: number;
-  failPts: number;
-}
-
-// The system's default 4-point rules (backend default rule profile); buyer profiles come from the
-// rule-profiles endpoint (M4) and are added to this list.
-const PROFILES: Profile[] = [
-  {
-    id: "default",
-    name: "Default 4-point profile",
-    buyerEn: "Any buyer without its own profile",
-    buyerBn: "নিজস্ব প্রোফাইল নেই এমন যেকোনো বায়ার",
-    lengthBands: [[3, 1], [6, 2], [9, 3], [Infinity, 4]],
-    holeBands: [[1, 2], [Infinity, 4]],
-    continuousIn: 36,
-    selvageIn: 1.0,
-    failPts: 40,
-  },
-];
-
-const DETECTORS = [
-  {
-    nameEn: "Simulated Detector (rad-02)",
-    nameBn: "সিমুলেটেড ডিটেক্টর (rad-02)",
-    descEn: "Replays the answer key with realistic mistakes. Used for demos and the benchmark.",
-    descBn: "বাস্তবসম্মত ভুলসহ উত্তর-চাবি চালায়। ডেমো ও বেঞ্চমার্কে ব্যবহৃত।",
-    state: "active" as const,
-    details: [["Mode", "—"], ["Seed", "—"], ["Latency", "—"]],
-  },
-  {
-    nameEn: "Local Model (ONNX, CPU)",
-    nameBn: "লোকাল মডেল (ONNX, CPU)",
-    descEn: "Runs on the factory edge box with no internet. Model file not installed on this server.",
-    descBn: "ইন্টারনেট ছাড়া ফ্যাক্টরির এজ বক্সে চলে। এই সার্ভারে মডেল ফাইল নেই।",
-    state: "ready" as const,
-    details: [["Runtime", "—"], ["Device", "CPU"], ["Model", "—"]],
-  },
-  {
-    nameEn: "External API",
-    nameBn: "এক্সটার্নাল API",
-    descEn: "Sends frames to a hosted vision API. Needs an endpoint and key in the server config.",
-    descBn: "হোস্টেড ভিশন API-তে ফ্রেম পাঠায়। সার্ভার কনফিগে এন্ডপয়েন্ট ও কী লাগবে।",
-    state: "stub" as const,
-    details: [["Endpoint", "—"], ["Key", "—"], ["Timeout", "—"]],
-  },
-];
-
-type TestDefect = { kind: "length" | "hole"; inches: number; selvage: boolean };
-
-function bandPoints(bands: [number, number][], inches: number): number {
-  return (bands.find(([max]) => inches <= max) ?? bands[bands.length - 1])[1];
-}
-
-function defectPoints(p: Profile, d: TestDefect): { pts: number; noteEn: string; noteBn: string } {
-  if (d.selvage) return { pts: 0, noteEn: `inside ${p.selvageIn}" selvage zone`, noteBn: `${p.selvageIn}" সেলভেজ এলাকার ভিতরে` };
-  if (d.kind === "hole") return { pts: bandPoints(p.holeBands, d.inches), noteEn: "hole band", noteBn: "ছিদ্রের ধাপ" };
-  if (d.inches >= p.continuousIn) {
-    const yards = Math.ceil(d.inches / 36);
-    return { pts: 4 * yards, noteEn: `continuous: 4 pts × ${yards} yd`, noteBn: `চলমান: ৪ পয়েন্ট × ${yards} গজ` };
-  }
-  return { pts: bandPoints(p.lengthBands, d.inches), noteEn: "length band", noteBn: "দৈর্ঘ্যের ধাপ" };
-}
-
-function bandLabel(bands: [number, number][]) {
-  return bands.map(([max, pts], i) => (max === Infinity ? `>${bands[i - 1][0]}" → ${pts}` : `≤${max}" → ${pts}`));
-}
-
 export default function AdminPage() {
-  const t = useTranslations();
   const bi = useBi();
-  const { data: me } = useMe();
-  const canManage = hasPerm(me, "users.manage");
+  const {data: me} = useMe();
+  const canUsers = hasPerm(me, "users.manage");
+  const canMachines = hasPerm(me, "machines.manage");
+  const canProfiles = hasPerm(me, "profiles.write");
+  const client = useQueryClient();
+  const [tab, setTab] = useState("users");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const users = useQuery({queryKey: ["admin-users"], enabled: canUsers,
+    queryFn: () => request<User[]>("/api/v1/users")});
+  const machines = useQuery({queryKey: ["admin-machines"], enabled: canMachines,
+    queryFn: () => request<MachineDetail[]>("/api/v1/admin/machines")});
+  const profiles = useQuery({queryKey: ["admin-profiles"], enabled: hasPerm(me, "profiles.read"),
+    queryFn: () => request<Profile[]>("/api/v1/admin/rule-profiles")});
+  const {buyers} = useMasterData();
+  const {data: providers} = useProviders();
+  const archiveSchedule = useQuery({queryKey: ["demo-archive-schedule"], enabled: hasPerm(me, "settings.manage"),
+    queryFn: () => request<{enabled: boolean; start_date?: string}>("/api/v1/admin/demo-archive/schedule")});
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Role>("inspector");
+  const [machineId, setMachineId] = useState("");
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [active, setActive] = useState(true);
+  const [px, setPx] = useState("");
+  const [viewPx, setViewPx] = useState("");
+  const [profileId, setProfileId] = useState("");
+  const [rulesText, setRulesText] = useState("");
+  const [buyer, setBuyer] = useState("");
+  const [length, setLength] = useState(100);
+  const [width, setWidth] = useState(60);
+  const [defectLength, setDefectLength] = useState(4);
+  const [preview, setPreview] = useState<{points: number; per_100: number; verdict: string; explanation: string[]}|null>(null);
 
-  const [tab, setTab] = useState<TabId>("users");
-  const [recalibrating, setRecalibrating] = useState<Set<string>>(new Set());
-  const [users, setUsers] = useState<UserRow[]>(USERS);
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState<UserRow>({ name: "", username: "", role: "inspector", shift: "A", lang: "bn", digits: "bangla", active: true });
-
-  const [profileId, setProfileId] = useState("default");
-  const profile = PROFILES.find((p) => p.id === profileId) ?? PROFILES[0];
-  const [defects, setDefects] = useState<TestDefect[]>([
-    { kind: "length", inches: 2.5, selvage: false },
-    { kind: "length", inches: 7, selvage: false },
-    { kind: "hole", inches: 0.5, selvage: false },
-  ]);
-  const [rollYd, setRollYd] = useState(100);
-  const [widthIn, setWidthIn] = useState(58);
-
-  const scored = defects.map((d) => ({ ...d, ...defectPoints(profile, d) }));
-  const totalPts = scored.reduce((s, d) => s + d.pts, 0);
-  const per100 = rollYd > 0 && widthIn > 0 ? (totalPts * 3600) / (rollYd * widthIn) : 0;
-  const passes = per100 <= profile.failPts;
-
-  const tabs: { id: TabId; label: string }[] = [
-    { id: "users", label: bi("Users & permissions", "ব্যবহারকারী ও অনুমতি") },
-    { id: "machines", label: bi("Inspection machines", "ইন্সপেকশন মেশিন") },
-    { id: "profiles", label: bi("Buyer rule profiles", "বায়ার রুল প্রোফাইল") },
-    { id: "detectors", label: bi("Detector settings", "ডিটেক্টর সেটিংস") },
-  ];
-
-  function addUser() {
-    if (!draft.name.trim() || !draft.username.trim()) return;
-    setUsers((u) => [...u, { ...draft, name: draft.name.trim(), username: draft.username.trim() }]);
-    setDraft({ name: "", username: "", role: "inspector", shift: "A", lang: "bn", digits: "bangla", active: true });
-    setAdding(false);
+  async function action(work: () => Promise<unknown>, persist = true) {
+    setBusy(true); setError(""); setNotice("");
+    try { await work(); setNotice(persist ? bi("Saved on the server.", "সার্ভারে সংরক্ষিত হয়েছে।") : bi("Preview computed.", "সম্ভাব্য ফল গণনা হয়েছে।")); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
   }
-
-  return (
-    <div className={`${screenRoot} space-y-4`}>
-      <PageHeader title={t("nav.admin")} subtitle={t("placeholder.admin")} sample={false} />
-
-      {!canManage && (
-        <ViewOnlyNote>
-          {bi(
-            "View only: you can see how the plant is set up, but only an admin can change it.",
-            "শুধু দেখার জন্য: প্ল্যান্টের সেটআপ দেখতে পারবেন, কিন্তু বদলাতে পারবেন শুধু অ্যাডমিন।",
-          )}
-        </ViewOnlyNote>
-      )}
-
-      <div role="tablist" aria-label={t("nav.admin")} className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        {tabs.map((x) => (
-          <button
-            key={x.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === x.id}
-            onClick={() => setTab(x.id)}
-            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold transition ${
-              tab === x.id ? "border-brand-teal text-brand-navy" : "border-transparent text-slate-500 hover:text-brand-navy"
-            }`}
-          >
-            {x.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "users" && (
-        <Card>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <CardTitle hint={bi(`${users.filter((u) => u.active).length} active accounts`, `${users.filter((u) => u.active).length}টি সক্রিয় অ্যাকাউন্ট`)}>
-              {bi("Accounts", "অ্যাকাউন্ট")}
-            </CardTitle>
-            <button type="button" className={primaryBtn} disabled={!canManage || adding} onClick={() => setAdding(true)}>
-              + {bi("Add user", "ব্যবহারকারী যোগ করুন")}
-            </button>
-          </div>
-
-          {adding && (
-            <div className="mb-4 grid grid-cols-1 gap-3 rounded-md border border-teal-500/30 bg-teal-500/5 p-3 sm:grid-cols-3 lg:grid-cols-6 lg:items-end">
-              <Field label={bi("Full name", "পূর্ণ নাম")}>
-                <input className={inputCls} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} autoFocus />
-              </Field>
-              <Field label={bi("Username", "ইউজারনেম")}>
-                <input className={`${inputCls} font-mono`} value={draft.username} onChange={(e) => setDraft({ ...draft, username: e.target.value })} />
-              </Field>
-              <Field label={bi("Role", "ভূমিকা")}>
-                <select className={inputCls} value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as Role })}>
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {t(`roles.${r}`)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={bi("Shift", "শিফট")}>
-                <select className={inputCls} value={draft.shift} onChange={(e) => setDraft({ ...draft, shift: e.target.value as UserRow["shift"] })}>
-                  {["A", "B", "C", "General"].map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={bi("Language", "ভাষা")}>
-                <select
-                  className={inputCls}
-                  value={draft.lang}
-                  onChange={(e) => {
-                    const lang = e.target.value as "en" | "bn";
-                    setDraft({ ...draft, lang, digits: lang === "bn" ? "bangla" : "latin" });
-                  }}
-                >
-                  <option value="bn">বাংলা (bn)</option>
-                  <option value="en">English (en)</option>
-                </select>
-              </Field>
-              <div className="flex gap-2">
-                <button type="button" className={primaryBtn} onClick={addUser} disabled={!draft.name.trim() || !draft.username.trim()}>
-                  {bi("Save", "সংরক্ষণ")}
-                </button>
-                <button type="button" className={ghostBtn} onClick={() => setAdding(false)}>
-                  {bi("Cancel", "বাতিল")}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-left text-slate-700">
-                <tr>
-                  <th className="px-3 py-2">{bi("Name", "নাম")}</th>
-                  <th className="px-3 py-2">{bi("Username", "ইউজারনেম")}</th>
-                  <th className="px-3 py-2">{bi("Role", "ভূমিকা")}</th>
-                  <th className="px-3 py-2">{bi("Shift", "শিফট")}</th>
-                  <th className="px-3 py-2">{bi("UI language", "ভাষা")}</th>
-                  <th className="px-3 py-2">{bi("Digits", "অঙ্ক")}</th>
-                  <th className="px-3 py-2">{bi("Status", "অবস্থা")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!users.length && (
-                  <tr>
-                    <td colSpan={7} className="px-3 py-4 text-center text-sm text-slate-500">
-                      {bi("No accounts loaded yet.", "এখনো কোনো অ্যাকাউন্ট লোড হয়নি।")}
-                    </td>
-                  </tr>
-                )}
-                {users.map((u, i) => (
-                  <tr key={u.username} className="border-t border-slate-100">
-                    <td className="px-3 py-2 whitespace-nowrap font-medium text-slate-800">{u.name}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-slate-600">{u.username}</td>
-                    <td className="px-3 py-2">
-                      <Pill tone={u.role === "admin" ? "navy" : u.role === "inspector" ? "amber" : "teal"}>{t(`roles.${u.role}`)}</Pill>
-                    </td>
-                    <td className="px-3 py-2 font-mono">{u.shift}</td>
-                    <td className="px-3 py-2 font-mono">{u.lang}</td>
-                    <td className="px-3 py-2">{u.digits === "bangla" ? bi("Bangla (০১২)", "বাংলা (০১২)") : bi("Latin (012)", "ল্যাটিন (012)")}</td>
-                    <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        disabled={!canManage || u.username === me?.username}
-                        onClick={() => setUsers((list) => list.map((x, j) => (j === i ? { ...x, active: !x.active } : x)))}
-                        className="disabled:cursor-not-allowed"
-                        title={canManage ? bi("Click to switch", "বদলাতে ক্লিক করুন") : undefined}
-                      >
-                        {u.active ? <Pill tone="emerald">{bi("Active", "সক্রিয়")}</Pill> : <Pill tone="slate">{bi("Disabled", "নিষ্ক্রিয়")}</Pill>}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      {tab === "machines" && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {!MACHINES.length && (
-            <Card>
-              <p className="text-sm text-slate-500">{bi("No machines loaded yet.", "এখনো কোনো মেশিন লোড হয়নি।")}</p>
-            </Card>
-          )}
-          {MACHINES.map((m) => (
-            <Card key={m.code}>
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-mono text-xs text-slate-500">{m.code}</p>
-                  <h2 className="text-base font-semibold text-brand-navy">{bi(m.nameEn, m.nameBn)}</h2>
-                </div>
-                {m.status === "online" ? (
-                  <Pill tone="emerald">● {bi("Online", "চালু")}</Pill>
-                ) : (
-                  <Pill tone="amber">{bi("Calibration due", "ক্যালিব্রেশন বাকি")}</Pill>
-                )}
-              </div>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <dt className="text-slate-500">{bi("Pixels per cm", "প্রতি সেমি-তে পিক্সেল")}</dt>
-                <dd className="font-mono text-slate-800">{m.pxPerCm.toFixed(1)}</dd>
-                <dt className="text-slate-500">{bi("View width", "দৃশ্যের প্রস্থ")}</dt>
-                <dd className="font-mono text-slate-800">{m.viewPx} px ({(m.viewPx / m.pxPerCm).toFixed(1)} cm)</dd>
-                <dt className="text-slate-500">{bi("Default source", "ডিফল্ট উৎস")}</dt>
-                <dd className="font-mono text-xs text-slate-800">{m.source}</dd>
-                <dt className="text-slate-500">{bi("Last calibrated", "সর্বশেষ ক্যালিব্রেশন")}</dt>
-                <dd className="font-mono text-slate-800">{m.calibrated}</dd>
-              </dl>
-              <div className="mt-4 flex items-center gap-2">
-                {recalibrating.has(m.code) ? (
-                  <Pill tone="teal">✓ {bi("Recalibration requested", "পুনঃক্যালিব্রেশনের অনুরোধ হয়েছে")}</Pill>
-                ) : (
-                  <button
-                    type="button"
-                    className={ghostBtn}
-                    disabled={!canManage}
-                    onClick={() => setRecalibrating((s) => new Set(s).add(m.code))}
-                  >
-                    {bi("Recalibrate", "পুনরায় ক্যালিব্রেট")}
-                  </button>
-                )}
-              </div>
-            </Card>
-          ))}
+  async function addUser(e: FormEvent) {
+    e.preventDefault();
+    await action(async () => {
+      await request("/api/v1/users", {username, display_name: displayName, role, password});
+      setPassword(""); setUsername(""); setDisplayName("");
+      await client.invalidateQueries({queryKey: ["admin-users"]});
+    });
+  }
+  async function saveMachine(e: FormEvent) {
+    e.preventDefault();
+    await action(async () => {
+      await request(`/api/v1/admin/machines${machineId ? `/${machineId}` : ""}`, {code, name, active,
+        calibration: px && viewPx ? {px_per_cm: +px, view_width_px: +viewPx, note: ""} : null}, machineId ? "PATCH" : "POST");
+      await client.invalidateQueries({queryKey: ["admin-machines"]});
+      await client.invalidateQueries({queryKey: ["machines"]});
+    });
+  }
+  function selectProfile(id: string) {
+    setProfileId(id); setPreview(null);
+    const profile = profiles.data?.find((p) => p.id === id);
+    if (profile) { setRulesText(JSON.stringify(profile.rules, null, 2)); setBuyer(profile.buyer_id ?? ""); }
+  }
+  const current = profiles.data?.find((p) => p.id === profileId);
+  let parsedRules: Rules | null = null;
+  try { parsedRules = JSON.parse(rulesText) as Rules; } catch { /* Keep invalid edits visible for correction. */ }
+  function changeRule(field: keyof Rules, value: string | number) {
+    if (parsedRules) setRulesText(JSON.stringify({...parsedRules, [field]: value}, null, 2));
+  }
+  return <div className={`${screenRoot} space-y-4`}>
+    <PageHeader title={bi("Administration", "অ্যাডমিন")} sample={false}
+      subtitle={bi("Server-backed users, machines and versioned buyer rules.", "ব্যবহারকারী, মেশিন ও বায়ারের নিয়ম সার্ভারে সংরক্ষণ করুন।")}/>
+    <nav className="flex flex-wrap gap-2">{[
+      ["users", bi("Users", "ব্যবহারকারী")], ["machines", bi("Machines", "মেশিন")],
+      ["profiles", bi("Buyer rules", "বায়ারের নিয়ম")], ["detectors", bi("Detectors", "শনাক্তকারী")],
+      ["sample", bi("Sample data", "নমুনা তথ্য")],
+    ].map(([id, label]) => <button key={id} className={tab === id ? primaryBtn : ghostBtn} onClick={() => setTab(id)}>{label}</button>)}</nav>
+    {error && <p role="alert" className="text-red-600">{error}</p>}
+    {notice && <p role="status" className="text-emerald-600">{notice}</p>}
+    {(users.isError || machines.isError || profiles.isError) && <p role="alert">{bi("Some records could not be loaded.", "কিছু তথ্য আনা যায়নি।")}</p>}
+    {tab === "users" && <Card><CardTitle>{bi("Accounts", "অ্যাকাউন্ট")}</CardTitle>
+      {canUsers ? <>
+        <form onSubmit={addUser} className="mb-5 grid gap-3 sm:grid-cols-2">
+          <Field label={bi("Username", "ইউজারনেম")}><input required minLength={3} pattern="[a-z0-9_.-]+" className={inputCls} value={username} onChange={(e) => setUsername(e.target.value)}/></Field>
+          <Field label={bi("Display name", "নাম")}><input required className={inputCls} value={displayName} onChange={(e) => setDisplayName(e.target.value)}/></Field>
+          <Field label={bi("Initial password (10+ characters)", "প্রথম পাসওয়ার্ড (১০+ অক্ষর)")}><input required type="password" autoComplete="new-password" minLength={10} className={inputCls} value={password} onChange={(e) => setPassword(e.target.value)}/></Field>
+          <Field label={bi("Role", "ভূমিকা")}><select className={inputCls} value={role} onChange={(e) => setRole(e.target.value as Role)}>{ROLES.map((r) => <option key={r}>{r}</option>)}</select></Field>
+          <button disabled={busy} className={primaryBtn}>{bi("Create account", "অ্যাকাউন্ট তৈরি")}</button>
+        </form>
+        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>{bi("User", "ব্যবহারকারী")}</th><th>{bi("Role", "ভূমিকা")}</th><th>{bi("Status", "অবস্থা")}</th></tr></thead><tbody>
+          {users.data?.map((u) => <tr key={u.id} className="border-t border-slate-300"><td className="py-3">{u.display_name} · {u.username}</td><td>
+            <select aria-label={`${u.username} ${bi("role", "ভূমিকা")}`} className={inputCls} value={u.role} disabled={busy || u.id === me?.id}
+              onChange={(e) => void action(async () => {await request(`/api/v1/users/${u.id}`, {role: e.target.value}, "PATCH"); await users.refetch();})}>
+              {ROLES.map((r) => <option key={r}>{r}</option>)}</select></td><td><button disabled={busy || u.id === me?.id} className={ghostBtn}
+              onClick={() => void action(async () => {await request(`/api/v1/users/${u.id}`, {active: !u.active}, "PATCH"); await users.refetch();})}>
+              {u.active ? bi("Active · disable", "সক্রিয় · বন্ধ করুন") : bi("Disabled · enable", "বন্ধ · চালু করুন")}</button></td></tr>)}
+        </tbody></table></div>
+      </> : <p>{bi("User management permission is required.", "ব্যবহারকারী পরিচালনার অনুমতি প্রয়োজন।")}</p>}
+    </Card>}
+    {tab === "machines" && <Card><CardTitle>{bi("Machines and calibration", "মেশিন ও ক্যালিব্রেশন")}</CardTitle>
+      {canMachines ? <>
+        <select aria-label={bi("Edit machine", "মেশিন সম্পাদনা")} className={`${inputCls} mb-4`} value={machineId} onChange={(e) => {
+          const m = machines.data?.find((x) => x.id === e.target.value); setMachineId(e.target.value);
+          setCode(m?.code ?? ""); setName(m?.name ?? ""); setActive(m?.active ?? true);
+          setPx(m?.calibration?.px_per_cm.toString() ?? ""); setViewPx(m?.calibration?.view_width_px.toString() ?? "");
+        }}><option value="">{bi("New machine", "নতুন মেশিন")}</option>{machines.data?.map((m) => <option key={m.id} value={m.id}>{m.code} · {m.name}</option>)}</select>
+        <form onSubmit={saveMachine} className="grid gap-3 sm:grid-cols-2">
+          <Field label={bi("Code", "কোড")}><input required pattern="[A-Za-z0-9_-]+" className={inputCls} value={code} onChange={(e) => setCode(e.target.value)}/></Field>
+          <Field label={bi("Name", "নাম")}><input required className={inputCls} value={name} onChange={(e) => setName(e.target.value)}/></Field>
+          <Field label={bi("Measured pixels / cm (optional)", "মাপা পিক্সেল / সেমি (ঐচ্ছিক)")}><input type="number" min={0.001} step="any" required={!!viewPx} className={inputCls} value={px} onChange={(e) => setPx(e.target.value)}/></Field>
+          <Field label={bi("View width in pixels", "দৃশ্যের প্রস্থ পিক্সেলে")}><input type="number" min={1} max={16384} required={!!px} className={inputCls} value={viewPx} onChange={(e) => setViewPx(e.target.value)}/></Field>
+          <label><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)}/> {bi("Active", "সক্রিয়")}</label>
+          <button disabled={busy} className={primaryBtn}>{bi("Save machine", "মেশিন সংরক্ষণ")}</button>
+        </form>
+        <p className="mt-3 text-sm text-slate-500">{bi("Calibration is recorded for the machine. Simulated video retains its own known geometry.", "ক্যালিব্রেশন মেশিনের তথ্য হিসেবে থাকবে। সিমুলেটেড ভিডিওর নিজস্ব মাপ অপরিবর্তিত থাকে।")}</p>
+      </> : <p>{bi("Machine management permission is required.", "মেশিন পরিচালনার অনুমতি প্রয়োজন।")}</p>}
+    </Card>}
+    {tab === "profiles" && <Card><CardTitle>{bi("Versioned buyer rules and preview", "বায়ারের নিয়মের সংস্করণ ও প্রিভিউ")}</CardTitle>
+      <select className={`${inputCls} mb-3`} aria-label={bi("Rule profile", "রুল প্রোফাইল")} value={profileId} onChange={(e) => selectProfile(e.target.value)}>
+        <option value="">{bi("Select a profile", "প্রোফাইল বাছুন")}</option>{profiles.data?.map((p) => <option key={p.id} value={p.id}>{p.name} · v{p.version} · {p.status}</option>)}
+      </select>
+      {current && <div className="space-y-3">
+        {parsedRules && <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={bi("Profile name", "প্রোফাইলের নাম")}><input className={inputCls} disabled={!canProfiles} value={parsedRules.name ?? ""}
+            onChange={(e) => changeRule("name", e.target.value)}/></Field>
+          <Field label={bi("Fail threshold / 100 sq yd", "প্রতি ১০০ বর্গগজে ফেল সীমা")}><input type="number" min={0.01} step="any" className={inputCls}
+            disabled={!canProfiles} value={parsedRules.threshold_per_100 ?? 40} onChange={(e) => changeRule("threshold_per_100", +e.target.value)}/></Field>
+          <Field label={bi("Width basis", "প্রস্থের ভিত্তি")}><select disabled={!canProfiles} className={inputCls} value={parsedRules.width_basis ?? "declared"}
+            onChange={(e) => changeRule("width_basis", e.target.value)}><option value="declared">{bi("Declared", "ঘোষিত")}</option>
+            <option value="measured">{bi("Measured", "মাপা")}</option><option value="cuttable">{bi("Cuttable (excluding edges)", "কাটার উপযোগী (কিনারা বাদ)")}</option></select></Field>
+          <Field label={bi("Length basis", "দৈর্ঘ্যের ভিত্তি")}><select disabled={!canProfiles} className={inputCls} value={parsedRules.length_basis ?? "inspected"}
+            onChange={(e) => changeRule("length_basis", e.target.value)}><option value="inspected">{bi("Inspected", "পরীক্ষিত")}</option>
+            <option value="declared">{bi("Source / recorded length", "উৎস / সংরক্ষিত দৈর্ঘ্য")}</option></select></Field>
+        </div>}
+        <Field label={bi("Buyer", "বায়ার")}><select className={inputCls} disabled={!canProfiles} value={buyer} onChange={(e) => setBuyer(e.target.value)}>
+          <option value="">{bi("Any buyer", "সব বায়ার")}</option>{buyers.data?.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
+        <Field label={bi("Rules (validated JSON)", "নিয়ম (যাচাইকৃত JSON)")}><textarea className={`${inputCls} font-mono`} rows={18} readOnly={!canProfiles} value={rulesText} onChange={(e) => setRulesText(e.target.value)}/></Field>
+        <p className="text-sm text-slate-500">{bi("Saving creates a new version. Existing lots keep their original profile. Change the name to create a separate profile.", "সংরক্ষণে নতুন সংস্করণ তৈরি হবে। পুরোনো চালানে আগের নিয়ম থাকবে। আলাদা প্রোফাইল তৈরি করতে নাম বদলান।")}</p>
+        {canProfiles && <button disabled={busy} className={primaryBtn} onClick={() => void action(async () => {
+          await request("/api/v1/admin/rule-profiles", {buyer_id: buyer || null, rules: JSON.parse(rulesText) as Rules});
+          await profiles.refetch(); await client.invalidateQueries({queryKey: ["rule-profiles"]});
+        })}>{bi("Save as new version", "নতুন সংস্করণ সংরক্ষণ")}</button>}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label={bi("Roll length (yd)", "রোলের দৈর্ঘ্য (গজ)")}><input type="number" min={1} className={inputCls} value={length} onChange={(e) => setLength(+e.target.value)}/></Field>
+          <Field label={bi("Width (in)", "প্রস্থ (ইঞ্চি)")}><input type="number" min={1} className={inputCls} value={width} onChange={(e) => setWidth(+e.target.value)}/></Field>
+          <Field label={bi("Test stain size (in)", "পরীক্ষার দাগের মাপ (ইঞ্চি)")}><input type="number" min={0.01} step="any" className={inputCls} value={defectLength} onChange={(e) => setDefectLength(+e.target.value)}/></Field>
         </div>
-      )}
-
-      {tab === "profiles" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {PROFILES.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setProfileId(p.id)}
-                className={`rounded-lg border bg-white p-4 text-left shadow-xs transition ${
-                  p.id === profileId ? "border-brand-teal ring-2 ring-brand-teal/30" : "border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                <p className="font-semibold text-brand-navy">{p.name}</p>
-                <p className="text-xs text-slate-500">{bi(p.buyerEn, p.buyerBn)}</p>
-                <p className="mt-2 text-sm text-slate-700">
-                  {bi("Fail above", "এর বেশি হলে ফেল")} <span className="font-mono font-semibold">{p.failPts}</span>{" "}
-                  {bi("pts / 100 sq yd", "পয়েন্ট / ১০০ বর্গগজ")}
-                </p>
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Card>
-              <CardTitle hint={bi("4-point engine settings for this buyer.", "এই বায়ারের ৪-পয়েন্ট সেটিংস।")}>{profile.name}</CardTitle>
-              <dl className="space-y-3 text-sm">
-                <div>
-                  <dt className="mb-1 text-slate-500">{bi("Length penalty bands", "দৈর্ঘ্যের পয়েন্ট ধাপ")}</dt>
-                  <dd className="flex flex-wrap gap-1.5">
-                    {bandLabel(profile.lengthBands).map((b) => (
-                      <span key={b} className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">
-                        {b} {bi("pt", "পয়েন্ট")}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="mb-1 text-slate-500">{bi("Hole bands", "ছিদ্রের ধাপ")}</dt>
-                  <dd className="flex flex-wrap gap-1.5">
-                    {bandLabel(profile.holeBands).map((b) => (
-                      <span key={b} className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">
-                        {b} {bi("pt", "পয়েন্ট")}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-                <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-3">
-                  <div>
-                    <dt className="text-xs text-slate-500">{bi("Continuous defect", "চলমান ত্রুটি")}</dt>
-                    <dd className="font-mono font-semibold text-slate-800">≥ {profile.continuousIn}&quot;</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">{bi("Selvage exclusion", "সেলভেজ বাদ")}</dt>
-                    <dd className="font-mono font-semibold text-slate-800">{profile.selvageIn.toFixed(1)}&quot;</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">{bi("Fail threshold", "ফেল সীমা")}</dt>
-                    <dd className="font-mono font-semibold text-red-600">{profile.failPts} / 100 yd²</dd>
-                  </div>
-                </div>
-              </dl>
-            </Card>
-
-            <Card>
-              <CardTitle hint={bi("Try sample defects against this profile.", "নমুনা ত্রুটি দিয়ে এই প্রোফাইল পরীক্ষা করুন।")}>
-                {bi("Test profile", "প্রোফাইল পরীক্ষা")}
-              </CardTitle>
-              <div className="mb-3 grid grid-cols-2 gap-3">
-                <Field label={bi("Roll length (yd)", "রোলের দৈর্ঘ্য (গজ)")}>
-                  <input type="number" min={1} className={`${inputCls} font-mono`} value={rollYd} onChange={(e) => setRollYd(Number(e.target.value) || 0)} />
-                </Field>
-                <Field label={bi("Width (in)", "প্রস্থ (ইঞ্চি)")}>
-                  <input type="number" min={1} className={`${inputCls} font-mono`} value={widthIn} onChange={(e) => setWidthIn(Number(e.target.value) || 0)} />
-                </Field>
-              </div>
-              <ul className="space-y-2">
-                {scored.map((d, i) => (
-                  <li key={i} className="flex flex-wrap items-center gap-2 text-sm">
-                    <select
-                      aria-label={bi("Defect kind", "ত্রুটির ধরন")}
-                      className={inputCls.replace("w-full", "w-28")}
-                      value={d.kind}
-                      onChange={(e) => setDefects((l) => l.map((x, j) => (j === i ? { ...x, kind: e.target.value as TestDefect["kind"] } : x)))}
-                    >
-                      <option value="length">{bi("Length", "দৈর্ঘ্য")}</option>
-                      <option value="hole">{bi("Hole", "ছিদ্র")}</option>
-                    </select>
-                    <input
-                      aria-label={bi("Size in inches", "ইঞ্চিতে মাপ")}
-                      type="number"
-                      min={0}
-                      step={0.25}
-                      className={`${inputCls.replace("w-full", "w-24")} font-mono`}
-                      value={d.inches}
-                      onChange={(e) => setDefects((l) => l.map((x, j) => (j === i ? { ...x, inches: Number(e.target.value) || 0 } : x)))}
-                    />
-                    <span className="text-slate-500">in</span>
-                    <label className="inline-flex items-center gap-1 text-xs text-slate-600">
-                      <input
-                        type="checkbox"
-                        checked={d.selvage}
-                        onChange={(e) => setDefects((l) => l.map((x, j) => (j === i ? { ...x, selvage: e.target.checked } : x)))}
-                      />
-                      {bi("selvage", "সেলভেজ")}
-                    </label>
-                    <span className="ml-auto text-right">
-                      <span className="font-mono font-semibold text-brand-navy">{d.pts} pt</span>
-                      <span className="block text-xs text-slate-500">{bi(d.noteEn, d.noteBn)}</span>
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={bi("Remove", "সরান")}
-                      className="rounded px-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
-                      onClick={() => setDefects((l) => l.filter((_, j) => j !== i))}
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                className={`${ghostBtn} mt-3`}
-                onClick={() => setDefects((l) => [...l, { kind: "length", inches: 1, selvage: false }])}
-              >
-                + {bi("Add defect", "ত্রুটি যোগ করুন")}
-              </button>
-              <div
-                className={`mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 ${
-                  passes ? "bg-emerald-500/10 text-emerald-800" : "bg-red-500/10 text-red-700"
-                }`}
-              >
-                <span className="text-sm">
-                  {bi("Total", "মোট")} <span className="font-mono font-semibold">{totalPts} pt</span> →{" "}
-                  <span className="font-mono font-semibold">{per100.toFixed(2)}</span> / 100 yd²
-                </span>
-                <span className={`rounded px-2 py-0.5 text-xs font-bold text-white ${passes ? "bg-emerald-500" : "bg-red-500"}`}>
-                  {passes ? bi("PASS", "পাস") : bi("FAIL", "ফেল")}
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-slate-500">
-                {bi("Points per 100 sq yd = total points × 3600 ÷ (yards × width in inches).", "প্রতি ১০০ বর্গগজে পয়েন্ট = মোট পয়েন্ট × ৩৬০০ ÷ (গজ × ইঞ্চিতে প্রস্থ)।")}
-              </p>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {tab === "detectors" && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {DETECTORS.map((d) => (
-            <Card key={d.nameEn} className={d.state === "active" ? "border-brand-teal ring-2 ring-brand-teal/20" : ""}>
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <h2 className="text-base font-semibold text-brand-navy">{bi(d.nameEn, d.nameBn)}</h2>
-                {d.state === "active" ? (
-                  <Pill tone="emerald">● {bi("Active", "সক্রিয়")}</Pill>
-                ) : d.state === "ready" ? (
-                  <Pill tone="teal">{bi("Ready for edge", "এজের জন্য প্রস্তুত")}</Pill>
-                ) : (
-                  <Pill tone="slate">{bi("Stub · not configured", "স্টাব · কনফিগার হয়নি")}</Pill>
-                )}
-              </div>
-              <p className="mb-3 text-sm text-slate-600">{bi(d.descEn, d.descBn)}</p>
-              <dl className="grid grid-cols-2 gap-y-1 text-sm">
-                {d.details.map(([k, v]) => (
-                  <div key={k} className="contents">
-                    <dt className="text-slate-500">{k}</dt>
-                    <dd className="font-mono text-xs text-slate-800">{v}</dd>
-                  </div>
-                ))}
-              </dl>
-              {d.state === "active" && (
-                <p className="mt-3 rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-brand-amber">
-                  {bi("Simulated: not real AI.", "সিমুলেটেড: আসল AI নয়।")}
-                </p>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+        <button className={ghostBtn} disabled={busy} onClick={() => void action(async () => {
+          const result = await request<NonNullable<typeof preview>>("/api/v1/admin/rule-profiles/preview", {
+            rules: JSON.parse(rulesText), length_yd: length, width_in: width,
+            defects: [{cls: "stain", start_yd: 0, end_yd: defectLength / 36, length_in: defectLength,
+              across_start_cm: width * 2.54 / 2, across_end_cm: width * 2.54 / 2 + 0.1}]}); setPreview(result);
+        }, false)}>{bi("What-if preview", "সম্ভাব্য ফল দেখুন")}</button>
+        {preview && <div data-testid="profile-preview">{preview.points} pt · {preview.per_100.toFixed(2)} /100 · {preview.verdict}<p>{preview.explanation.join(" · ")}</p></div>}
+      </div>}
+    </Card>}
+    {tab === "detectors" && <Card><CardTitle>{bi("Installed detector configuration", "ইনস্টল করা শনাক্তকারীর অবস্থা")}</CardTitle>
+      {providers?.map((p) => <div key={p.provider_id} className="mb-3 rounded border border-slate-300 p-3"><strong>{p.display_name}</strong>
+        <p>{p.active ? bi("Active", "সক্রিয়") : bi("Inactive", "নিষ্ক্রিয়")} · {p.availability}</p><p className="text-sm">{p.note}</p>
+        {hasPerm(me, "providers.manage") && !p.active && p.availability === "available" && <button disabled={busy} className={ghostBtn}
+          onClick={() => void action(async () => {await request("/api/v1/admin/provider", {provider_id: p.provider_id}, "PUT");
+            await client.invalidateQueries({queryKey: ["providers"]}); await client.invalidateQueries({queryKey: ["health"]});
+            await client.invalidateQueries({queryKey: ["system-status"]});})}>{bi("Use for new inspections", "নতুন পরীক্ষায় ব্যবহার করুন")}</button>}
+        </div>)}
+      <p>{bi("Changes apply to new inspections on this deployment; open inspections keep their original detector. Cloud and edge defaults are separate.", "এই সার্ভারের নতুন পরীক্ষায় পরিবর্তন কার্যকর হবে; খোলা পরীক্ষায় আগের শনাক্তকারী থাকবে। ক্লাউড ও এজের সেটিংস আলাদা।")}</p>
+    </Card>}
+    {tab === "sample" && <Card><CardTitle>{bi("Archive demo deliveries", "ডেমো চালান আর্কাইভ")}</CardTitle>
+      <p className="mb-3 text-sm">{bi("Archiving hides SAMPLE deliveries from current lists and scorecards and aborts their open inspections. Reports and audit history are retained; unmarked real deliveries are untouched.",
+        "আর্কাইভ করলে নমুনা চালান বর্তমান তালিকা ও স্কোরকার্ড থেকে সরবে এবং তাদের খোলা পরীক্ষা বন্ধ হবে। রিপোর্ট ও অডিট ইতিহাস থাকবে; বাস্তব চালান বদলাবে না।")}</p>
+      {hasPerm(me, "settings.manage") ? <div className="space-y-3">
+        <button className={ghostBtn} disabled={busy} onClick={() => void action(async () => {
+          await request("/api/v1/admin/demo-archive", {}); await client.invalidateQueries({queryKey: ["lots"]});
+          await client.invalidateQueries({queryKey: ["dashboard"]});
+        })}>{bi("Archive sample deliveries now", "এখন নমুনা চালান আর্কাইভ করুন")}</button>
+        <p>{archiveSchedule.data?.enabled ? bi("Nightly archive enabled from ", "রাতের আর্কাইভ চালু হবে: ") + archiveSchedule.data.start_date : bi("Nightly archive is off.", "রাতের আর্কাইভ বন্ধ আছে।")}</p>
+        <button className={ghostBtn} disabled={busy} onClick={() => void action(async () => {
+          await request("/api/v1/admin/demo-archive/schedule", {enabled: !archiveSchedule.data?.enabled}, "PUT");
+          await archiveSchedule.refetch();
+        })}>{archiveSchedule.data?.enabled ? bi("Disable nightly archive", "রাতের আর্কাইভ বন্ধ করুন") : bi("Enable nightly archive", "রাতের আর্কাইভ চালু করুন")}</button>
+        <p className="text-sm text-slate-500">{bi("When enabled, the edge worker archives samples once per Dhaka day after 03:00, starting tomorrow. It is off by default.",
+          "চালু করলে আগামীকাল থেকে এজ worker ঢাকার সময় রাত ৩টার পরে প্রতিদিন একবার নমুনা চালান আর্কাইভ করবে। শুরুতে বন্ধ থাকে।")}</p>
+      </div> : <p>{bi("Settings permission is required.", "সেটিংস পরিবর্তনের অনুমতি প্রয়োজন।")}</p>}
+    </Card>}
+  </div>;
 }

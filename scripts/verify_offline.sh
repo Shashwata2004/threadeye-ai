@@ -9,7 +9,7 @@ set -uo pipefail
 
 PORT="${THREADEYE_HTTP_PORT:-8080}"
 BASE="http://localhost:${PORT}"
-PROJECT="threadeye"
+PROJECT="${COMPOSE_PROJECT_NAME:-threadeye}"
 fail=0
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; }
 bad() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; fail=1; }
@@ -54,8 +54,9 @@ health=$(curl -fsS "$BASE/health" 2>/dev/null)
 if echo "$health" | grep -q '"db":"ok"'; then pass "/health → $health"; else bad "/health → ${health:-no response}"; fi
 code=$(curl -s -o /tmp/threadeye_login.html -w '%{http_code}' "$BASE/login")
 if [ "$code" = "200" ] && grep -q "ThreadEye" /tmp/threadeye_login.html; then pass "/login page renders (200)"; else bad "/login → $code"; fi
-if [ -f .env ]; then
-  pw=$(grep -E '^THREADEYE_DEMO_PASSWORD=' .env | cut -d= -f2-)
+ENV_FILE="${THREADEYE_ENV_FILE:-.env}"
+if [ -f "$ENV_FILE" ]; then
+  pw=$(grep -E '^THREADEYE_DEMO_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)
   if [ -n "$pw" ]; then
     code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
       -d "{\"username\":\"inspector\",\"password\":\"${pw}\"}" "$BASE/api/v1/auth/login")

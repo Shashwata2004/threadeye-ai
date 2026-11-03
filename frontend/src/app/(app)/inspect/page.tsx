@@ -1,17 +1,21 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Button, Field, inputClass } from "@/components/form";
-import { api, hasPerm, type InspectionListItem } from "@/lib/api/client";
+import { api, hasPerm, idempotencyKey, type InspectionListItem } from "@/lib/api/client";
 import { errorDetail, useDatasets, useInspections, useMachines, useMe } from "@/lib/api/hooks";
 
-function InspectionList({ items, title }: { items: InspectionListItem[]; title: string }) {
+function InspectionList({ items, title, canRun, abortingId, disabled, onAbort }: {
+  items: InspectionListItem[]; title: string; canRun: boolean; abortingId: string | null;
+  disabled: boolean; onAbort: (item: InspectionListItem) => Promise<void>;
+}) {
   const t = useTranslations();
   return (
-    <section className="rounded-lg border border-slate-200 bg-white">
+    <section aria-label={title} className="rounded-lg border border-slate-200 bg-white">
       <h2 className="border-b border-slate-100 px-4 py-2 font-semibold">{title}</h2>
       {!items.length ? (
         <p className="p-4 text-sm text-slate-500">{t("inspect.none")}</p>
@@ -27,12 +31,21 @@ function InspectionList({ items, title }: { items: InspectionListItem[]; title: 
                   {i.inspector && <span className="text-slate-500"> · {i.inspector}</span>}
                   {live && i.model_outdated && <span className="text-amber-700"> · {t("inspect.oldModel")}</span>}
                 </span>
-                <Link
-                  href={live ? `/inspect/${i.id}` : `/inspections/${i.id}`}
-                  className="font-semibold text-brand-blue hover:underline"
-                >
-                  {live ? t(i.model_outdated ? "inspect.restartNewModel" : "inspect.continue") : t("inspect.view")}
-                </Link>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    href={live ? `/inspect/${i.id}` : `/inspections/${i.id}`}
+                    aria-disabled={abortingId === i.id || undefined}
+                    onClick={(event) => { if (abortingId === i.id) event.preventDefault(); }}
+                    className={`font-semibold text-brand-blue hover:underline ${abortingId === i.id ? "opacity-50" : ""}`}
+                  >
+                    {live ? t(i.model_outdated ? "inspect.restartNewModel" : "inspect.continue") : t("inspect.view")}
+                  </Link>
+                  {live && canRun && <button type="button" disabled={disabled}
+                    onClick={() => void onAbort(i)}
+                    className="rounded border border-red-500/40 px-2 py-1 font-semibold text-red-700 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                    {t(abortingId === i.id ? "inspect.aborting" : "live.abort")}
+                  </button>}
+                </div>
               </li>
             );
           })}
@@ -45,6 +58,8 @@ function InspectionList({ items, title }: { items: InspectionListItem[]; title: 
 export default function InspectPage() {
   const t = useTranslations();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const rollCodeInput = useRef<HTMLInputElement>(null);
   const { data: me } = useMe();
   const canRun = hasPerm(me, "inspections.run");
   const { data: datasets } = useDatasets();
@@ -58,6 +73,40 @@ export default function InspectPage() {
   const [preset, setPreset] = useState<"realistic" | "perfect">("realistic");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [abortingId, setAbortingId] = useState<string | null>(null);
+  const [abortError, setAbortError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function abortInspection(item: InspectionListItem) {
+    if (!canRun || busy || abortingId || !window.confirm(t("inspect.abortConfirm", {roll: item.roll_code}))) return;
+    setAbortingId(item.id);
+    setAbortError(null);
+    setNotice(null);
+    try {
+      const {error: err, response} = await api.POST("/api/v1/inspections/{inspection_id}/abort", {
+        params: {path: {inspection_id: item.id}}, headers: {"Idempotency-Key": idempotencyKey()},
+      });
+      if (!response.ok) {
+        setAbortError(t("inspect.abortError", {detail: errorDetail(err, response.status)}));
+        return;
+      }
+      setError(null);
+      setRollCode(item.roll_code);
+      setNotice(t("inspect.abortedNotice", {roll: item.roll_code}));
+      await Promise.all([
+        queryClient.invalidateQueries({queryKey: ["inspections"]}),
+        queryClient.invalidateQueries({queryKey: ["inspection", item.id]}),
+        queryClient.invalidateQueries({queryKey: ["lot-rolls"]}),
+        queryClient.invalidateQueries({queryKey: ["dashboard"]}),
+      ]);
+      rollCodeInput.current?.focus();
+      rollCodeInput.current?.select();
+    } catch {
+      setAbortError(t("inspect.abortNetworkError"));
+    } finally {
+      setAbortingId(null);
+    }
+  }
 
   // Defaults: the first machine, and the first roll that has a video.
   const machineId = machineChoice || machines?.[0]?.id || "";
@@ -65,6 +114,7 @@ export default function InspectPage() {
 
   async function load(e: FormEvent) {
     e.preventDefault();
+    if (busy || abortingId) return;
     setBusy(true);
     setError(null);
     const { data, error: err, response } = await api.POST("/api/v1/inspections", {
@@ -99,6 +149,7 @@ export default function InspectPage() {
         <form onSubmit={load} className="grid max-w-3xl gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2">
           <Field label={t("inspect.rollCode")} wide>
             <input
+              ref={rollCodeInput}
               autoFocus
               required
               value={rollCode}
@@ -152,7 +203,7 @@ export default function InspectPage() {
             </p>
           )}
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={busy || !datasetId || !machineId} data-testid="load-roll">
+            <Button type="submit" disabled={busy || !!abortingId || !datasetId || !machineId} data-testid="load-roll">
               {busy ? t("inspect.loadingRoll") : t("inspect.load")}
             </Button>
           </div>
@@ -161,9 +212,14 @@ export default function InspectPage() {
         <p className="text-sm text-slate-600">{t("inspect.readOnly")}</p>
       )}
 
+      {abortError && <p role="alert" className="rounded border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-700">{abortError}</p>}
+      {notice && <p role="status" className="rounded border border-teal-500/40 bg-teal-500/10 p-3 text-sm text-teal-700">{notice}</p>}
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <InspectionList items={open ?? []} title={t("inspect.open")} />
-        <InspectionList items={recent ?? []} title={t("inspect.recent")} />
+        <InspectionList items={open ?? []} title={t("inspect.open")} canRun={canRun}
+          abortingId={abortingId} disabled={busy || !!abortingId} onAbort={abortInspection}/>
+        <InspectionList items={recent ?? []} title={t("inspect.recent")} canRun={canRun}
+          abortingId={abortingId} disabled={busy || !!abortingId} onAbort={abortInspection}/>
       </div>
     </div>
   );

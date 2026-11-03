@@ -165,6 +165,23 @@ def test_core_flow_reproduces_the_expected_score(client: TestClient) -> None:
         f"/api/v1/inspections/{insp_id}/decision", json={"final_verdict": "REJECT", "reason": "fails 4-point"}
     )
     assert d.status_code == 200 and d.json()["final_verdict"] == "REJECT"
+    signed = d.json()
+    with get_sessionmaker()() as db:
+        signed_events = db.scalar(select(func.count()).select_from(InspectionEvent))
+    retry = client.post(
+        f"/api/v1/inspections/{insp_id}/decision", json={"final_verdict": "REJECT", "reason": "fails 4-point"}
+    )
+    assert retry.status_code == 200 and retry.json()["decision_at"] == signed["decision_at"]
+    for changed in [
+        {"final_verdict": "ACCEPT", "reason": "accept it instead"},
+        {"final_verdict": "REJECT", "reason": "a different reason"},
+    ]:
+        assert client.post(f"/api/v1/inspections/{insp_id}/decision", json=changed).status_code == 409
+    persisted = client.get(f"/api/v1/inspections/{insp_id}").json()
+    assert persisted["final_verdict"] == "REJECT" and persisted["decision_reason"] == "fails 4-point"
+    assert persisted["decision_at"] == signed["decision_at"]
+    with get_sessionmaker()() as db:
+        assert db.scalar(select(func.count()).select_from(InspectionEvent)) == signed_events
     with get_sessionmaker()() as db:
         actions = set(db.scalars(select(AuditLog.action)).all())
     assert {"inspection.create", "defect.confirm", "inspection.complete", "inspection.finalize"} <= actions
@@ -444,3 +461,29 @@ def test_the_servers_larger_photo_of_a_frame_is_not_replaced_by_a_smaller_captur
         db.commit()
         where = (InspectionFrame.inspection_id == insp_id, InspectionFrame.frame == 10)
         assert db.scalars(select(InspectionFrame).where(*where)).one().width == 1920
+
+
+def test_abort_preserves_defects_and_allows_a_new_inspection_of_the_same_roll(client: TestClient) -> None:
+    roll_code = _lot_with_roll(client)
+    old = _start(client, roll_code)
+    id_ = old["id"]
+    _run_to_end(client, id_)
+    before = client.get(f"/api/v1/inspections/{id_}/defects").json()
+    assert before
+    aborted = client.post(f"/api/v1/inspections/{id_}/abort", headers={"Idempotency-Key": "list-abort"})
+    assert aborted.status_code == 200 and aborted.json()["status"] == "aborted"
+    after = client.get(f"/api/v1/inspections/{id_}/defects").json()
+    assert [d["id"] for d in after] == [d["id"] for d in before]
+    response = client.post(
+        "/api/v1/inspections",
+        json={
+            "roll_code": roll_code,
+            "machine_id": old["machine_id"],
+            "source": {"dataset_id": "micro_roll"},
+            "preset": "perfect",
+        },
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["id"] != id_
+    assert response.json()["status"] == "created"
+    assert client.get(f"/api/v1/inspections/{id_}").json()["status"] == "aborted"

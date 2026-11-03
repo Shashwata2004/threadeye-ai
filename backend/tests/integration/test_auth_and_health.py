@@ -10,13 +10,17 @@ from threadeye.settings import get_settings
 pytestmark = pytest.mark.integration
 
 
-def test_health_runs_a_db_query(client: TestClient) -> None:
+@pytest.mark.parametrize("provider, simulated", [("simulated", True), ("local_model", False)])
+def test_health_runs_a_db_query(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, provider: str, simulated: bool
+) -> None:
+    monkeypatch.setattr(get_settings(), "detector_provider", provider)
     r = client.get("/health")
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok" and body["db"] == "ok"
     assert body["profile"] == "edge"
-    assert body["simulated_mode"] is True
+    assert body["simulated_mode"] is simulated
 
 
 def test_login_sets_httponly_cookie_and_me_works(client: TestClient) -> None:

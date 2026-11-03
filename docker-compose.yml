@@ -11,13 +11,15 @@ x-backend: &backend
     context: ./backend
     args:
       GIT_SHA: ${GIT_SHA:-dev}
-  image: threadeye-backend:latest
+  image: threadeye-backend:${THREADEYE_IMAGE_TAG:-latest}
   restart: unless-stopped
   env_file:
-    - path: .env
+    - path: ${THREADEYE_ENV_FILE:-.env}
       required: false
   environment:
     THREADEYE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-threadeye}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (make env)}@db:5432/${POSTGRES_DB:-threadeye}
+    THREADEYE_DETECTOR_PROVIDER: ${THREADEYE_DETECTOR_PROVIDER:-simulated}
+    THREADEYE_MODEL_DIR: /data/datasets/model
   volumes:
     - storage:/data/storage
     - ./data:/data/datasets:ro
@@ -65,7 +67,7 @@ services:
   web:
     build:
       context: ./frontend
-    image: threadeye-web:latest
+    image: threadeye-web:${THREADEYE_IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       NEXT_TELEMETRY_DISABLED: "1"

@@ -20,6 +20,7 @@ from threadeye.core.scoring.four_point import RollGeometry, ScorableDefect, Scor
 from threadeye.core.scoring.profile import RuleProfile, simulator_parity_profile
 from threadeye.core.taxonomy import load_default_taxonomy
 from threadeye.datasets.answer_key import AnswerKey, load_answer_key
+from threadeye.providers.registry import create_provider
 from threadeye.providers.simulated import PRESETS, SimulatedDetector
 from threadeye.sources.simulated_roll import TrackFrameSource, VideoFileSource
 
@@ -98,14 +99,20 @@ def run_roll(
     profile: RuleProfile | None = None,
     use_video: bool = False,
     confirm_all: bool = True,
+    provider_id: str = "simulated",
+    provider_config: Mapping[str, Any] | None = None,
 ) -> RollRun:
     directory = Path(directory)
     config = PRESETS[preset] if isinstance(preset, str) else preset
     profile = profile or simulator_parity_profile()
     key = load_answer_key(directory, require_media=use_video)
-    source = VideoFileSource(directory) if use_video else TrackFrameSource(directory)
+    source = VideoFileSource(directory) if use_video or provider_id != "simulated" else TrackFrameSource(directory)
     meta = source.parsed.meta
-    provider = SimulatedDetector(config, ProviderContext(seed=int(config.get("seed", 0)), answer_key=key))
+    provider = (
+        SimulatedDetector(config, ProviderContext(seed=int(config.get("seed", 0)), answer_key=key))
+        if provider_id == "simulated"
+        else create_provider(provider_id, provider_config, ProviderContext(extras={"dataset_dir": str(directory)}))
+    )
     runner = Runner(
         source,
         provider,

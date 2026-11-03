@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProviderBadge } from "@/components/badges";
+import { MeasurementPanel, VerificationWarning } from "@/components/InspectionOperations";
 import { Button, inputClass } from "@/components/form";
 import { DefectCard, PointsMeter, YardTape } from "@/components/live/LivePanels";
 import { LiveVideo, type Capture, type LiveVideoHandle, type ViewBox } from "@/components/live/LiveVideo";
@@ -658,6 +659,8 @@ export default function LiveInspectionPage() {
 
   return (
     <div className="space-y-3">
+      <VerificationWarning machineId={insp.machine_id}/>
+      <MeasurementPanel inspection={insp}/>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold text-brand-navy">

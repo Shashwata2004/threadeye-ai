@@ -5,11 +5,12 @@ PNPM ?= pnpm
 # Prefer uv; fall back to the backend virtualenv so the commands work without uv on PATH.
 HAVE_UV := $(shell command -v uv >/dev/null 2>&1 && echo yes || echo no)
 ifeq ($(HAVE_UV),yes)
-  THREADEYE    = uv run threadeye
-  PYTEST       = uv run pytest
-  RUFF         = uv run ruff
-  MYPY         = uv run mypy
-  LINT_IMPORTS = uv run lint-imports
+  UV_RUN       = uv run --frozen --extra vision --extra onnx
+  THREADEYE    = $(UV_RUN) threadeye
+  PYTEST       = $(UV_RUN) pytest
+  RUFF         = $(UV_RUN) ruff
+  MYPY         = $(UV_RUN) mypy
+  LINT_IMPORTS = $(UV_RUN) lint-imports
 else
   VENV_BIN     = $(CURDIR)/backend/.venv/bin
   THREADEYE    = $(VENV_BIN)/threadeye
@@ -29,14 +30,18 @@ TEST_DATABASE_URL ?= postgresql+psycopg://threadeye:threadeye@localhost:$(TEST_D
 help: ## list commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk -F ':.*?## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
+.PHONY: impact
+impact: ## measured local-model replay → docs/impact (needs backend onnx extra and demo assets)
+	backend/.venv/bin/python scripts/measure_impact.py --out docs/impact
+
 env: ## create .env from .env.example (keeps an existing .env)
 	@test -f .env && echo ".env already exists" || (cp .env.example .env && echo "created .env; review the passwords")
 
 build: ## build all images (needs internet once)
-	GIT_SHA=$$(git rev-parse --short HEAD 2>/dev/null || echo dev) docker compose build
+	GIT_SHA=$$(git rev-parse --short HEAD 2>/dev/null || echo dev) docker compose build api web
 
-up: ## start the edge stack and wait until healthy → http://localhost:8080
-	GIT_SHA=$$(git rev-parse --short HEAD 2>/dev/null || echo dev) docker compose up -d --build --wait
+up: build ## start the edge stack and wait until healthy → http://localhost:8080
+	GIT_SHA=$$(git rev-parse --short HEAD 2>/dev/null || echo dev) docker compose up -d --no-build --wait
 	@echo "ThreadEye is up: http://localhost:$${THREADEYE_HTTP_PORT:-8080}"
 
 down: ## stop the stack (data volumes are kept)
@@ -55,6 +60,7 @@ test-db: ## start a throwaway Postgres for integration tests (port 55432, RAM-ba
 	@docker inspect threadeye-testdb >/dev/null 2>&1 || docker run -d --name threadeye-testdb \
 	  -e POSTGRES_USER=threadeye -e POSTGRES_PASSWORD=threadeye -e POSTGRES_DB=threadeye_test \
 	  -p 127.0.0.1:$(TEST_DB_PORT):5432 --tmpfs /var/lib/postgresql/data postgres:16.4-alpine >/dev/null
+	@docker start threadeye-testdb >/dev/null
 	@for i in $$(seq 1 30); do docker exec threadeye-testdb pg_isready -U threadeye -d threadeye_test >/dev/null 2>&1 && exit 0; sleep 1; done; echo "test db not ready"; exit 1
 
 test-db-stop: ## remove the throwaway test database

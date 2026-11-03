@@ -7,6 +7,7 @@ AI-assisted coding is allowed and is disclosed in full. Update this file wheneve
 | Tool | Model | Used for | Since |
 |---|---|---|---|
 | Claude Code, desktop app (Code tab) | Claude Opus 5.5 (`claude-opus-5-5`); the session also ran on Opus 4.7 and Opus 5 when the model was switched | Plan mode for the build plan (`docs/PLAN.md`); M0, M1 and M2 implementation; Supabase setup | 2026-10-03 |
+| Codex | Model identifier not recorded in the project | Repository review; mode disclosure, impact measurement, M4–M6 operations, tests and documentation; see `docs/MILESTONES.md` | 2026-11-03 |
 
 Every prompt is recorded in [PROMPTS.md](PROMPTS.md). Code produced with AI help is reviewed by a team member before merge (PR review rule, PLAN.md §10).
 
@@ -24,7 +25,10 @@ Every prompt is recorded in [PROMPTS.md](PROMPTS.md). Code produced with AI help
 | `ccd_session` (Claude desktop built-in) | Chapter markers in the session transcript | none |
 | `Claude_Browser` (Claude desktop built-in browser pane) | Viewing and operating the running app to check the M0–M2 acceptance criteria (login, receiving, the live inspection screen, verdict, decision) | none (read/verify only) |
 
-No other MCP servers have been used. No external AI API is called by the product.
+The Codex continuation used local file/shell execution and Playwright/Google Chrome for implementation
+and verification. This adds no external AI API to the product and no external service connector to its
+runtime. Earlier MCP usage remains recorded above. Repository publication and release publishing were
+explicitly excluded by the owner.
 
 ## IDEs and editors (team: fill in your own)
 | Member / role | IDE | AI extensions |

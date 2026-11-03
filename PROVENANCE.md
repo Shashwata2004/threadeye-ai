@@ -5,17 +5,18 @@ Rule (PLAN.md §2, brief §11): everything simulated is labelled as simulated; s
 marked "sample data"; no fabricated metrics.
 
 ## AI in the product
-| Component | Status (M0) | Notes |
+| Component | Status | Notes |
 |---|---|---|
-| Detector provider | **SimulatedDetector only** (implemented in M1) | Reads the simulator's answer key. It is **not AI**. Every screen and report shows "SIMULATED DETECTIONS". `confidence` is always `null`. |
+| SimulatedDetector | Implemented | Reads the simulator's answer key. **Not AI**; separately labelled on screens, checks and reports. |
 | ApiDetector | stub, not implemented | No external AI API is called |
-| LocalModelDetector | stub, not implemented | Our own model is trained from M4 (PLAN.md §10). The model card and training data will be recorded here. |
+| LocalModelDetector | Implemented, YOLOX-S, 44 epochs | Real inference via ONNX Runtime CPU. Video remains simulated. Model cards: `backend/threadeye/data/model/`; detailed sources and split policy: `ml/DATASETS.md`. Confidence is not calibrated and remains null. |
 
 ## Datasets
 | Dataset | Origin | Licence | Where | Status |
 |---|---|---|---|---|
 | AITEX Fabric Image Database | AITEX (Spain); "A Public Fabric Database for Defect Detection Methods and Results", *Autex Research Journal* | **To be verified** (PLAN.md Q2: may derived video be redistributed publicly?) | Read by `tools/simulator/` (`--source aitex`); not in this repo | Open question |
 | Simulated sample roll | Our simulator (`tools/simulator/make_roll_video.py`, realistic mode, AITEX fabric 02, seed 11): 13.1 yd, 8 defects, 17 non-defect distractions; expected 10 points, 46.45, FAIL | Derived; same as above | `data/sample_roll/`: CSV/JSON and preview in git, `roll_video.mp4` kept out of git until Q2 is answered (SHA-256 in `SHA256SUMS`) | **SIMULATED** |
+| Current line-scan roll | AITEX fabric 02, seed 11, 7 known faults; source group excluded from training | Derived; AITEX redistribution question above remains open | `data/linescan_roll/`, evaluation manifest and hashes | **SIMULATED**, repeatedly used development/regression fixture; not a fresh blind test |
 | CI browser-test roll | Rendered in CI by the same simulator in `synthetic` mode (code-drawn fabric, no dataset), 5 m, seed 3 | Ours | `data/ci_roll/` (generated, not committed) | **SIMULATED** |
 | Micro-fixture roll | Synthetic CSV/JSON written by `scripts/make_micro_fixture.py` (no images) | Ours | `backend/tests/fixtures/micro_roll/` | **SYNTHETIC test data** |
 
@@ -24,7 +25,9 @@ marked "sample data"; no fabricated metrics.
 |---|---|
 | Demo user accounts (one per role) | Created only when `THREADEYE_SEED_DEMO_USERS=true`. The password comes from the environment, not from code. |
 | Mills and buyers | Fictional, flagged `is_sample_data`, shown with a "SAMPLE DATA / নমুনা তথ্য" badge; a lot from a sample mill or buyer is flagged too |
-| Inspections | Every inspection in this phase uses the simulated roll video and the simulated detector: `is_simulated` is stored on it, and every screen, event and report says SIMULATED with the detector's name and preset |
+| Inspections | Video is simulated (`is_simulated`); provider snapshot separately records whether detections are simulated or real model inference. |
+| Reviewed-label exports | Saved images plus COCO annotations and inspector decisions; source groups remain together, split is unassigned, and review is required before training. Rejected boxes do not imply that an entire image is clean. No automatic retraining occurs. |
+| Demo reset | Explicit, opt-in sample-delivery archive. Evidence and audit records remain; unmarked real deliveries are not archived. |
 
 ## Fonts
 | Font | Licence | Where |
@@ -41,4 +44,7 @@ Key runtime libraries (full lists: `backend/uv.lock`, `frontend/pnpm-lock.yaml`)
 - Frontend: Next.js, React (MIT); next-intl (MIT); TanStack Query (MIT); openapi-fetch / openapi-typescript (MIT); MSW (MIT); Tailwind CSS (MIT).
 - Infrastructure: PostgreSQL (PostgreSQL Licence); Caddy (Apache-2.0).
 
-From M4, model-training dependencies and their licences are added here (PLAN.md Q6: YOLOX Apache-2.0 vs Ultralytics AGPL-3.0).
+Training framework recorded by the model card: YOLOX (Apache-2.0), not Ultralytics. Model/runtime and
+dataset licence questions are distinct: source-specific credits, mirrors, non-commercial restrictions
+and unresolved terms are maintained in `ml/DATASETS.md`. Do not treat availability on a mirror as
+proof of permission for public redistribution or commercial deployment.

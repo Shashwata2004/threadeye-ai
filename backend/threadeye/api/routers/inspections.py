@@ -24,7 +24,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
 from threadeye.api.deps import client_ip, current_session_id, idempotency_key, require
-from threadeye.api.errors import NOT_IMPLEMENTED_RESPONSE, not_implemented
 from threadeye.api.schemas.events import Actor, EventEnvelope, EventsPage
 from threadeye.api.schemas.inspection import (
     AdvanceIn,
@@ -50,6 +49,7 @@ from threadeye.api.schemas.inspection import (
     ScoreSummary,
     TrackOut,
 )
+from threadeye.core.runner import RunnerEvent
 from threadeye.db import audit
 from threadeye.db.models import (
     AuditLog,
@@ -58,6 +58,7 @@ from threadeye.db.models import (
     Inspection,
     InspectionEvent,
     Lot,
+    OperationRun,
     Roll,
     RuleProfileRow,
     Supplier,
@@ -68,7 +69,7 @@ from threadeye.reports.claim_letter import ClaimData, ClaimRoll, build_claim_let
 from threadeye.reports.roll_report import build_roll_report
 from threadeye.security.rbac import Perm
 from threadeye.services import datasets, evidence, live, receiving, storage
-from threadeye.services.inspection_store import events_after
+from threadeye.services.inspection_store import append_events, events_after
 
 router = APIRouter(tags=["inspections"])
 defects_router = APIRouter(tags=["defects"])
@@ -165,6 +166,23 @@ def _snapshot(db: Session, insp: Inspection, session_id: uuid.UUID | None) -> In
     holds = live.holds_lease(insp, session_id)
     snap = insp.provider_snapshot
     return InspectionSnapshot(
+        measured_length_yd=insp.measured_length_yd,
+        measured_width_in=insp.measured_width_in,
+        measurement_checks={
+            "width_delta_in": round(insp.measured_width_in - roll.declared_width_in, 3)
+            if insp.measured_width_in
+            else None,
+            "width_within_tolerance": abs(insp.measured_width_in - roll.declared_width_in)
+            <= float((profile.rules.get("width_check") or {}).get("tolerance_in", 0.5))
+            if insp.measured_width_in and profile
+            else None,
+            "length_reference_yd": info.roll_length_yd if info else roll.declared_length_yd,
+            "length_delta_yd": round(
+                insp.measured_length_yd - (info.roll_length_yd if info else roll.declared_length_yd), 3
+            )
+            if insp.measured_length_yd
+            else None,
+        },
         id=insp.id,
         roll_id=insp.roll_id,
         roll_code=roll.roll_code,
@@ -346,10 +364,13 @@ def dataset_video(
 def list_inspections(
     roll_id: uuid.UUID | None = None,
     open_only: bool = False,
+    include_archived: bool = False,
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[InspectionListItem]:
     q = select(Inspection, Roll.roll_code).join(Roll, Roll.id == Inspection.roll_id)
+    if not include_archived:
+        q = q.join(Lot, Lot.id == Roll.lot_id).where(Lot.status != "archived")
     if roll_id:
         q = q.where(Inspection.roll_id == roll_id)
     if open_only:
@@ -621,11 +642,61 @@ def get_score(inspection_id: uuid.UUID, db: Session = Depends(get_db)) -> ScoreS
 @router.post(
     "/inspections/{inspection_id}/measurements",
     status_code=201,
-    dependencies=[Depends(require(Perm.INSPECTIONS_RUN))],
-    responses=NOT_IMPLEMENTED_RESPONSE,
 )
-def add_measurement(inspection_id: uuid.UUID, body: MeasurementIn) -> None:
-    not_implemented("M4")
+def add_measurement(
+    inspection_id: uuid.UUID,
+    body: MeasurementIn,
+    request: Request,
+    actor: User = Depends(require(Perm.INSPECTIONS_RUN)),
+    idem: str = Depends(idempotency_key),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    inspection = _locked(db, inspection_id)
+    if inspection.finalized_at or inspection.status == "aborted":
+        raise HTTPException(409, "measurements are locked after finalization or abort")
+    if body.kind == "width" and body.unit not in {"in", "cm"}:
+        raise HTTPException(422, "width uses in or cm")
+    if body.kind == "length" and body.unit not in {"yd", "m"}:
+        raise HTTPException(422, "length uses yd or m")
+    value = body.value / 2.54 if body.unit == "cm" else body.value / 0.9144 if body.unit == "m" else body.value
+    if not 0 < value <= (200 if body.kind == "width" else 2000):
+        raise HTTPException(422, "measurement outside supported range")
+    key = f"{inspection.id}:measurement:{idem}"
+    if db.scalar(select(InspectionEvent.id).where(InspectionEvent.idempotency_key == key)):
+        return {"measured_length_yd": inspection.measured_length_yd, "measured_width_in": inspection.measured_width_in}
+    setattr(inspection, "measured_width_in" if body.kind == "width" else "measured_length_yd", value)
+    payload = {**body.model_dump(mode="json"), "normalized_value": value}
+    runner = live.runner_for(db, inspection)
+    roll = db.get(Roll, inspection.roll_id)
+    assert roll and inspection.dataset_id
+    try:
+        runner.roll = live.roll_spec(inspection, roll, datasets.get_dataset(inspection.dataset_id), runner.profile)
+    except live.InspectionError as exc:
+        raise _http(exc) from exc
+    append_events(
+        db,
+        inspection.id,
+        [
+            RunnerEvent("measurement.recorded", payload, key),
+            RunnerEvent("score.updated", runner.score_payload(), key + ":score"),
+        ],
+        actor_kind="user",
+        actor_user_id=actor.id,
+        locked=inspection,
+    )
+    audit.record(
+        db,
+        action="inspection.measurement",
+        actor_user_id=actor.id,
+        actor_role=actor.role,
+        entity_type="inspection",
+        entity_id=str(inspection.id),
+        after=payload,
+        ip=client_ip(request),
+    )
+    db.commit()
+    live.clear_cache()
+    return {"measured_length_yd": inspection.measured_length_yd, "measured_width_in": inspection.measured_width_in}
 
 
 @router.post(
@@ -655,7 +726,7 @@ def finalize(
 @router.post(
     "/inspections/{inspection_id}/decision",
     response_model=InspectionSnapshot,
-    description="Supervisor decision on the roll (required for BORDERLINE; any override needs a reason).",
+    description="Record and lock the supervisor decision. Exact retries are safe; a later change is rejected.",
 )
 def decide(
     inspection_id: uuid.UUID,
@@ -758,6 +829,13 @@ def claim_pack(
         files[f"rolls/{item.roll.roll_code}/report.pdf"] = report
         for no, jpeg in sorted(crops.items()):
             files[f"photos/{item.roll.roll_code}/{no}.jpg"] = jpeg
+        for clip in db.scalars(
+            select(OperationRun).where(
+                OperationRun.inspection_id == insp.id, OperationRun.kind == "clip", OperationRun.status == "completed"
+            )
+        ):
+            if clip.result:
+                files[f"clips/{item.roll.roll_code}/{clip.id}.mp4"] = storage.get(db, clip.result["storage_key"])
         confirmed = Counter(
             d.current_cls for d in live.defects(db, insp) if d.kind == "defect" and d.status == "confirmed"
         )
@@ -786,6 +864,7 @@ def claim_pack(
     photos = sum(1 for f in files if f.startswith("photos/"))
     enclosed = [
         *(f for f in files if f.endswith("report.pdf")),
+        *(f for f in files if f.endswith(".mp4")),
         *([f"photos/ ({photos} defect photos)"] if photos else []),
         "manifest.json",
         "SHA256SUMS.txt",

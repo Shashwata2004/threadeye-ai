@@ -100,7 +100,7 @@ def months_back(today: date, n: int = TREND_MONTHS) -> list[str]:
 
 def scorecards(db: Session) -> list[MillCard]:
     mills = {s.id: MillCard(s.id, s.name, s.country) for s in db.scalars(select(Supplier).order_by(Supplier.name))}
-    lots = {lot.id: lot for lot in db.scalars(select(Lot))}
+    lots = {lot.id: lot for lot in db.scalars(select(Lot).where(Lot.status != "archived"))}
     rolls = {r.id: r for r in db.scalars(select(Roll))}
     latest: dict[uuid.UUID, Inspection] = {}
     done = select(Inspection).where(Inspection.finalized_at.is_not(None)).order_by(Inspection.finalized_at)

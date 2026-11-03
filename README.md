@@ -9,11 +9,15 @@ supplier scorecard.
 
 International AI Builders Congress 2026 · *Idea to Unicorn* · IndustrySphere AI → **Quality Vision**.
 
-> **Honesty note.** This phase uses a **simulated** detector built on our simulator's answer key.
-> It is **not AI**, and every screen and report says so. No metric is shown unless it is measured.
-> From M4 the team trains its own model (see [docs/PLAN.md](docs/PLAN.md) §10).
+> **Honesty note.** The camera video is **simulated**. The cloud demo uses an answer-key-based
+> **simulated detector (not AI)**; `make demo` runs our **trained YOLOX-S detector** locally.
+> The mode banner distinguishes these configurations. No metric is shown unless it is measured.
+> [Impact evidence](docs/impact/REPORT.md) records measured detection and decision risks;
+> [the pilot protocol](docs/impact/PILOT_PROTOCOL.md) explains how to measure human and business impact.
 
-**Status: M2 (live inspection, end to end) complete.** See [docs/PLAN.md](docs/PLAN.md) for the full plan.
+**Status:** the core flow plus operational verification, cutting approvals, dashboard KPIs, admin editing,
+benchmark history and reviewed-label export are implemented locally. See [docs/MILESTONES.md](docs/MILESTONES.md)
+for the current scope and checks; the original schedule is in [docs/PLAN.md](docs/PLAN.md).
 
 - **Live inspection:** scan a roll, the simulated camera plays, defect boxes move with the fabric, a yard
   tape, speed and running/stopped state, a live points meter; the inspector confirms, rejects (with a
@@ -91,6 +95,16 @@ make cloud-setup   # create the schema and demo accounts, then verify
 make cloud-run     # run the app against Supabase → http://localhost:3000
 ```
 
+Log in from the terminal as any demo role (the password comes from `.env.cloud`):
+
+```bash
+./scripts/login.sh inspector            # log in and print the account's role and permissions
+./scripts/login.sh admin --permissions  # also list every permission
+```
+
+The session cookie is kept in `/tmp/threadeye_cookies.txt`; reuse it with
+`curl -b /tmp/threadeye_cookies.txt http://127.0.0.1:8099/api/v1/<endpoint>`.
+
 Everything the app records lives in Supabase, including the evidence photos (table
 `threadeye.blobs`), so every teammate sharing the database sees the same data. Only the simulated
 roll's video is read from `data/` on each machine.
@@ -159,3 +173,44 @@ flowchart LR
 ## Licence
 
 MIT, see [LICENSE](LICENSE). Third-party components keep their own licences (PROVENANCE.md).
+
+## Operations (M4–M6)
+
+- **Daily verification:** a supervisor selects the reference roll, machine, provider and tolerances.
+  Results and history are stored. RED warns on the matching machine's live inspection screen.
+  Optional daily checks need the edge worker; the cloud demo uses the run button.
+- **Cutting:** open a finalized inspection → Cutting sheet → supervisor approves → cutting master
+  acknowledges. The PDF and strip show conservative full-width skip zones, not garment nesting.
+- **Admin:** users and machines persist; buyer-rule saves create new versions. Provider defaults for
+  new inspections are separate on edge and serverless. Optional sample archive is off by default.
+- **Benchmark:** select held-out test datasets/providers; inspect saved results and compare two runs.
+  A test manifest is required. Reviewed-label export does not automatically retrain the model.
+
+Existing Supabase laptop installs need the additive migration once, before restarting the app:
+
+```bash
+make cloud-migrate
+make demo
+```
+
+Docker applies migrations automatically. Its backend includes ONNX Runtime, vision dependencies and
+ffmpeg. To use the model offline, put the model files in `data/model/`, keep the source video in
+`data/linescan_roll/`, and set `THREADEYE_DETECTOR_PROVIDER=local_model` when starting Compose.
+
+For a clean checkout without third-party video, build the images and generate a synthetic demo source
+inside the offline-capable backend image (the generated data is local, not training):
+
+```bash
+make env
+make build
+docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/work" -w /work threadeye-backend:latest \
+  python tools/simulator/make_roll_video.py --source synthetic --roll-length-m 5 --seed 3 --out data/demo_roll
+make up
+```
+
+Current milestone scope: [docs/MILESTONES.md](docs/MILESTONES.md). KPI definitions:
+[docs/KPIS.md](docs/KPIS.md). Presentation preparation: [docs/congress/](docs/congress/).
+
+The local demo launcher also starts the jobs worker and stops API/web/worker process groups together
+on exit. The public Vercel demo does not run that persistent worker. See [docs/VALIDATION.md](docs/VALIDATION.md)
+for the actual checks and the distinction between local implementation and hosted deployment.

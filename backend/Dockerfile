@@ -12,11 +12,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN pip install --no-cache-dir uv==0.12.22
 
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project --extra vision --extra onnx
 COPY threadeye ./threadeye
 COPY alembic.ini ./
-RUN uv sync --frozen --no-dev --no-editable
+RUN uv sync --frozen --no-dev --no-editable --extra vision --extra onnx
 
 ARG GIT_SHA=dev
 ENV THREADEYE_GIT_SHA=${GIT_SHA}
