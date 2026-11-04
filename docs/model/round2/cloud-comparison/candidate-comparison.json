@@ -1,0 +1,82 @@
+{
+  "qualified_for_review": false,
+  "reasons": [
+    "overall found_any_class decreased",
+    "overall found_right_class decreased",
+    "more nuisance objects called fabric defects",
+    "broken_yarn: overall recall decreased"
+  ],
+  "rolls": [
+    {
+      "dataset": "linescan_roll",
+      "before": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "recall": 0.5714,
+        "precision": 1.0
+      },
+      "after": {
+        "tp": 5,
+        "fp": 2,
+        "fn": 2,
+        "recall": 0.7143,
+        "precision": 0.7143
+      }
+    },
+    {
+      "dataset": "demo_basic_roll",
+      "before": {
+        "tp": 2,
+        "fp": 2,
+        "fn": 1,
+        "recall": 0.6667,
+        "precision": 0.5
+      },
+      "after": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "recall": 1.0,
+        "precision": 1.0
+      }
+    },
+    {
+      "dataset": "demo_mixed_roll",
+      "before": {
+        "tp": 6,
+        "fp": 4,
+        "fn": 3,
+        "recall": 0.6667,
+        "precision": 0.6
+      },
+      "after": {
+        "tp": 7,
+        "fp": 4,
+        "fn": 2,
+        "recall": 0.7778,
+        "precision": 0.6364
+      }
+    },
+    {
+      "dataset": "demo_challenge_roll",
+      "before": {
+        "tp": 7,
+        "fp": 12,
+        "fn": 4,
+        "recall": 0.6364,
+        "precision": 0.3684
+      },
+      "after": {
+        "tp": 8,
+        "fp": 8,
+        "fn": 3,
+        "recall": 0.7273,
+        "precision": 0.5
+      }
+    }
+  ],
+  "baseline_model_sha256": "02de7b97544dc5483b7da95972141c329b0fbc8c1bb495246d03165c4a796037",
+  "candidate_model_sha256": "19751918c54ef074e97b8582426f1cbacac82521e397963a81f13208377fed74",
+  "limitation": "Regression and held-out tile evidence, not a factory pilot. A candidate is staged; the running model is unchanged."
+}

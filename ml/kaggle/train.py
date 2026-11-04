@@ -11,9 +11,11 @@ in a fraction f of train images is repeated max(1, sqrt(t / f)) times, t = 0.1.
 import hashlib
 import json
 import math
+import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import threading
 import time
 from collections import Counter
@@ -29,7 +31,8 @@ def find_inputs(name: str, max_depth: int) -> list[Path]:
     return [p for d in range(max_depth + 1) for p in sorted(Path("/kaggle/input").glob("*/" * d + name))]
 
 
-PARAMS = json.loads(find_inputs("params.json", 3)[0].read_text()).get("train", {})
+config = Path(os.environ["THREADEYE_TRAIN_CONFIG"]) if os.environ.get("THREADEYE_TRAIN_CONFIG") else find_inputs("params.json", 3)[0]
+PARAMS = json.loads(config.read_text()).get("train", {})
 SIZE = PARAMS.get("model", "s")  # nano | tiny | s | m
 EPOCHS = int(PARAMS.get("epochs", 30))
 BATCH = int(PARAMS.get("batch", 16))
@@ -63,6 +66,10 @@ PATCH = None if PACKED else next((p.parent for p in find_inputs("threadeye_patch
 """A patch build (build_dataset.py --patch) attached next to the full build: its annotations describe the whole
 dataset; its images replace the full build's tiles of the patched sources."""
 ANN = PATCH or DATA
+if PARAMS.get("frozen_manifest_sha256"):
+    actual = hashlib.sha256((ANN / "manifest.csv").read_bytes()).hexdigest()
+    if actual != PARAMS["frozen_manifest_sha256"]:
+        raise SystemExit("packed dataset manifest changed; refusing to train on different splits")
 TMP = Path("/kaggle/tmp")
 YOLOX = TMP / "YOLOX"
 WORK = TMP / "data"
@@ -115,7 +122,7 @@ sh(f"git clone -q https://github.com/Megvii-BaseDetection/YOLOX.git {YOLOX}")
 sh(f"git checkout -q {YOLOX_COMMIT}", cwd=YOLOX)
 commit = subprocess.run("git rev-parse HEAD", shell=True, cwd=YOLOX, capture_output=True, text=True).stdout.strip()
 print("YOLOX commit", commit)
-sh(f"{sys.executable} -m pip -q install loguru tabulate pycocotools thop ninja onnx onnxruntime")
+sh(f"{sys.executable} -m pip -q install loguru tabulate pycocotools thop ninja onnx onnxruntime scipy")
 weights = TMP / f"yolox_{SIZE}.pth"
 sh(f"curl -sSL -o {weights} {WEIGHTS[SIZE]}")
 
@@ -138,6 +145,40 @@ for split in ("train", "val", "test"):
         (WORK / split / n).symlink_to((PATCH if n in own else DATA) / split / "images" / n)
     print(f"{split}: {len(own)} patch tiles linked over the full build", flush=True)
 train = json.loads((ANN / "train/annotations.json").read_text())
+augmentation = None
+if PARAMS.get("domain_augment"):
+    addon_module = find_inputs("linescan_domain.py", 4)[0].parent
+    sys.path.insert(0, str(find_inputs("aitex_paste.py", 4)[0].parent))
+    sys.path.insert(0, str(addon_module))
+    from linescan_domain import generate
+
+    archives = find_inputs("linescan_domain_sources.tar.gz", 5)
+    if archives:
+        raw = TMP / "domain_sources"
+        raw.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(archives[0]) as archive:
+            archive.extractall(raw, filter="data")
+    else:
+        expanded = [p.parent for p in find_inputs("sources.json", 6) if (p.parent / "frozen_manifest.csv").exists()]
+        assert len(expanded) == 1, "train-only source bundle missing or ambiguous"
+        raw = expanded[0]
+    train, augmentation = generate(train, raw, WORK / "train", n=int(PARAMS["domain_augment"]),
+                                   seed=int(PARAMS["augmentation_seed"]), expected_manifest=PARAMS["frozen_manifest_sha256"])
+    OUT.mkdir(parents=True, exist_ok=True)
+    shutil.copy(WORK / "train/linescan_domain.json", OUT / "linescan_domain.json")
+if PARAMS.get("linescan_augment"):
+    addon_module = find_inputs("linescan_augment.py", 4)[0].parent
+    sys.path.insert(0, str(addon_module))
+    from linescan_augment import augment
+
+    forbidden = {im["file_name"] for split in ("val", "test")
+                 for im in json.loads((ANN / split / "annotations.json").read_text())["images"]}
+    train, augmentation = augment(train, WORK / "train", WORK / "train",
+                                  n=int(PARAMS["linescan_augment"]),
+                                  seed=int(PARAMS.get("augmentation_seed", 20261104)), forbidden=forbidden)
+    OUT.mkdir(parents=True, exist_ok=True)
+    shutil.copy(WORK / "train/linescan_augmentation.json", OUT / "linescan_augmentation.json")
+    print("line-scan training augmentation:", augmentation["added_images"], "images; val/test unchanged", flush=True)
 if MAX_TRAIN:
     # A fixed random sample: the tiles are ordered by source, and the first N would be one or two sources only
     # (the first smoke test trained on AITEX and stain photos and was tested on everything).
@@ -177,11 +218,13 @@ class Exp(MyExp):
         self.output_dir = "{RUNS}"
         # Fabric: flips and 90° turns are natural (defects have no up/down); colour jitter for dyed fabric.
         self.flip_prob = 0.5
-        self.degrees = 5.0
+        self.degrees = {float(PARAMS.get("degrees", 5.0))}
+        self.hsv_prob = {float(PARAMS.get("hsv_prob", 1.0))}
         # YOLOX's default mosaic scale (0.1, 2) shrinks a tile up to 10x: a 20-px knot or a 3-px broken yarn
         # disappears (the 6-epoch smoke test learned almost nothing). Keep defects near their real pixel size.
-        self.mosaic_prob = 0.5
-        self.mosaic_scale = (0.5, 1.5)
+        self.mosaic_prob = {float(PARAMS.get("mosaic_prob", 0.5))}
+        self.mosaic_scale = {tuple(PARAMS.get("mosaic_scale", [0.5, 1.5]))}
+        self.random_size = {tuple(PARAMS.get("random_size", [14, 26]))}
         # Mixup lays one fabric over another: the blended weave looks like a defect itself.
         self.mixup_prob = 0.0
         self.enable_mixup = False
@@ -244,7 +287,7 @@ def db_url() -> str | None:
 DB_URL = db_url()
 if DB_URL:
     subprocess.run([sys.executable, "-m", "pip", "-q", "install", "psycopg[binary]"], check=False)
-UPLOAD_KEY = f"models/training/yolox_{SIZE}"
+UPLOAD_KEY = PARAMS.get("checkpoint_prefix", f"models/training/yolox_{SIZE}")
 
 
 def from_supabase(name: str, dest: Path) -> bool:
@@ -277,6 +320,8 @@ if INIT_FROM_PREVIOUS:
     RESUME = False
     attached = sorted([*find_inputs("latest_ckpt.pth", 5), *find_inputs("best_ckpt.pth", 5)],
                       key=lambda p: p.stat().st_mtime)
+    if PARAMS.get("checkpoint_name"):
+        attached = [p for p in attached if p.name == PARAMS["checkpoint_name"]]
     if not attached:
         raise SystemExit("init_from_previous: no checkpoint attached (attach the previous training notebook)")
     start = f"-c {attached[-1]}"
@@ -490,10 +535,16 @@ def operating_point() -> dict[str, float]:
 
     val_dets, val_truths, _ = load_split("val")
     thresholds = choose_thresholds(val_dets, val_truths, class_names)
+    if PARAMS.get("baseline_threshold_guard"):
+        from linescan_domain import guarded_thresholds
+
+        thresholds = guarded_thresholds(val_dets, val_truths, class_names, PARAMS["baseline_threshold_guard"])
     test_dets, test_truths, test_images = load_split("test")
     rep = report(test_dets, test_truths, thresholds, set(class_names) - set(NUISANCE_CLASSES),
                  lambda name: name.split("__")[0], test_images)
     rep["thresholds_from"] = "val split, best F1 per class"
+    if PARAMS.get("baseline_threshold_guard"):
+        rep["thresholds_from"] = "val best F1 with baseline defect floors and nuisance ceilings"
     print("thresholds:", thresholds)
     print("test:", json.dumps({k: v for k, v in rep.items() if k not in ("per_class", "per_source")}))
     print("per source:", json.dumps(rep["per_source"], indent=1))
@@ -518,6 +569,8 @@ for f in (best, onnx_path, TMP / "test_eval.txt", run_dir / "train_log.txt"):
     "epochs": EPOCHS + PREVIOUS.get("epochs", 0), "fine_tuned_from": PREVIOUS or None, "batch": BATCH,
     "input": [640, 640], "classes": class_names, "thresholds": thresholds, "run_status": status,
     "dataset_summary": json.loads((ANN / "summary.json").read_text()),
+    "train_parameters": PARAMS,
+    "linescan_augmentation": {k: v for k, v in augmentation.items() if k != "images"} if augmentation else None,
     "minutes": round((time.time() - T0) / 60, 1),
 }, indent=1))
 print(f"done in {(time.time() - T0) / 60:.1f} min")

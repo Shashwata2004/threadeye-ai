@@ -6,6 +6,7 @@ import { useDatasets, useMachines, useMe, useProviders } from "@/lib/api/hooks";
 import { hasPerm } from "@/lib/api/client";
 import { request, useRuns, type Run } from "@/lib/api/operations";
 import { Card, CardTitle, Field, inputCls, primaryBtn, useBi, Pill } from "./screenKit";
+import { PermissionNotice } from "./PermissionNotice";
 
 export function EvaluationWorkbench({kind}: {kind: "verification" | "benchmark"}) {
   const bi = useBi();
@@ -66,6 +67,9 @@ export function EvaluationWorkbench({kind}: {kind: "verification" | "benchmark"}
         "প্রতি পরীক্ষায় ভিডিও সিমুলেটেড। সিমুলেটেড শনাক্তকারী অথবা নিজের মডেল বাছুন। এটি সফটওয়্যারের পরীক্ষা; বাস্তব ক্যামেরার ক্যালিব্রেশন নয়।")}</p>
       {kind === "benchmark" && <p className="mb-4 text-sm text-brand-amber">{bi(
         "Only held-out test datasets with a verified manifest are accepted.", "শুধু test manifest-সহ ডেটা চলবে; train/validation ডেটা চলবে না।")}</p>}
+      {!canRun && me && <PermissionNotice title={bi("Your account can view results but cannot run these checks.", "আপনার অ্যাকাউন্টে ফল দেখা যায়, কিন্তু এই পরীক্ষা চালানোর অনুমতি নেই।")}>
+        {bi("Previous results remain available below. A QC supervisor or admin can run a new check.", "আগের ফল নিচে দেখতে পারবেন। নতুন পরীক্ষা চালাতে QC সুপারভাইজার বা অ্যাডমিনকে বলুন।")}
+      </PermissionNotice>}
       {canRun && <form onSubmit={run} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Field label={bi("Datasets (up to 5)", "ডেটাসেট (সর্বোচ্চ ৫টি)")}>
           <select required multiple className={inputCls} value={datasetIds} data-testid="evaluation-datasets"

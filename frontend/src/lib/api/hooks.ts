@@ -155,6 +155,7 @@ export function useInspections(params: { open_only?: boolean; roll_id?: string; 
   return useQuery({
     queryKey: ["inspections", params],
     queryFn: () => must(api.GET("/api/v1/inspections", { params: { query: params } }), "inspections"),
+    refetchInterval: 15000,
   });
 }
 

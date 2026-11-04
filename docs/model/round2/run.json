@@ -1,0 +1,8 @@
+{
+  "training_ref": "shashwatanandi2004/threadeye-linescan-r2",
+  "evaluation_ref": "shashwatanandi2004/threadeye-roll-comparison-r2",
+  "report_dir": "docs/model/round2",
+  "artifact_dir": "build/kaggle/round2/candidate-output",
+  "evaluation_run_dir": "build/kaggle/round2/evaluation-run",
+  "train_config_path": "build/kaggle/round2/code/targeted_params.json"
+}

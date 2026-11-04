@@ -1,0 +1,118 @@
+{
+  "dataset": "demo_challenge_roll",
+  "source": "aitex-fabric-03",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "02de7b97544dc5483b7da95972141c329b0fbc8c1bb495246d03165c4a796037",
+    "model_info.json": "acd356cdb10e8713ce2d927bd97299b88498b41383cae977607d710aff11ee9b",
+    "roll_meta.json": "1377dc0a8d558ade38f459be8dfddb8e5e7989162c35f2048ae6a760bb8559e2",
+    "frames.csv": "f9ce4335ef6df4a933c4d71b4a915d89a13ee8ae544012a1df36fab3871d1674",
+    "ground_truth.csv": "011ee61f777ccf0acf6a0881928f45cdc52e5764d9308562b05b57cc5cea14d7",
+    "nuisance.csv": "7d3d47341624199abdb6853ebd059cfaa0ed4a2783813913658e18c9555b39b3",
+    "roll_video.mp4": "6ddab2885ab2c6398028fdb52d7d1eeec7274e94b8014894df0e0445e22e279a"
+  },
+  "evaluation": {
+    "tp": 7,
+    "fp": 12,
+    "fn": 4,
+    "precision": 0.3684,
+    "recall": 0.6364,
+    "f1": 0.4667,
+    "class_accuracy": 0.7143,
+    "recall_per_class": {
+      "broken_yarn": 0.0,
+      "selvage_defect": 1.0,
+      "slub": 0.8571
+    },
+    "fp_by_type": {
+      "unexplained": 12
+    },
+    "nondefects_ignored": {
+      "loose_thread": 4,
+      "selvage_weave": 42
+    },
+    "missed": [
+      "6",
+      "7",
+      "8",
+      "11"
+    ]
+  },
+  "matches": [
+    [
+      "D-07",
+      "2",
+      0.8134
+    ],
+    [
+      "D-13",
+      "3",
+      0.6618
+    ],
+    [
+      "D-15",
+      "4",
+      0.5707
+    ],
+    [
+      "D-17",
+      "5",
+      0.5153
+    ],
+    [
+      "D-06",
+      "1",
+      0.4696
+    ],
+    [
+      "D-33",
+      "9",
+      0.4606
+    ],
+    [
+      "D-46",
+      "10",
+      0.0131
+    ]
+  ],
+  "missed_defects": [
+    {
+      "id": "6",
+      "class": "broken_yarn",
+      "yard": 4.814
+    },
+    {
+      "id": "7",
+      "class": "slub",
+      "yard": 4.888
+    },
+    {
+      "id": "8",
+      "class": "broken_yarn",
+      "yard": 5.652
+    },
+    {
+      "id": "11",
+      "class": "broken_yarn",
+      "yard": 12.106
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 40.048,
+    "video_duration_seconds": 60.528,
+    "sampled_frames": 89
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 16,
+    "model_per_100": 74.32,
+    "model_verdict": "FAIL",
+    "oracle_points": 17,
+    "oracle_per_100": 78.96,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": true
+  },
+  "inference_threads": 2
+}

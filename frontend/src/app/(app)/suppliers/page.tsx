@@ -1,6 +1,9 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { PermissionNotice } from "@/components/PermissionNotice";
+import { ClaimPackButton } from "@/components/ClaimPackButton";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { hasPerm, type MillScorecard } from "@/lib/api/client";
 import { useMe, useScorecards } from "@/lib/api/hooks";
@@ -11,7 +14,6 @@ import {
   PageHeader,
   Pill,
   ViewOnlyNote,
-  ghostBtn,
   inputCls,
   pct,
   screenRoot,
@@ -34,6 +36,8 @@ interface Delivery {
   shortageYd: number;
   status: Status;
   claims: number;
+  claimEligible: boolean;
+  lotDecision: string | null;
 }
 interface Mill {
   id: string;
@@ -71,6 +75,8 @@ function toMill(c: Card): Mill {
       shortageYd: d.shortage_yd,
       status: d.status,
       claims: d.claims,
+      claimEligible: d.claim_eligible,
+      lotDecision: d.lot_decision ?? null,
     })),
   };
 }
@@ -82,9 +88,10 @@ export default function SuppliersPage() {
   const t = useTranslations();
   const bi = useBi();
   const { data: me } = useMe();
+  const canView = hasPerm(me, "suppliers.scorecard");
   const canClaim = hasPerm(me, "claims.write");
   const format = useFormatter();
-  const { data: cards } = useScorecards(hasPerm(me, "suppliers.scorecard"));
+  const { data: cards, isPending: loading, isError } = useScorecards(canView);
   const MILLS = useMemo(() => (cards ?? []).filter((c) => c.rolls_inspected > 0).map(toMill), [cards]);
   // The last six months, as the API counts them (oldest first).
   const MONTHS = useMemo(
@@ -98,7 +105,6 @@ export default function SuppliersPage() {
 
   const [millId, setMillId] = useState<string>("all");
   const [query, setQuery] = useState("");
-  const [drafted, setDrafted] = useState<Set<string>>(new Set());
 
   const selected = MILLS.find((m) => m.id === millId);
   const view = useMemo(() => {
@@ -140,6 +146,19 @@ export default function SuppliersPage() {
     ) : (
       <Pill tone="red">{bi("Rejected", "প্রত্যাখ্যাত")}</Pill>
     );
+
+  if (!me || !canView || loading || isError) return (
+    <div className={`${screenRoot} space-y-5`}>
+      <PageHeader title={t("nav.suppliers")} subtitle={t("placeholder.suppliers")} sample={false} />
+      {!me ? <p className="text-slate-500">{t("common.loading")}</p> : !canView ?
+        <PermissionNotice title={bi("This account cannot view mill scorecards.", "এই অ্যাকাউন্টে মিলের স্কোরকার্ড দেখার অনুমতি নেই।")}>
+          <p>{bi("This does not mean there are no deliveries or inspections. QC supervisors, merchandisers, management and admins can view this information.",
+            "এর অর্থ চালান বা পরিদর্শনের তথ্য নেই—এমন নয়। QC সুপারভাইজার, মার্চেন্ডাইজার, ম্যানেজমেন্ট ও অ্যাডমিন এই তথ্য দেখতে পারেন।")}</p>
+        </PermissionNotice>
+      : isError ? <p role="alert" className="text-red-700">{bi("Could not load mill scorecards. Please try again.", "মিলের স্কোরকার্ড লোড করা যায়নি। আবার চেষ্টা করুন।")}</p>
+        : <p className="text-slate-500">{t("common.loading")}</p>}
+    </div>
+  );
 
   return (
     <div className={`${screenRoot} space-y-5`}>
@@ -320,11 +339,10 @@ export default function SuppliersPage() {
               <tbody>
                 {rows.map((d) => {
                   const rolls = d.pass + d.review + d.fail;
-                  const claimable = d.fail > 0 || d.claims > 0 || d.shortageYd > 10;
                   return (
                     <tr key={d.challan} className="border-t border-slate-100 align-middle">
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <span className="font-mono text-xs">{d.challan}</span>
+                        <Link href={`/lots/${d.lotId}#lot-decision`} className="font-mono text-xs text-brand-teal underline">{d.challan}</Link>
                         {!selected && <span className="block text-xs text-slate-500">{d.mill}</span>}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap font-mono text-xs text-slate-600">{d.received}</td>
@@ -353,22 +371,13 @@ export default function SuppliersPage() {
                               {bi(`${d.claims} roll(s) to claim`, `${d.claims}টি রোলে ক্লেইম`)}
                             </Pill>
                           )}
-                          {drafted.has(d.challan) && <Pill tone="teal">✓ {bi("Claim pack downloaded", "ক্লেইম প্যাক নামানো হয়েছে")}</Pill>}
-                          {claimable && (
-                            <button
-                              type="button"
-                              className={`${ghostBtn} px-2 py-0.5 text-xs`}
-                              disabled={!canClaim}
-                              title={canClaim ? undefined : bi("Merchandiser or admin only", "শুধু মার্চেন্ডাইজার বা অ্যাডমিন")}
-                              onClick={() => {
-                                window.open(`/api/v1/lots/${d.lotId}/claim-pack.zip`, "_blank", "noopener");
-                                setDrafted((s) => new Set(s).add(d.challan));
-                              }}
-                              data-testid="claim-pack"
-                            >
-                              {bi("Claim pack (ZIP)", "ক্লেইম প্যাক (ZIP)")}
-                            </button>
-                          )}
+                          <ClaimPackButton lotId={d.lotId} disabled={!canClaim || !d.claimEligible}/>
+                          {!d.claimEligible && <p className="max-w-xs text-xs text-slate-500">{
+                            !d.lotDecision || d.lotDecision === "INSPECT_ALL" ? bi("Claim blocked: finalize the delivery decision first.", "ক্লেইম বন্ধ: আগে পুরো চালানের সিদ্ধান্ত দিন।") :
+                            d.lotDecision === "ACCEPT" ? bi("Accepted without a claim; claim pack unavailable.", "নিঃশর্তে গৃহীত; ক্লেইম প্যাক প্রযোজ্য নয়।") :
+                            bi("No roll has a QC claim/return decision.", "কোনো রোলে QC-এর দাবি/ফেরতের সিদ্ধান্ত নেই।")}</p>}
+                          <Link href={`/lots/${d.lotId}#lot-decision`} className="text-xs text-brand-teal underline">{
+                            hasPerm(me, "verdict.decide") ? bi("Record delivery decision", "চালানের সিদ্ধান্ত দিন") : bi("View delivery decision", "চালানের সিদ্ধান্ত দেখুন")}</Link>
                         </div>
                       </td>
                     </tr>

@@ -83,9 +83,9 @@ export function KpiCard({
 /** Shown to roles that may look at a screen but not change it (the API refuses their writes anyway). */
 export function ViewOnlyNote({ children }: { children: ReactNode }) {
   return (
-    <p role="note" className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-brand-amber">
+    <div role="note" className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-brand-amber">
       {children}
-    </p>
+    </div>
   );
 }
 

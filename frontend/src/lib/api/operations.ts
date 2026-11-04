@@ -30,6 +30,11 @@ export interface Cutting {
     segments: {start_yd: number; end_yd: number; action: "keep" | "skip"}[];
     policy: {margin_in: number; min_piece_yd: number; min_points_to_cut: number}};
 }
+export interface CuttingWork {
+  inspection_id: string; roll_code: string; challan: string;
+  status: "approved" | "acknowledged"; approved_at: string; acknowledged_at: string | null;
+  usable_yd: number; skipped_yd: number;
+}
 export interface Dashboard {
   date: string; scope: string; rolls: number; verdicts: Record<string, number>; avg_per_100: number | null;
   false_alarm_share: number | null; reviewed_detections: number; simulated_rolls: number;

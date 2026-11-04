@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { api, hasPerm, type AuditEntry } from "@/lib/api/client";
 import { useAudit, useMe } from "@/lib/api/hooks";
-import { Card, PageHeader, Pill, ViewOnlyNote, inputCls, primaryBtn, screenRoot, useBi } from "@/components/screenKit";
+import { Card, PageHeader, Pill, inputCls, primaryBtn, screenRoot, useBi } from "@/components/screenKit";
+import { PermissionNotice } from "@/components/PermissionNotice";
 
 type Row = AuditEntry & { actor_name?: string };
 
@@ -133,11 +134,10 @@ export default function AuditPage() {
     <div className={`${screenRoot} space-y-4`}>
       <PageHeader title={t("title")} subtitle={t("subtitle")} sample={false} />
       {!me ? <p className="text-slate-500">{tc("loading")}</p> :
-        <ViewOnlyNote>
-          <p className="font-semibold">{bi("You do not have permission to view audit entries.", "এন্ট্রি দেখার অনুমতি নেই।")}</p>
+        <PermissionNotice title={bi("You do not have permission to view audit entries.", "এন্ট্রি দেখার অনুমতি নেই।")}>
           <p>{bi("This does not mean the log is empty. Sign in with an admin or management account to view entries.",
             "এর অর্থ লগ খালি নয়। এন্ট্রি দেখতে অ্যাডমিন বা ম্যানেজমেন্ট অ্যাকাউন্টে লগইন করুন।")}</p>
-        </ViewOnlyNote>}
+        </PermissionNotice>}
     </div>
   );
 

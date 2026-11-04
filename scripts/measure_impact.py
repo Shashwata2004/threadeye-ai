@@ -38,13 +38,13 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def measure(model: Path, roll: Path) -> dict:
+def measure(model: Path, roll: Path, *, threads: int = 0) -> dict:
     key = load_answer_key(roll, require_media=True)
     source = VideoFileSource(roll)
     meta = source.parsed.meta
     profile = simulator_parity_profile()
     started = perf_counter()
-    detector = LocalModelDetector({"model_path": str(model)}, ProviderContext())
+    detector = LocalModelDetector({"model_path": str(model), "threads": threads}, ProviderContext())
     runner = Runner(
         source,
         detector,

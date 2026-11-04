@@ -11,6 +11,9 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle, useTheme } from "@/components/ThemeToggle";
 import { api, hasPerm } from "@/lib/api/client";
 import { useMe } from "@/lib/api/hooks";
+import { canOpenPage, pageAccess } from "@/lib/pageAccess";
+import { PermissionNotice } from "@/components/PermissionNotice";
+import { PageHeader, screenRoot } from "@/components/screenKit";
 import "@/styles/fabric.css";
 
 // Navigation follows server-side permissions (from /auth/me). Hiding a link is only UX:
@@ -19,6 +22,7 @@ const NAV: { href: string; key: string; perm: string | string[] }[] = [
   { href: "/", key: "dashboard", perm: ["dashboard.read", "dashboard.own_shift"] },
   { href: "/lots", key: "lots", perm: "lots.read" },
   { href: "/inspect", key: "inspect", perm: "inspections.read" },
+  { href: "/cutting", key: "cutting", perm: "cutting.read" },
   { href: "/verification", key: "verification", perm: "verification.read" },
   { href: "/benchmark", key: "benchmark", perm: "benchmark.read" },
   { href: "/suppliers", key: "suppliers", perm: "suppliers.scorecard" },
@@ -26,7 +30,7 @@ const NAV: { href: string; key: string; perm: string | string[] }[] = [
   { href: "/admin", key: "admin", perm: "users.manage" },
   { href: "/about", key: "about", perm: "inspections.read" },
 ];
-// Every role may open these screens; each one shows view-only or sample data where the role lacks the permission.
+// Restricted links stay discoverable; opening one explains the missing permission.
 const OPEN_TO_ALL = new Set(["benchmark", "suppliers", "audit", "admin"]);
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -47,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         (n) => OPEN_TO_ALL.has(n.key) || (Array.isArray(n.perm) ? n.perm : [n.perm]).some((p) => hasPerm(me, p)),
       )
     : [];
-  const landing = items[0]?.href;
+  const landing = me?.role === "cutting_master" ? "/cutting" : items[0]?.href;
   useEffect(() => {
     if (pathname === "/" && landing && landing !== "/") router.replace(landing);
   }, [pathname, landing, router]);
@@ -61,6 +65,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (isLoading || !me) {
     return <div className="p-8 text-slate-500">{t("common.loading")}</div>;
   }
+  const access = pageAccess(pathname);
+  const allowed = canOpenPage(me, pathname);
 
   return (
     <div className="te-linen min-h-screen" data-theme={theme}>
@@ -105,7 +111,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </ul>
           <ThreadSpool className="hidden h-24 w-20 self-start p-2 drop-shadow-lg sm:block" />
         </nav>
-        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6">{allowed ? children :
+          <div className={`${screenRoot} space-y-4`}>
+            <PageHeader title={t(`nav.${access?.key ?? "about"}`)} subtitle="" sample={false}/>
+            <PermissionNotice/>
+          </div>}
+        </main>
       </div>
     </div>
   );

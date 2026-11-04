@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import shutil
+import subprocess
 import uuid
 import zipfile
 from pathlib import Path
@@ -129,6 +131,10 @@ def test_cutting_policy_defaults_persists_and_locks_without_changing_score(clien
     login(client, "supervisor")
     url = f"/api/v1/inspections/{id_}/cutting"
     original = client.get(url).json()
+    assert client.get("/api/v1/cutting").json() == []
+    listed = client.get("/api/v1/inspections").json()[0]
+    assert listed["cutting_status"] == "not_issued"
+    assert listed["final_verdict"] == client.get(f"/api/v1/inspections/{id_}").json()["final_verdict"]
     score = client.get(f"/api/v1/inspections/{id_}").json()
     assert original["policy_selection"] == "buyer" and original["policy_locked"] is False
     assert original["plan"]["policy"]["min_points_to_cut"] == 2
@@ -140,6 +146,7 @@ def test_cutting_policy_defaults_persists_and_locks_without_changing_score(clien
         assert client.get(url).json()["source_hash"] == response.json()["source_hash"]
     assert client.get(url).json()["source_hash"] == original["source_hash"]
     all_defects = client.put(url + "/policy", json={"selection": "all"}).json()
+    assert client.get("/api/v1/inspections").json()[0]["cutting_status"] == "draft"
     assert all_defects["plan"]["skipped_yd"] >= original["plan"]["skipped_yd"]
     assert client.put(url + "/policy", json={"selection": "invalid"}).status_code == 422
     login(client, "cutting")
@@ -148,11 +155,31 @@ def test_cutting_policy_defaults_persists_and_locks_without_changing_score(clien
     assert client.post(url + "/approve").json()["policy_locked"] is True
     assert client.put(url + "/policy", json={"selection": "buyer"}).status_code == 409
     persisted = client.get(url).json()
+    assert client.get("/api/v1/inspections").json()[0]["cutting_status"] == "approved"
+    login(client, "cutting")
+    queue = client.get("/api/v1/cutting").json()
+    assert len(queue) == 1 and queue[0]["inspection_id"] == id_
+    assert queue[0]["status"] == "approved" and queue[0]["roll_code"]
+    assert queue[0]["usable_yd"] == persisted["plan"]["usable_yd"]
+    assert client.post(url + "/acknowledge").status_code == 200
+    assert client.get("/api/v1/cutting").json()[0]["status"] == "acknowledged"
+    assert client.get("/api/v1/inspections").json()[0]["cutting_status"] == "acknowledged"
+    login(client, "store")
+    assert client.get("/api/v1/cutting").status_code == 403
+    login(client, "supervisor")
     assert persisted["policy_selection"] == "all" and persisted["status"] == "approved"
     assert persisted["source_hash"] == all_defects["source_hash"]
     after = client.get(f"/api/v1/inspections/{id_}").json()
     for field in ("points_total", "points_per_100", "system_verdict", "rule_profile_id"):
         assert after[field] == score[field]
+    from threadeye.db.models import CuttingPlan
+
+    with get_sessionmaker()() as db:
+        saved = db.scalar(select(CuttingPlan).where(CuttingPlan.inspection_id == uuid.UUID(id_)))
+        assert saved is not None
+        saved.source_hash = "obsolete-approval"
+        db.commit()
+    assert client.get("/api/v1/cutting").json() == []
 
 
 def test_cutting_approval_acknowledgment_pdf_and_labels(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -191,10 +218,26 @@ def test_cutting_approval_acknowledgment_pdf_and_labels(client: TestClient, monk
     login(client, "supervisor")
     assert client.post(f"/api/v1/inspections/{id_}/cutting/approve").json()["status"] == "approved"
     assert client.post(f"/api/v1/inspections/{id_}/cutting/approve").status_code == 200
+    if pdftotext := shutil.which("pdftotext"):
+        pending_pdf = client.get(f"/api/v1/inspections/{id_}/cutting.pdf?lang=en")
+        text = subprocess.run(  # noqa: S603 - fixed pdftotext command, isolated test PDF on stdin
+            [pdftotext, "-", "-"], input=pending_pdf.content, capture_output=True, check=True
+        ).stdout.decode()
+        assert "Acknowledged by: Not yet recorded" in text
     login(client, "cutting")
     assert client.post(f"/api/v1/inspections/{id_}/cutting/acknowledge").json()["status"] == "acknowledged"
     pdf = client.get(f"/api/v1/inspections/{id_}/cutting.pdf?lang=bn")
     assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF-")
+    if pdftotext := shutil.which("pdftotext"):
+        for lang in ("en", "bn"):
+            pdf = client.get(f"/api/v1/inspections/{id_}/cutting.pdf?lang={lang}")
+            text = subprocess.run(  # noqa: S603 - fixed pdftotext command, isolated test PDF on stdin
+                [pdftotext, "-", "-"], input=pdf.content, capture_output=True, check=True
+            ).stdout.decode()
+            assert "(cutting)" in text and "(supervisor)" in text
+            assert "Asia/Dhaka" in text and "+06:00" in text
+            if lang == "en":
+                assert "Acknowledged by:" in text and "Approved by:" in text
     login(client, "admin")
     result = client.get(f"/api/v1/inspections/{id_}/labels.zip")
     assert result.status_code == 200

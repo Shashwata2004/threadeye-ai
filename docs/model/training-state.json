@@ -1,0 +1,14 @@
+{
+  "phase": "comparison_ready",
+  "at_utc": "2026-11-03T21:01:12.288797+00:00",
+  "kaggle_run": "shashwatanandi2004/threadeye-line-scan-fine-tune-from-epoch-44",
+  "running_model_changed": false,
+  "qualified_for_review": false,
+  "reasons": [
+    "roll-suite false alarms increased",
+    "roll score error increased",
+    "more nuisance objects called fabric defects",
+    "crease_mark: overall recall decreased"
+  ],
+  "evaluation_run": "shashwatanandi2004/threadeye-roll-comparison"
+}

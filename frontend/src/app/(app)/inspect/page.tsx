@@ -8,12 +8,14 @@ import { useRef, useState, type FormEvent } from "react";
 import { Button, Field, inputClass } from "@/components/form";
 import { api, hasPerm, idempotencyKey, type InspectionListItem } from "@/lib/api/client";
 import { errorDetail, useDatasets, useInspections, useMachines, useMe } from "@/lib/api/hooks";
+import { useBi } from "@/components/screenKit";
 
 function InspectionList({ items, title, canRun, abortingId, disabled, onAbort }: {
   items: InspectionListItem[]; title: string; canRun: boolean; abortingId: string | null;
   disabled: boolean; onAbort: (item: InspectionListItem) => Promise<void>;
 }) {
   const t = useTranslations();
+  const bi = useBi();
   return (
     <section aria-label={title} className="rounded-lg border border-slate-200 bg-white">
       <h2 className="border-b border-slate-100 px-4 py-2 font-semibold">{title}</h2>
@@ -25,12 +27,30 @@ function InspectionList({ items, title, canRun, abortingId, disabled, onAbort }:
             const live = ["created", "running", "paused", "interrupted"].includes(i.status);
             return (
               <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
-                <span>
+                <div className="min-w-0 space-y-1">
+                <div>
                   <span className="font-mono font-semibold">{i.roll_code}</span> · {t(`istatus.${i.status}`)}
-                  {i.system_verdict && ` · ${t(`verdicts.${i.system_verdict}`)}`}
+                  {i.system_verdict && ` · ${bi("System: ", "সিস্টেম: ")}${t(`verdicts.${i.system_verdict}`)}`}
                   {i.inspector && <span className="text-slate-500"> · {i.inspector}</span>}
                   {live && i.model_outdated && <span className="text-amber-700"> · {t("inspect.oldModel")}</span>}
-                </span>
+                </div>
+                {i.status === "completed" && <div className="flex flex-wrap gap-2 text-xs" data-testid={`inspection-progress-${i.id}`}>
+                  <span className="rounded border border-slate-400/40 px-2 py-1">
+                    {bi("QC decision: ", "QC সিদ্ধান্ত: ")}{i.final_verdict ? t(`verdicts.${i.final_verdict}`) : bi("Pending", "অপেক্ষমাণ")}
+                  </span>
+                  <span className="rounded border border-slate-400/40 px-2 py-1">
+                    {bi("Cutting instructions: ", "কাটিং নির্দেশনা: ")}{i.cutting_status === "approved" || i.cutting_status === "acknowledged" ?
+                      bi("Approved", "অনুমোদিত") : i.cutting_status === "not_ready" ? bi("Inspection not finalized", "পরিদর্শন চূড়ান্ত হয়নি") :
+                      i.cutting_status === "draft" ? bi("Draft, awaiting approval", "খসড়া, অনুমোদন হয়নি") :
+                      bi("Not issued", "দেওয়া হয়নি")}
+                  </span>
+                  <span className="rounded border border-slate-400/40 px-2 py-1">
+                    {bi("Cutting master receipt: ", "কাটিং মাস্টারের গ্রহণ: ")}{i.cutting_status === "acknowledged" ?
+                      bi("Acknowledged", "নিশ্চিত করেছেন") : i.cutting_status === "approved" ? bi("Awaiting receipt", "অপেক্ষমাণ") :
+                      bi("Instructions not yet approved", "নির্দেশনা এখনও অনুমোদিত নয়")}
+                  </span>
+                </div>}
+                </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Link
                     href={live ? `/inspect/${i.id}` : `/inspections/${i.id}`}

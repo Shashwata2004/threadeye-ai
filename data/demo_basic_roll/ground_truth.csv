@@ -1,0 +1,4 @@
+defect_id,class,center_yd,start_yd,end_yd,across_cm,length_in,points,first_full_frame,last_full_frame,operator_stop_frame,x0_px,y0_px,x1_px,y1_px,source
+1,nep,2.882,2.88,2.884,93.34,0.14,1,25,40,26,2208.4,6243.6,2217.1,6251.3,0087_030_02.png
+2,fuzzyball,6.532,6.532,6.533,141.88,0.08,1,72,87,73,3361.1,14159.2,3366.0,14162.2,0098_019_02.png
+3,crease,10.468,10.411,10.525,133.56,4.12,2,121,133,122,3157.6,22568.0,3175.0,22816.0,0069_023_02.png

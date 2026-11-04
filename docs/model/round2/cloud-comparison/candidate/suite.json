@@ -1,0 +1,392 @@
+{
+  "measured_at_utc": "2026-11-04T11:11:41.146069+00:00",
+  "model_sha256": "19751918c54ef074e97b8582426f1cbacac82521e397963a81f13208377fed74",
+  "limitation": "Simulated development/regression suite; source images may recur across scenarios. Not a factory pilot or independent overall test score.",
+  "rolls": [
+    {
+      "dataset": "linescan_roll",
+      "source": "aitex-fabric-02",
+      "simulated_video": true,
+      "real_model_inference": true,
+      "profile": "Simulator parity",
+      "sha256": {
+        "threadeye_s.onnx": "19751918c54ef074e97b8582426f1cbacac82521e397963a81f13208377fed74",
+        "model_info.json": "3fa6a491b6dc2a0ddb6ea9874dec73191abe617f3001b531138d9f98b983559a",
+        "roll_meta.json": "21d1698eb3732bcecb75c2f4802a183fcd428a32fc5fa3c0fc1c1c26800ffe2a",
+        "frames.csv": "9cb636c71da78e3e4520d591f7963ad35adb3508c4de0ed9c19d7dc7c806bfcd",
+        "ground_truth.csv": "be1bcbc4be2fa259f3836f5bfb59058be650ee2444a519ca6ed265667b7dd277",
+        "nuisance.csv": "4a8b429e94f2671f758c283ec8545f80e03e64a77b64af30389dc6a7a3884483",
+        "roll_video.mp4": "66b368a2eb763c61bb02852f3a9a816f2bfc7d4572dad583a006cbd6d6ae58c1"
+      },
+      "evaluation": {
+        "tp": 5,
+        "fp": 2,
+        "fn": 2,
+        "precision": 0.7143,
+        "recall": 0.7143,
+        "f1": 0.7143,
+        "class_accuracy": 1.0,
+        "recall_per_class": {
+          "broken_yarn": 0.0,
+          "crease_mark": 1.0,
+          "slub": 1.0
+        },
+        "fp_by_type": {
+          "unexplained": 2
+        },
+        "nondefects_ignored": {
+          "loose_thread": 7,
+          "wrinkle": 2
+        },
+        "missed": [
+          "5",
+          "7"
+        ]
+      },
+      "matches": [
+        [
+          "D-14",
+          "6",
+          0.6519
+        ],
+        [
+          "D-02",
+          "1",
+          0.5702
+        ],
+        [
+          "D-03",
+          "2",
+          0.4881
+        ],
+        [
+          "D-05",
+          "3",
+          0.4848
+        ],
+        [
+          "D-06",
+          "4",
+          0.3585
+        ]
+      ],
+      "missed_defects": [
+        {
+          "id": "5",
+          "class": "broken_yarn",
+          "yard": 10.468
+        },
+        {
+          "id": "7",
+          "class": "broken_yarn",
+          "yard": 12.853
+        }
+      ],
+      "timing": {
+        "headless_seconds_including_model_setup": 55.663,
+        "video_duration_seconds": 51.789,
+        "sampled_frames": 114
+      },
+      "decision_replay": {
+        "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+        "model_points": 11,
+        "model_per_100": 51.09,
+        "model_verdict": "FAIL",
+        "oracle_points": 9,
+        "oracle_per_100": 41.8,
+        "oracle_verdict": "FAIL",
+        "verdict_agrees": true
+      },
+      "inference_threads": 2
+    },
+    {
+      "dataset": "demo_basic_roll",
+      "source": "aitex-fabric-02",
+      "simulated_video": true,
+      "real_model_inference": true,
+      "profile": "Simulator parity",
+      "sha256": {
+        "threadeye_s.onnx": "19751918c54ef074e97b8582426f1cbacac82521e397963a81f13208377fed74",
+        "model_info.json": "3fa6a491b6dc2a0ddb6ea9874dec73191abe617f3001b531138d9f98b983559a",
+        "roll_meta.json": "0b5f70711b3ae2a53fba2a13559ddcaf5fe3d69082d8b05edc927d7d48d1ce2a",
+        "frames.csv": "999d0dacfd1755cde618fd9f900bf2be26f1193981a19ba36c9787c16577dff2",
+        "ground_truth.csv": "835c8ec29c6c8e858c1c844e3afb159f006d64572d4691bdc5431a8bc9f22073",
+        "nuisance.csv": "4863e794e8ba0316d59975ca6d2e1506094d3386d57816aa47c8366e3cf8df63",
+        "roll_video.mp4": "61290972adbb6faa9ac8fc5446326bd9ae6289796523a812357aebf64c3dfa51"
+      },
+      "evaluation": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "class_accuracy": 1.0,
+        "recall_per_class": {
+          "crease_mark": 1.0,
+          "slub": 1.0
+        },
+        "fp_by_type": {},
+        "nondefects_ignored": {
+          "loose_thread": 3
+        },
+        "missed": []
+      },
+      "matches": [
+        [
+          "D-06",
+          "3",
+          0.4265
+        ],
+        [
+          "D-01",
+          "1",
+          0.3594
+        ],
+        [
+          "D-04",
+          "2",
+          0.2333
+        ]
+      ],
+      "missed_defects": [],
+      "timing": {
+        "headless_seconds_including_model_setup": 56.729,
+        "video_duration_seconds": 48.964,
+        "sampled_frames": 114
+      },
+      "decision_replay": {
+        "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+        "model_points": 4,
+        "model_per_100": 18.58,
+        "model_verdict": "PASS",
+        "oracle_points": 4,
+        "oracle_per_100": 18.58,
+        "oracle_verdict": "PASS",
+        "verdict_agrees": true
+      },
+      "inference_threads": 2
+    },
+    {
+      "dataset": "demo_mixed_roll",
+      "source": "aitex-fabric-02",
+      "simulated_video": true,
+      "real_model_inference": true,
+      "profile": "Simulator parity",
+      "sha256": {
+        "threadeye_s.onnx": "19751918c54ef074e97b8582426f1cbacac82521e397963a81f13208377fed74",
+        "model_info.json": "3fa6a491b6dc2a0ddb6ea9874dec73191abe617f3001b531138d9f98b983559a",
+        "roll_meta.json": "9034271bb8d71b6150b5c7418398eec70710d544454244ba3f87808b341e9f53",
+        "frames.csv": "272ef9636f5a0704b970d42f4e8bd12ebf0761edeb22518ad7eecb71f3333703",
+        "ground_truth.csv": "0a4bb36684e9fc89b55fffcac4c0267bfce2121ad420265bbef3ff2128b559bd",
+        "nuisance.csv": "629e330d78621f7d355448d32b1f8d3882ebbacb98c5889e033bf6a0b3296410",
+        "roll_video.mp4": "8c73450fc5c792acd67c48d52b0ca045119d4db65667602b249e76f1f8a7eccc"
+      },
+      "evaluation": {
+        "tp": 7,
+        "fp": 4,
+        "fn": 2,
+        "precision": 0.6364,
+        "recall": 0.7778,
+        "f1": 0.7,
+        "class_accuracy": 1.0,
+        "recall_per_class": {
+          "broken_yarn": 0.0,
+          "crease_mark": 1.0,
+          "slub": 1.0
+        },
+        "fp_by_type": {
+          "unexplained": 4
+        },
+        "nondefects_ignored": {
+          "loose_thread": 6
+        },
+        "missed": [
+          "4",
+          "7"
+        ]
+      },
+      "matches": [
+        [
+          "D-14",
+          "5",
+          0.4575
+        ],
+        [
+          "D-15",
+          "6",
+          0.4513
+        ],
+        [
+          "D-04",
+          "2",
+          0.4236
+        ],
+        [
+          "D-17",
+          "9",
+          0.3919
+        ],
+        [
+          "D-05",
+          "3",
+          0.3331
+        ],
+        [
+          "D-16",
+          "8",
+          0.2442
+        ],
+        [
+          "D-01",
+          "1",
+          0.2294
+        ]
+      ],
+      "missed_defects": [
+        {
+          "id": "4",
+          "class": "broken_yarn",
+          "yard": 7.247
+        },
+        {
+          "id": "7",
+          "class": "broken_yarn",
+          "yard": 12.184
+        }
+      ],
+      "timing": {
+        "headless_seconds_including_model_setup": 57.988,
+        "video_duration_seconds": 53.045,
+        "sampled_frames": 114
+      },
+      "decision_replay": {
+        "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+        "model_points": 12,
+        "model_per_100": 55.74,
+        "model_verdict": "FAIL",
+        "oracle_points": 11,
+        "oracle_per_100": 51.09,
+        "oracle_verdict": "FAIL",
+        "verdict_agrees": true
+      },
+      "inference_threads": 2
+    },
+    {
+      "dataset": "demo_challenge_roll",
+      "source": "aitex-fabric-03",
+      "simulated_video": true,
+      "real_model_inference": true,
+      "profile": "Simulator parity",
+      "sha256": {
+        "threadeye_s.onnx": "19751918c54ef074e97b8582426f1cbacac82521e397963a81f13208377fed74",
+        "model_info.json": "3fa6a491b6dc2a0ddb6ea9874dec73191abe617f3001b531138d9f98b983559a",
+        "roll_meta.json": "1377dc0a8d558ade38f459be8dfddb8e5e7989162c35f2048ae6a760bb8559e2",
+        "frames.csv": "f9ce4335ef6df4a933c4d71b4a915d89a13ee8ae544012a1df36fab3871d1674",
+        "ground_truth.csv": "011ee61f777ccf0acf6a0881928f45cdc52e5764d9308562b05b57cc5cea14d7",
+        "nuisance.csv": "7d3d47341624199abdb6853ebd059cfaa0ed4a2783813913658e18c9555b39b3",
+        "roll_video.mp4": "6ddab2885ab2c6398028fdb52d7d1eeec7274e94b8014894df0e0445e22e279a"
+      },
+      "evaluation": {
+        "tp": 8,
+        "fp": 8,
+        "fn": 3,
+        "precision": 0.5,
+        "recall": 0.7273,
+        "f1": 0.5926,
+        "class_accuracy": 0.75,
+        "recall_per_class": {
+          "broken_yarn": 0.0,
+          "selvage_defect": 1.0,
+          "slub": 1.0
+        },
+        "fp_by_type": {
+          "unexplained": 8
+        },
+        "nondefects_ignored": {
+          "loose_thread": 4
+        },
+        "missed": [
+          "6",
+          "8",
+          "11"
+        ]
+      },
+      "matches": [
+        [
+          "D-06",
+          "7",
+          0.867
+        ],
+        [
+          "D-02",
+          "2",
+          0.8133
+        ],
+        [
+          "D-03",
+          "3",
+          0.6616
+        ],
+        [
+          "D-04",
+          "4",
+          0.6082
+        ],
+        [
+          "D-05",
+          "5",
+          0.5087
+        ],
+        [
+          "D-14",
+          "10",
+          0.4906
+        ],
+        [
+          "D-12",
+          "9",
+          0.4445
+        ],
+        [
+          "D-01",
+          "1",
+          0.4402
+        ]
+      ],
+      "missed_defects": [
+        {
+          "id": "6",
+          "class": "broken_yarn",
+          "yard": 4.814
+        },
+        {
+          "id": "8",
+          "class": "broken_yarn",
+          "yard": 5.652
+        },
+        {
+          "id": "11",
+          "class": "broken_yarn",
+          "yard": 12.106
+        }
+      ],
+      "timing": {
+        "headless_seconds_including_model_setup": 55.748,
+        "video_duration_seconds": 60.528,
+        "sampled_frames": 89
+      },
+      "decision_replay": {
+        "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+        "model_points": 16,
+        "model_per_100": 74.32,
+        "model_verdict": "FAIL",
+        "oracle_points": 17,
+        "oracle_per_100": 78.96,
+        "oracle_verdict": "FAIL",
+        "verdict_agrees": true
+      },
+      "inference_threads": 2
+    }
+  ]
+}

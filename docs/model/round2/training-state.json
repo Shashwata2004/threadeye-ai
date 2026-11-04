@@ -1,0 +1,14 @@
+{
+  "phase": "comparison_ready",
+  "at_utc": "2026-11-04T11:33:13.048667+00:00",
+  "kaggle_run": "shashwatanandi2004/threadeye-linescan-r2",
+  "running_model_changed": false,
+  "qualified_for_review": false,
+  "reasons": [
+    "overall found_any_class decreased",
+    "overall found_right_class decreased",
+    "more nuisance objects called fabric defects",
+    "broken_yarn: overall recall decreased"
+  ],
+  "evaluation_run": "shashwatanandi2004/threadeye-roll-comparison-r2"
+}

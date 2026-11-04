@@ -1,0 +1,211 @@
+{
+  "split": "test",
+  "training_excluded": true,
+  "source_groups": [
+    "aitex:fabric-03"
+  ],
+  "basis": "Original source paths occur only in test in the existing Kaggle packed manifest",
+  "packed_manifest_sha256": "19f12c9d49d1ce10b13812e672d1502c131316c3a889affd4e4ff5b20a98808c",
+  "scenario": {
+    "id": "demo_challenge_roll",
+    "fabric": "03",
+    "partition": null,
+    "seed": 307,
+    "density": 8,
+    "noise": 3.5,
+    "vignette": 0.18,
+    "speed": 25,
+    "trim_left": 0.3
+  },
+  "source_images": [
+    {
+      "original": "aitex/extracted/Defect_images/0019_016_03.png",
+      "sha256": "2f3c1d5af6ebb7bd6a2c22dd73a98a1a4755e5520eb18e6bf3f99aaba57e5273"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0020_016_03.png",
+      "sha256": "ff8162e13abda4bb1ffb44cf18fe29fe36aac561bb14ba80c5a53a2a1eb4232a"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0021_016_03.png",
+      "sha256": "1485fdb9583b05ea2cf3c5fe2e5d1eb027de315f498abfad0c15ed52692dcd94"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0049_030_03.png",
+      "sha256": "1d108e017f6c1f1a01fbaa11562fa864dbb9d308565fcda6484f6a2b30abbed8"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0050_019_03.png",
+      "sha256": "5188019d418aa0f65e7aab74c9943788fac44ddda109ad4b5eff67bfe3a78c7a"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0052_019_03.png",
+      "sha256": "be190818397f1ca933cba090ce7b9758bcec46966f7e5cb219b1cb145d157e62"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0053_019_03.png",
+      "sha256": "8e23087112794380d6df27d5d81627c27f3f24e061721445c7be236e210cb768"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0054_019_03.png",
+      "sha256": "a73caa5b7cd3fc3e561b34fbd87794161eecbcb8142ca404c7068832bc174b51"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0071_030_03.png",
+      "sha256": "e005c577339252020f66459c0c28edeaab8f93322e92f5bf8058a1477e0adb0b"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0072_010_03.png",
+      "sha256": "4fa38a72cae416226bc8b070cfdf8b8a91d9b513bd9ddad3542d4da5e15196f1"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0073_010_03.png",
+      "sha256": "49bd97b575d2c1a77ee23d558899ebbc90dd8ef518cf2472b30b7a1eae1f6957"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0074_010_03.png",
+      "sha256": "4a3a80dd38002ec761a3a094adb999307b1f194da9d7be8a6aa6b4b21754fb23"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0075_010_03.png",
+      "sha256": "c9447290add12419b79df09ba8323b6dab1a8632a76992b067b5cc1b626c596d"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0076_030_03.png",
+      "sha256": "cddbff047f2395e1ba62b3ef20939dc1317e4222dc6b0477a6fd25184cb23ca0"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0077_022_03.png",
+      "sha256": "410112280d153cc8261f2eb24fdc279608e487cc42baf062ccabcb6d95cb797a"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0078_025_03.png",
+      "sha256": "f7613f11005dd36ee5e4d7f90d17dd56bb4e12b6f6974dc9367ac06f81cabf20"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0079_025_03.png",
+      "sha256": "087caaf66dd561da1f3cafb268f15cfbc4c89d6d36720dce1c4dfdb5484812e7"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0095_010_03.png",
+      "sha256": "26555acddd5fc70fecadfe1d5ac927c0cab5bf7225836ee7fac90f58d884ed6f"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0096_030_03.png",
+      "sha256": "6c5049c04d9cce5257a2dbe5d586c0fb4609f2175800d3a31ecf1120524c09d5"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0097_030_03.png",
+      "sha256": "7715b2cac1d50aba2688975e9ed3b07b56723d752bd311659966ce59e0db3651"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0101_022_03.png",
+      "sha256": "47f065b43ffeaf699933761dc48be7342eb3bc3f4c9810bfba49419fc21f8232"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0102_010_03.png",
+      "sha256": "a0e23cb769b2cf0032217cc3d5c5d3afab6925801bad2be49b9e9b453f344d4a"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0103_010_03.png",
+      "sha256": "eeb08e9e56560fa850194b0356b9238a8bcdb11affcdf15e5a9e2c49f3794cc4"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0104_022_03.png",
+      "sha256": "4b0115a917032bf3f7802157fbe02abb962050d66bda62b2b5fb3957034a56df"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0107_025_03.png",
+      "sha256": "69fc2536c3d54de812fefd42dbc69b39dae450ff32fa9a055e7edbd428e297e5"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0108_025_03.png",
+      "sha256": "8df4bc840445d6978758e02c6e3c323c62c13ef8a068f315526c068cb9b12bec"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0109_025_03.png",
+      "sha256": "352215255d8cbd990a8ba22cc88549ce806f40b218ae3b84a93e520fd2f2ae79"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0001_000_03.png",
+      "sha256": "546db4fa6ecd12a74fc8353929df99f923879d3f2bdf0e7cd3b72d38cecf3192"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0002_000_03.png",
+      "sha256": "95331a704a1a921490018853c4db970b64c2d7da6c8ecb71d739da86a3555d6d"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0003_000_03.png",
+      "sha256": "86a5b5599cce2626b613df672b93c3f69355215ddf045e1a2bac02ed02a25e81"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0004_000_03.png",
+      "sha256": "fdd8e2524a7ec8ca72a714a865ca1a6d11439dd29be9adb1e79fd00d324b3643"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0005_000_03.png",
+      "sha256": "af795e41f97428e1f58ceef9f44bb71413f4eace41a024a0fdd28e053ee915c3"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0006_000_03.png",
+      "sha256": "38cea2038e3df6b45018b0242ecf0beb8712b36e79d5981dc23f610bbc41bf5e"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0007_000_03.png",
+      "sha256": "008d9e8e5f7674f109d2a096f21453f423e5928aac9151f88b95cc6c11713062"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0008_000_03.png",
+      "sha256": "857dba388da79ec21ce4d5d28b7816d3de4ddee418a85327aa9aa6ace9621b54"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0009_000_03.png",
+      "sha256": "493f8e99f30c05d7296d812734ae77791691c6fec67e55d4da88feb41b0e02c2"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0010_000_03.png",
+      "sha256": "9932ce50208b1fa6568a62e43ec631f0fb8107426e6c122a7067222a207ba36a"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0011_000_03.png",
+      "sha256": "629b070140e6487771dcb0eec4cb63ceb749be5da9cbc68904f3caa985d56b35"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0012_000_03.png",
+      "sha256": "33f530d08ed034a4b98461bc5e43c2d3289259d05609cb5494c24d30c752d6da"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0013_000_03.png",
+      "sha256": "96797f00238e9bb0df23bc90ac9a4d01104a998cca7a903280ec07d13835223d"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0014_000_03.png",
+      "sha256": "152aafecd9fdb9a5dfe3f6f457ebf8019526c025dc892dfc07b97d5c71bd0e0f"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0015_000_03.png",
+      "sha256": "5df7fbf9aa3925c5ae2c8ab495f4075a1539407508ae35a7ce3c9d631bd4dafa"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0016_000_03.png",
+      "sha256": "d0bd20caee8a3cb4f491b539526afe0e136b5d29dedf04d76457a27edc70d255"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0017_000_03.png",
+      "sha256": "5c559854e0e40e61b273b7a45b34c80e8e7655b21fe6c5c9c2dc1812524bdfb0"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0018_000_03.png",
+      "sha256": "d1d592089321f95c73ae2da2c58d022ba6f8c387f71cc26e6b3ac24cab1b4eec"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0019_000_03.png",
+      "sha256": "16beacf4d412d61539cf1f3ddf3ee6a924b34d1971588bbab38984a6ba29170b"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2311694-1930c7u/0020_000_03.png",
+      "sha256": "95bd7a050fde358f62bd34aff4777115b64871c19aafa2746c2de80d5b8d6f01"
+    }
+  ],
+  "limitation": "New simulated arrangement of existing held-out images; not a new independent fabric or blind test"
+}

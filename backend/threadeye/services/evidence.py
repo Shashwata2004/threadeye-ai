@@ -55,9 +55,14 @@ def crop(
     *,
     size: int = 360,
     context: float = 2.2,
+    view_width: float | None = None,
 ) -> bytes:
     """Square crop around the defect, the box outlined, as JPEG. ``context`` = window side ÷ defect size."""
     with Image.open(io.BytesIO(image)) as img:
+        # Older captures can have stale metadata after a smaller image overwrote their blob.
+        # Derive the scale from the actual JPEG and the calibrated camera width when available.
+        if view_width is not None:
+            scale = img.width / view_width
         x0, y0, x1, y1 = (v * scale for v in view_box)
         side = max(x1 - x0, y1 - y0) * context
         side = max(side, 120 * scale * context / 2.2)

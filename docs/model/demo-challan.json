@@ -1,0 +1,25 @@
+{
+  "challan": "CH-DEMO-LINESCAN-20261104",
+  "lot_id": "01a1a2af-caae-7b97-b63f-952c2d455b6d",
+  "sample_data": true,
+  "rolls": [
+    {
+      "roll_code": "TE-000007",
+      "dataset_id": "demo_basic_roll",
+      "length_yd": 13.123,
+      "width_in": 59.06
+    },
+    {
+      "roll_code": "TE-000008",
+      "dataset_id": "demo_mixed_roll",
+      "length_yd": 13.123,
+      "width_in": 59.06
+    },
+    {
+      "roll_code": "TE-000009",
+      "dataset_id": "demo_challenge_roll",
+      "length_yd": 13.123,
+      "width_in": 59.06
+    }
+  ]
+}

@@ -242,6 +242,14 @@ def _verdict_out(db: Session, lot: Lot, summary: svc.LotSummary) -> LotVerdictOu
             for i in summary.rolls
         ],
         decision=decision,
+        claim_eligible=svc.claim_block_reason(
+            lot.decision,
+            sum(
+                i.inspection is not None and i.inspection.final_verdict in svc.ROLL_FAILED_DECISIONS
+                for i in summary.rolls
+            ),
+        )
+        is None,
     )
 
 
@@ -289,6 +297,8 @@ def supplier_scorecards(db: Session = Depends(get_db)) -> list[MillScorecard]:
                         shortage_yd=d.shortage_yd,
                         claims=d.claims,
                         status=d.status,
+                        lot_decision=d.lot_decision,
+                        claim_eligible=d.claim_eligible,
                     )
                     for d in m.deliveries
                 ],

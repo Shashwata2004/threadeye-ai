@@ -1,0 +1,95 @@
+{
+  "dataset": "linescan_roll",
+  "source": "aitex-fabric-02",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "02de7b97544dc5483b7da95972141c329b0fbc8c1bb495246d03165c4a796037",
+    "model_info.json": "acd356cdb10e8713ce2d927bd97299b88498b41383cae977607d710aff11ee9b",
+    "roll_meta.json": "21d1698eb3732bcecb75c2f4802a183fcd428a32fc5fa3c0fc1c1c26800ffe2a",
+    "frames.csv": "9cb636c71da78e3e4520d591f7963ad35adb3508c4de0ed9c19d7dc7c806bfcd",
+    "ground_truth.csv": "be1bcbc4be2fa259f3836f5bfb59058be650ee2444a519ca6ed265667b7dd277",
+    "nuisance.csv": "4a8b429e94f2671f758c283ec8545f80e03e64a77b64af30389dc6a7a3884483",
+    "roll_video.mp4": "66b368a2eb763c61bb02852f3a9a816f2bfc7d4572dad583a006cbd6d6ae58c1"
+  },
+  "evaluation": {
+    "tp": 4,
+    "fp": 0,
+    "fn": 3,
+    "precision": 1.0,
+    "recall": 0.5714,
+    "f1": 0.7273,
+    "class_accuracy": 1.0,
+    "recall_per_class": {
+      "broken_yarn": 0.0,
+      "crease_mark": 0.0,
+      "slub": 1.0
+    },
+    "fp_by_type": {},
+    "nondefects_ignored": {
+      "loose_thread": 7,
+      "selvage_weave": 23
+    },
+    "missed": [
+      "2",
+      "5",
+      "7"
+    ]
+  },
+  "matches": [
+    [
+      "D-04",
+      "1",
+      0.6325
+    ],
+    [
+      "D-28",
+      "6",
+      0.607
+    ],
+    [
+      "D-12",
+      "3",
+      0.4044
+    ],
+    [
+      "D-15",
+      "4",
+      0.4019
+    ]
+  ],
+  "missed_defects": [
+    {
+      "id": "2",
+      "class": "crease_mark",
+      "yard": 4.291
+    },
+    {
+      "id": "5",
+      "class": "broken_yarn",
+      "yard": 10.468
+    },
+    {
+      "id": "7",
+      "class": "broken_yarn",
+      "yard": 12.853
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 37.033,
+    "video_duration_seconds": 51.789,
+    "sampled_frames": 114
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 4,
+    "model_per_100": 18.58,
+    "model_verdict": "PASS",
+    "oracle_points": 9,
+    "oracle_per_100": 41.8,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": false
+  },
+  "inference_threads": 2
+}

@@ -16,6 +16,7 @@
     "dashboard": "ড্যাশবোর্ড",
     "lots": "চালান ও রোল",
     "inspect": "রোল পরীক্ষা",
+    "cutting": "কাটিং কাজ",
     "verification": "দৈনিক যাচাই",
     "benchmark": "পরিমাপ (বেঞ্চমার্ক)",
     "suppliers": "মিলের স্কোরকার্ড",
@@ -364,7 +365,7 @@
       "ACCEPT_WITH_REJECTS": "গ্রহণ, ফেল রোলগুলো ফেরত",
       "REJECT": "পুরো চালান বাতিল"
     },
-    "decisionTitle": "সুপারভাইজারের সিদ্ধান্ত",
+    "decisionTitle": "পুরো চালানের বিষয়ে সুপারভাইজারের সিদ্ধান্ত",
     "decisions": {
       "ACCEPT": "গ্রহণ",
       "ACCEPT_WITH_REJECTS": "ফেল রোল বাদে গ্রহণ",

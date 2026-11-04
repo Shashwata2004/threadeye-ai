@@ -20,7 +20,9 @@ export default function CuttingPage() {
   const query = useQuery({queryKey: ["cutting", id], queryFn: () => request<Cutting>(`/api/v1/inspections/${id}/cutting`)});
   async function decide(action: "approve" | "acknowledge") {
     setBusy(true); setError("");
-    try {await request(`/api/v1/inspections/${id}/cutting/${action}`, {}); await client.invalidateQueries({queryKey: ["cutting", id]});}
+    try {await request(`/api/v1/inspections/${id}/cutting/${action}`, {}); await Promise.all([
+      client.invalidateQueries({queryKey: ["cutting", id]}), client.invalidateQueries({queryKey: ["cutting-work"]}),
+    ]);}
     catch (e) {setError(e instanceof Error ? e.message : String(e));} finally {setBusy(false);}
   }
   async function selectPolicy(selection: string) {
@@ -35,6 +37,7 @@ export default function CuttingPage() {
   }
   const data = query.data;
   return <div className={`${screenRoot} space-y-4`}>
+    <Link className={ghostBtn} href="/cutting">{bi("Back to cutting work", "কাটিং কাজের তালিকায় ফিরুন")}</Link>
     <PageHeader title={bi("Cutting sheet", "কাটিং নির্দেশনা")} sample={!!data?.simulated}
       subtitle={bi("Whole-width skip zones from confirmed defects, buyer margins and minimum usable pieces.",
         "নিশ্চিত ত্রুটি, বায়ারের মার্জিন ও ন্যূনতম টুকরোর দৈর্ঘ্য অনুযায়ী পুরো প্রস্থজুড়ে বাদ দেওয়ার অংশ।")}/>

@@ -534,6 +534,37 @@ def cutting_out(db: Session, inspection_id: uuid.UUID) -> dict[str, Any]:
     }
 
 
+@router.get("/cutting")
+def cutting_queue(_: User = Depends(require(Perm.CUTTING_READ)), db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    """Discover approved instructions; drafts and invalidated approvals are not work orders."""
+    rows = db.execute(
+        select(CuttingPlan, Roll.roll_code, Lot.challan_no)
+        .join(Inspection, Inspection.id == CuttingPlan.inspection_id)
+        .join(Roll, Roll.id == Inspection.roll_id)
+        .join(Lot, Lot.id == Roll.lot_id)
+        .where(CuttingPlan.approved_at.is_not(None), Inspection.finalized_at.is_not(None), Lot.status != "archived")
+        .order_by(CuttingPlan.acknowledged_at.is_not(None), CuttingPlan.approved_at.desc())
+    )
+    result = []
+    for saved, roll_code, challan in rows:
+        fingerprint = cutting_data(db, saved.inspection_id)[2]
+        if saved.source_hash != fingerprint or saved.approved_at is None:
+            continue
+        result.append(
+            {
+                "inspection_id": str(saved.inspection_id),
+                "roll_code": roll_code,
+                "challan": challan,
+                "status": "acknowledged" if saved.acknowledged_at else "approved",
+                "approved_at": saved.approved_at.isoformat(),
+                "acknowledged_at": saved.acknowledged_at.isoformat() if saved.acknowledged_at else None,
+                "usable_yd": saved.plan["usable_yd"],
+                "skipped_yd": saved.plan["skipped_yd"],
+            }
+        )
+    return result
+
+
 @router.get("/inspections/{inspection_id}/cutting")
 def get_cutting(
     inspection_id: uuid.UUID, _: User = Depends(require(Perm.CUTTING_READ)), db: Session = Depends(get_db)
@@ -651,6 +682,22 @@ def cutting_pdf(
     pdf.multi_cell(
         0, 7, text=f"{inspection_id}\n{data['status']}\nSHA256: {data['source_hash']}", new_x="LMARGIN", new_y="NEXT"
     )
+    saved = db.scalar(select(CuttingPlan).where(CuttingPlan.inspection_id == inspection_id))
+    for action, label in (
+        ("approved", "অনুমোদন করেছেন" if lang == "bn" else "Approved by"),
+        ("acknowledged", "নির্দেশনা গ্রহণ করেছেন" if lang == "bn" else "Acknowledged by"),
+    ):
+        at = data[f"{action}_at"]
+        actor_id = getattr(saved, f"{action}_by") if saved and at else None
+        actor = db.get(User, actor_id) if actor_id else None
+        if at:
+            name = f"{actor.display_name} ({actor.username})" if actor else str(actor_id or "Unknown")
+            local_time = datetime.fromisoformat(at).astimezone(ZoneInfo("Asia/Dhaka")).isoformat(timespec="seconds")
+            text = f"{label}: {name}\n{local_time} (Asia/Dhaka)"
+        else:
+            pending = "এখনও হয়নি" if lang == "bn" else "Not yet recorded"
+            text = f"{label}: {pending}"
+        pdf.multi_cell(0, 7, text=text, new_x="LMARGIN", new_y="NEXT")
     plan = data["plan"]
     pdf.multi_cell(
         0,

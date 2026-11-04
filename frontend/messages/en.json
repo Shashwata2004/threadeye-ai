@@ -16,6 +16,7 @@
     "dashboard": "Dashboard",
     "lots": "Deliveries & rolls",
     "inspect": "Inspect a roll",
+    "cutting": "Cutting work",
     "verification": "Daily verification",
     "benchmark": "Benchmark",
     "suppliers": "Mill scorecards",
@@ -364,7 +365,7 @@
       "ACCEPT_WITH_REJECTS": "Accept, return the failed rolls",
       "REJECT": "Reject the delivery"
     },
-    "decisionTitle": "Supervisor's decision",
+    "decisionTitle": "Supervisor's decision on the whole delivery",
     "decisions": {
       "ACCEPT": "Accept",
       "ACCEPT_WITH_REJECTS": "Accept with rejects",

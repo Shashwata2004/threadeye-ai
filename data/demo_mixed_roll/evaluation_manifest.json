@@ -1,0 +1,126 @@
+{
+  "split": "test",
+  "training_excluded": true,
+  "source_groups": [
+    "aitex:fabric-02"
+  ],
+  "basis": "Original source paths occur only in test in the existing Kaggle packed manifest",
+  "packed_manifest_sha256": "19f12c9d49d1ce10b13812e672d1502c131316c3a889affd4e4ff5b20a98808c",
+  "scenario": {
+    "id": "demo_mixed_roll",
+    "fabric": "02",
+    "partition": 1,
+    "seed": 203,
+    "density": 6,
+    "noise": 2,
+    "vignette": 0.12,
+    "speed": 20
+  },
+  "source_images": [
+    {
+      "original": "aitex/extracted/Defect_images/0010_006_02.png",
+      "sha256": "2627ae7df6b8531985010ad6aa650674ea146d388d60a8e433cbb5e0688e8d5c"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0011_006_02.png",
+      "sha256": "f6663fc88862ed282d5da3eec25e3743e06e2c7afabcc84b3dea3a3ba0db2911"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0013_006_02.png",
+      "sha256": "b3c835073111bbc1ed08beee6fa06688c0086268bd662a34d49b936f19d50109"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0015_006_02.png",
+      "sha256": "d9a4384d162e0a2da79781be5e70e7122ca136a2d244095417a63fdadb44df74"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0016_006_02.png",
+      "sha256": "6f3b4c75abf1d19ff92f843b5cd4d568886ee0355dda13c05091d2a2f33b70da"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0017_002_02.png",
+      "sha256": "85729ccd2415c59429bb0de81640d3fec80a8dfa71fd8fd101a3712b87912d46"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0023_019_02.png",
+      "sha256": "a8dc5a0938e2062b3eb40d4ef13e45b35bccad8580e0fa9f6cc375186fb096dc"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0026_019_02.png",
+      "sha256": "4e290e1bde67e1bfe0d5b45962cb103c6ce69434ffb4b7ee0b76aaaf6e375a53"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0027_019_02.png",
+      "sha256": "d380c319a68e2f6b3f99358a06402704817d9bce8ca0a2b0aec8af39133a7161"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0028_019_02.png",
+      "sha256": "044334f4ed1e28a1cb9d79b17b089811ccca57f60a627aead864103105f14941"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0030_019_02.png",
+      "sha256": "649f10d34e4225527f55e0566fe4743f3d8f35d236d29debf0d8b74f7efa03ec"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0033_019_02.png",
+      "sha256": "878fff19cb8f8bf2fb5c719e79bb3e7796d5eb55bb8e26c532268448e7722c69"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0035_019_02.png",
+      "sha256": "ff869957b74ffa72ca69022b6f13c5202e7c3ae7143732c718b271c00042c26a"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0038_019_02.png",
+      "sha256": "63d50b4dc62ff9f0c98adf5144c39054b140bdd11416f82add4cebcfe157b1fd"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0039_019_02.png",
+      "sha256": "9752462b31fa319beb8453ebdf71df53c06b8598161ad054e17dac0a52a4f137"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0068_023_02.png",
+      "sha256": "aaf7f84dc259058c5c0ab3d7ec212df85f7d574000e21793122fcad7a0ec7423"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0099_019_02.png",
+      "sha256": "d29e1d54e658cc6d3431c2cead38fc817d44df56b6ddfc1400bce10aca885df6"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0003_000_02.png",
+      "sha256": "4873b6ac321f6322ad6c7634fb94ebec448939b1e573b3382ff60062bd7e91f8"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0005_000_02.png",
+      "sha256": "6be6ec7fcfbb9aad3a7f7d3d029156c7d88bc72d18ce033a6c4efcc4bd4cd67a"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0006_000_02.png",
+      "sha256": "276615225956da03f9b73c63dbd882da94b6d80e5a305ea90548bbd00764f1db"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0007_000_02.png",
+      "sha256": "cc3e3e0555972b3062820d656d679d2a1baa233a7349406f15200cb0e3156cdc"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0008_000_02.png",
+      "sha256": "3c6553bd3139f00919386edb2b02cb7bab6e1e2ad8020e02bfe0d1d42e4a3a6d"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0009_000_02.png",
+      "sha256": "1b3d42a5aa19ec4cb14c383229b32d05d358a793c735cc6eb003fb9196229f62"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0010_000_02.png",
+      "sha256": "dabd942333243f8c5f770b9385867748f5037f767d01ce2b5aec632853bf19f5"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0011_000_02.png",
+      "sha256": "89a052dd83e9932bf0239a77c5fc245dab78e1386e84f8c779d424a4fed1fda3"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0013_000_02.png",
+      "sha256": "14471d55c6912097fab93824e63590454dad6b20546d187b6fb6a5bc8c41532f"
+    }
+  ],
+  "limitation": "New simulated arrangement of existing held-out images; not a new independent fabric or blind test"
+}

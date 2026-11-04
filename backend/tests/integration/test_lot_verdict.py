@@ -124,6 +124,7 @@ def test_supplier_scorecard_from_finalized_rolls(client: TestClient) -> None:
     (delivery,) = mill["deliveries"]
     summary = (delivery["challan"], delivery["failed"], delivery["claims"], delivery["status"])
     assert summary == ("CH-SCORE-1", 1, 1, "review")
+    assert delivery["claim_eligible"] is False and delivery["lot_decision"] is None
     # The roll covers less than the declared 100 yd: the gap is the shortage.
     assert delivery["shortage_yd"] > 0 and 0 < mill["shortage"] <= 1
 
@@ -137,11 +138,48 @@ def test_claim_pack_holds_the_letter_reports_photos_and_their_checksums(client: 
     lot_id, codes = _lot(client, "CH-CLAIM-1", 2)
     login(client, "merchandiser")
     assert client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip").status_code == 409  # nothing failed yet
-    _inspect_to_verdict(client, codes[0])  # FAIL; its run captured frame 110 (the stain's photo)
+    insp_id = _inspect_to_verdict(client, codes[0])  # FAIL; its run captured frame 110 (the stain's photo)
+
+    # Neither an automatic FAIL nor a signed roll claim bypasses the delivery decision.
+    login(client, "merchandiser")
+    assert client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip").status_code == 409
+    login(client, "supervisor")
+    assert (
+        client.post(
+            f"/api/v1/lots/{lot_id}/decision", json={"decision": "REJECT", "reason": "bad delivery"}
+        ).status_code
+        == 200
+    )
+    login(client, "merchandiser")
+    assert client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip").status_code == 409
+    login(client, "supervisor")
+    assert (
+        client.post(
+            f"/api/v1/inspections/{insp_id}/decision", json={"final_verdict": "REJECT", "reason": "bad roll"}
+        ).status_code
+        == 200
+    )
+    for decision in ("ACCEPT", "INSPECT_ALL"):
+        assert (
+            client.post(
+                f"/api/v1/lots/{lot_id}/decision", json={"decision": decision, "reason": "delivery review"}
+            ).status_code
+            == 200
+        )
+        login(client, "merchandiser")
+        assert client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip").status_code == 409
+        login(client, "supervisor")
+    decided = client.post(
+        f"/api/v1/lots/{lot_id}/decision", json={"decision": "ACCEPT_WITH_REJECTS", "reason": "exclude bad roll"}
+    )
+    assert decided.json()["claim_eligible"] is True
 
     login(client, "store")
     assert client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip").status_code == 403
     login(client, "merchandiser")
+    cards = client.get("/api/v1/suppliers/scorecard").json()
+    delivery = next(d for m in cards for d in m["deliveries"] if d["lot_id"] == lot_id)
+    assert delivery["claim_eligible"] is True and delivery["lot_decision"] == "ACCEPT_WITH_REJECTS"
     r = client.get(f"/api/v1/lots/{lot_id}/claim-pack.zip")
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "application/zip"

@@ -239,6 +239,15 @@ the mill delivered below standard."""
 LOT_DECISIONS = ("ACCEPT", "ACCEPT_WITH_REJECTS", "REJECT", "INSPECT_ALL")
 
 
+def claim_block_reason(decision: str | None, claim_rolls: int) -> str | None:
+    """A claim needs an explicit delivery disposition and signed roll-level claim evidence."""
+    if decision not in {"ACCEPT_WITH_REJECTS", "REJECT"}:
+        return "finalize the delivery as accept with rejects or reject before creating a claim pack"
+    if not claim_rolls:
+        return "no roll has a QC decision to reject or accept with claim: nothing to claim"
+    return None
+
+
 def roll_verdict(insp: Inspection) -> str | None:
     """PASS | FAIL | BORDERLINE of a finalized inspection: the supervisor's decision when there is one."""
     if insp.final_verdict:

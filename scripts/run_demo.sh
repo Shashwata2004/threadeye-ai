@@ -14,6 +14,15 @@ ENV_FILE="${CLOUD_ENV:-.env.cloud}"
 MODEL_DIR="$PWD/data/model"
 
 [ -f "$ENV_FILE" ] || { echo "$ENV_FILE is missing: get it from Shashwata and put it in $PWD" >&2; exit 1; }
+# Desktop terminals may not inherit the PATH set by uv's installer.
+if ! command -v uv >/dev/null 2>&1; then
+  for uv_bin_dir in "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+    if [ -x "$uv_bin_dir/uv" ]; then
+      export PATH="$uv_bin_dir:$PATH"
+      break
+    fi
+  done
+fi
 command -v uv >/dev/null || { echo "uv is missing: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2; exit 1; }
 command -v pnpm >/dev/null || { echo "pnpm is missing: install Node.js 20+, then: npm i -g pnpm" >&2; exit 1; }
 

@@ -1,0 +1,44 @@
+{
+  "train": {
+    "model": "s",
+    "epochs": 8,
+    "batch": 16,
+    "train_budget_h": 4.0,
+    "resume": false,
+    "init_from_previous": true,
+    "checkpoint_name": "latest_ckpt.pth",
+    "lr_scale": 0.1,
+    "yolox_commit": "6ddff4824372906469a7fae2dc3206c7aa4bbaee",
+    "domain_augment": 8000,
+    "augmentation_seed": 202611042,
+    "mosaic_prob": 0,
+    "mosaic_scale": [
+      1,
+      1
+    ],
+    "random_size": [
+      20,
+      20
+    ],
+    "degrees": 0,
+    "hsv_prob": 0.2,
+    "baseline_threshold_guard": {
+      "hole": 0.6,
+      "stain": 0.2,
+      "slub": 0.2,
+      "broken_yarn": 0.35,
+      "missing_yarn": 0.35,
+      "knot": 0.35,
+      "crease_mark": 0.35,
+      "contamination": 0.5,
+      "shade_bar": 0.1,
+      "other_defect": 0.3,
+      "sticker": 0.25,
+      "loose_thread": 0.2,
+      "wrinkle": 0.25,
+      "hand": 0.3
+    },
+    "checkpoint_prefix": "models/training/yolox_s_linescan_round2_20261104",
+    "frozen_manifest_sha256": "19f12c9d49d1ce10b13812e672d1502c131316c3a889affd4e4ff5b20a98808c"
+  }
+}

@@ -54,6 +54,7 @@ from threadeye.db import audit
 from threadeye.db.models import (
     AuditLog,
     Buyer,
+    CuttingPlan,
     DefectRow,
     Inspection,
     InspectionEvent,
@@ -368,7 +369,11 @@ def list_inspections(
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[InspectionListItem]:
-    q = select(Inspection, Roll.roll_code).join(Roll, Roll.id == Inspection.roll_id)
+    q = (
+        select(Inspection, Roll.roll_code, CuttingPlan)
+        .join(Roll, Roll.id == Inspection.roll_id)
+        .outerjoin(CuttingPlan, CuttingPlan.inspection_id == Inspection.id)
+    )
     if not include_archived:
         q = q.join(Lot, Lot.id == Roll.lot_id).where(Lot.status != "archived")
     if roll_id:
@@ -393,8 +398,19 @@ def list_inspections(
             inspector=names.get(i.inspector_id) if i.inspector_id else None,
             is_simulated=i.is_simulated,
             model_outdated=live.model_outdated(i),
+            cutting_status=(
+                "not_ready"
+                if i.finalized_at is None
+                else "not_issued"
+                if plan is None
+                else "acknowledged"
+                if plan.acknowledged_at
+                else "approved"
+                if plan.approved_at
+                else "draft"
+            ),
         )
-        for i, code in rows
+        for i, code, plan in rows
     ]
 
 
@@ -763,7 +779,11 @@ def _roll_report(db: Session, insp: Inspection, lang: str) -> tuple[bytes, dict[
             if ev and ev.frame.image_key:
                 try:
                     crops[d.defect_no] = evidence.crop(
-                        storage.get(db, ev.frame.image_key), ev.view_box, ev.frame.image_scale or 1.0, size=240
+                        storage.get(db, ev.frame.image_key),
+                        ev.view_box,
+                        ev.frame.image_scale or 1.0,
+                        size=240,
+                        view_width=source.calibration.view_region[2],
                     )
                 except (OSError, ValueError):
                     continue
@@ -803,7 +823,8 @@ ZIP: dict[int | str, dict[str, Any]] = {200: {"content": {"application/zip": {}}
     responses=ZIP,
     description="Claim pack for the failed rolls of a delivery (M5): an English claim letter to the mill, each "
     "failed roll's inspection report, every defect photo, manifest.json and SHA256SUMS.txt (the checksum of "
-    "every file, and the head of the audit chain when the pack was made). 409 when no roll failed. Audited.",
+    "every file, and the head of the audit chain when the pack was made). Requires a delivery decision "
+    "to accept with rejects or reject, and signed QC roll claims; otherwise 409. Audited.",
 )
 def claim_pack(
     lot_id: uuid.UUID,
@@ -815,9 +836,14 @@ def claim_pack(
     if lot is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "lot not found")
     summary = receiving.lot_summary(db, lot)
-    failed = [i for i in summary.rolls if i.verdict == "FAIL" and i.inspection is not None]
-    if not failed:
-        raise HTTPException(status.HTTP_409_CONFLICT, "no failed roll in this delivery: nothing to claim")
+    failed = [
+        i
+        for i in summary.rolls
+        if i.inspection is not None and i.inspection.final_verdict in receiving.ROLL_FAILED_DECISIONS
+    ]
+    blocked = receiving.claim_block_reason(lot.decision, len(failed))
+    if blocked:
+        raise HTTPException(status.HTTP_409_CONFLICT, blocked)
     files: dict[str, bytes] = {}
     rolls: list[ClaimRoll] = []
     sim_video = sim_detections = False
@@ -1047,11 +1073,16 @@ def defect_crop(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no evidence image")
     try:
         content = evidence.crop(
-            storage.get(db, ev.frame.image_key), ev.view_box, ev.frame.image_scale or 1.0, size=size, context=context
+            storage.get(db, ev.frame.image_key),
+            ev.view_box,
+            ev.frame.image_scale or 1.0,
+            size=size,
+            context=context,
+            view_width=source.calibration.view_region[2],
         )
     except FileNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "evidence image missing") from exc
-    return Response(content, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=60"})
+    return Response(content, media_type="image/jpeg", headers={"Cache-Control": "private, no-cache"})
 
 
 @defects_router.post("/defects/{defect_id}/confirm", response_model=DefectOut, description=IDEMPOTENCY_NOTE)

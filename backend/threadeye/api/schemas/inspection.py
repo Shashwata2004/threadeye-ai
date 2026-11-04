@@ -151,6 +151,7 @@ class InspectionListItem(ApiModel):
     inspector: str | None
     is_simulated: bool
     model_outdated: bool = False
+    cutting_status: Literal["not_ready", "not_issued", "draft", "approved", "acknowledged"] = "not_issued"
 
 
 class Capture(ApiModel):

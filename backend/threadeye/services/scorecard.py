@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from threadeye.db.models import DefectRow, Inspection, Lot, Roll, Supplier
-from threadeye.services.receiving import roll_verdict
+from threadeye.services.receiving import claim_block_reason, roll_verdict
 
 CLAIM_DECISIONS = frozenset({"ACCEPT_WITH_CLAIM", "REJECT"})
 TREND_MONTHS = 6
@@ -37,6 +37,11 @@ class DeliveryCard:
     claims: int = 0
     status: str = "review"
     """accepted | review | rejected: from the supervisor's lot decision (review until there is one)."""
+    lot_decision: str | None = None
+
+    @property
+    def claim_eligible(self) -> bool:
+        return claim_block_reason(self.lot_decision, self.claims) is None
 
     @property
     def avg_points(self) -> float | None:
@@ -116,7 +121,12 @@ def scorecards(db: Session) -> list[MillCard]:
         card = cards.get(lot.id)
         if card is None:
             card = cards[lot.id] = DeliveryCard(
-                lot.id, lot.challan_no, lot.received_at, lot.fabric_type, status=_status(lot)
+                lot.id,
+                lot.challan_no,
+                lot.received_at,
+                lot.fabric_type,
+                status=_status(lot),
+                lot_decision=lot.decision,
             )
             mill.deliveries.append(card)
         verdict = roll_verdict(insp)

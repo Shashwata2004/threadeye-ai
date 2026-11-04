@@ -240,6 +240,32 @@ html:lang(bn) .te-motto {
  * Dark mode for screens that still use the plain Tailwind palette (white cards, slate text,
  * pale status boxes). Mapping them here keeps those screens readable without editing them.
  */
+.te-lot-verdict {
+  --lot-accent: #64748b;
+  background-color: var(--te-linen-card);
+  color: var(--te-ink);
+  border-color: var(--te-card-border);
+  border-inline-start: 4px solid var(--lot-accent);
+}
+.te-lot-verdict--accept { --lot-accent: #047857; }
+.te-lot-verdict--review { --lot-accent: #a16207; }
+.te-lot-verdict--hold { --lot-accent: #c2410c; }
+.te-lot-verdict--reject { --lot-accent: #b91c1c; }
+[data-theme="dark"] .te-lot-verdict--accept { --lot-accent: #6ee7b7; }
+[data-theme="dark"] .te-lot-verdict--review { --lot-accent: #fcd34d; }
+[data-theme="dark"] .te-lot-verdict--hold { --lot-accent: #fdba74; }
+[data-theme="dark"] .te-lot-verdict--reject { --lot-accent: #fca5a5; }
+.te-lot-verdict-status {
+  color: var(--te-ink);
+  background-color: color-mix(in srgb, var(--lot-accent) 15%, var(--te-linen-card));
+  border: 1px solid var(--lot-accent);
+}
+.te-lot-decision {
+  background-color: color-mix(in srgb, var(--te-ink) 4%, var(--te-linen-card));
+  color: var(--te-ink);
+  border-color: var(--te-card-border);
+}
+
 [data-theme="dark"] .bg-white {
   background-color: var(--te-linen-card);
 }

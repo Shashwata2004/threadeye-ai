@@ -7,6 +7,8 @@ import { useParams } from "next/navigation";
 import { useState, type ClipboardEvent } from "react";
 import { SampleBadge } from "@/components/badges";
 import { Button, inputClass } from "@/components/form";
+import { ClaimPackButton } from "@/components/ClaimPackButton";
+import { useBi } from "@/components/screenKit";
 import { api, hasPerm } from "@/lib/api/client";
 import { errorDetail, useInspections, useLot, useLotRolls, useLotVerdict, useMe, useSampling } from "@/lib/api/hooks";
 
@@ -152,17 +154,18 @@ function AddRolls({ lotId, onSaved }: { lotId: string; onSaved: () => void }) {
 }
 
 const VERDICT_STYLE: Record<string, string> = {
-  PENDING_SAMPLE: "border-slate-300 bg-slate-50 text-slate-800",
-  ACCEPT: "border-green-300 bg-green-50 text-green-900",
-  ACCEPT_WITH_REJECTS: "border-amber-300 bg-amber-50 text-amber-900",
-  HOLD_INSPECT_ALL: "border-orange-300 bg-orange-50 text-orange-900",
-  REJECT: "border-red-300 bg-red-50 text-red-900",
+  PENDING_SAMPLE: "te-lot-verdict--pending",
+  ACCEPT: "te-lot-verdict--accept",
+  ACCEPT_WITH_REJECTS: "te-lot-verdict--review",
+  HOLD_INSPECT_ALL: "te-lot-verdict--hold",
+  REJECT: "te-lot-verdict--reject",
 };
 const LOT_DECISIONS = ["ACCEPT", "ACCEPT_WITH_REJECTS", "REJECT", "INSPECT_ALL"] as const;
 
 /** The lot verdict from the rolls inspected so far, and the supervisor's decision on the delivery. */
 function LotVerdictCard({ lotId, canDecide, canClaim }: { lotId: string; canDecide: boolean; canClaim: boolean }) {
   const t = useTranslations("lotVerdict");
+  const bi = useBi();
   const format = useFormatter();
   const queryClient = useQueryClient();
   const { data: v } = useLotVerdict(lotId);
@@ -186,16 +189,17 @@ function LotVerdictCard({ lotId, canDecide, canClaim }: { lotId: string; canDeci
       return;
     }
     queryClient.setQueryData(["lot-verdict", lotId], data);
+    await queryClient.invalidateQueries({queryKey: ["scorecards"]});
     setDecision("");
     setReason("");
   }
 
   const d = v.decision;
   return (
-    <section className={`space-y-3 rounded-lg border p-4 ${VERDICT_STYLE[v.status] ?? ""}`} data-testid="lot-verdict">
+    <section className={`te-lot-verdict space-y-4 rounded-lg border p-4 sm:p-5 ${VERDICT_STYLE[v.status] ?? ""}`} data-testid="lot-verdict">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-semibold">{t("title")}</h2>
-        <span className="text-lg font-bold" data-testid="lot-verdict-status">
+        <span className="te-lot-verdict-status rounded-full px-3 py-1 text-sm font-semibold" data-testid="lot-verdict-status">
           {t(`status.${v.status}`)}
         </span>
       </div>
@@ -208,23 +212,20 @@ function LotVerdictCard({ lotId, canDecide, canClaim }: { lotId: string; canDeci
           pct: v.fail_pct,
         })}
       </p>
-      <p className="text-xs opacity-80">
+      <p className="text-sm text-(--te-ink-soft)">
         {t("rules", { hold: v.rules.hold_if_fail_pct_over, reject: v.rules.reject_if_fail_pct_over })}
       </p>
-      {canClaim && v.failed > 0 && (
+      {canClaim && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => window.open(`/api/v1/lots/${lotId}/claim-pack.zip`, "_blank", "noopener")}
-            data-testid="lot-claim-pack"
-          >
-            {t("claimPack")}
-          </Button>
+          <ClaimPackButton lotId={lotId} disabled={!v.claim_eligible} testId="lot-claim-pack"/>
           <span className="text-xs opacity-80">{t("claimPackHint")}</span>
         </div>
       )}
-      <div className="rounded-md bg-white/70 p-3 text-slate-800">
+      <div id="lot-decision" className="te-lot-decision scroll-mt-6 space-y-2 rounded-md border p-4">
         <h3 className="text-sm font-semibold">{t("decisionTitle")}</h3>
+        <p className="text-sm text-(--te-ink-soft)">{bi(
+          "This decision applies to the whole delivery. Accepting individual rolls does not record it. A QC supervisor or admin records it below.",
+          "এটি পুরো চালানের সিদ্ধান্ত। আলাদা রোল গ্রহণ করলে এই সিদ্ধান্ত দেওয়া হয় না। QC সুপারভাইজার বা অ্যাডমিন নিচে সিদ্ধান্ত রেকর্ড করেন।")}</p>
         {d ? (
           <p className="text-sm" data-testid="lot-decision">
             <span className="font-semibold">{t(`decisions.${d.decision}`)}</span>
@@ -232,10 +233,10 @@ function LotVerdictCard({ lotId, canDecide, canClaim }: { lotId: string; canDeci
             {d.decided_by ?? ""}
             {d.decided_at && `, ${format.dateTime(new Date(d.decided_at), { dateStyle: "medium", timeStyle: "short" })}`}
             {d.lot_verdict && ` · ${t("decidedOn", { verdict: t(`status.${d.lot_verdict}`) })}`}
-            {d.reason && <span className="block text-slate-600">“{d.reason}”</span>}
+            {d.reason && <span className="block text-(--te-ink-soft)">“{d.reason}”</span>}
           </p>
         ) : (
-          <p className="text-sm text-slate-600">{v.status === "PENDING_SAMPLE" ? t("waitSample") : t("noDecision")}</p>
+          <p className="text-sm text-(--te-ink-soft)">{v.status === "PENDING_SAMPLE" ? t("waitSample") : t("noDecision")}</p>
         )}
         {canDecide && v.status !== "PENDING_SAMPLE" && (
           <div className="mt-2 flex flex-wrap items-end gap-2">

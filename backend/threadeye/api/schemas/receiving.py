@@ -152,6 +152,7 @@ class LotVerdictOut(ApiModel):
     rules: LotRulesOut
     rolls: list[LotRollVerdict]
     decision: LotDecisionOut | None
+    claim_eligible: bool = False
 
 
 class LotDecisionIn(ApiModel):
@@ -171,6 +172,8 @@ class ScorecardDelivery(ApiModel):
     shortage_yd: float
     claims: int
     status: Literal["accepted", "review", "rejected"]
+    lot_decision: LotDecision | None = None
+    claim_eligible: bool = False
 
 
 class ScorecardMonth(ApiModel):

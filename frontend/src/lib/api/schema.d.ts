@@ -301,6 +301,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cutting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cutting Queue
+         * @description Discover approved instructions; drafts and invalidated approvals are not work orders.
+         */
+        get: operations["cutting_queue_api_v1_cutting_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inspections/{inspection_id}/cutting": {
         parameters: {
             query?: never;
@@ -1213,7 +1233,7 @@ export interface paths {
         };
         /**
          * Claim Pack
-         * @description Claim pack for the failed rolls of a delivery (M5): an English claim letter to the mill, each failed roll's inspection report, every defect photo, manifest.json and SHA256SUMS.txt (the checksum of every file, and the head of the audit chain when the pack was made). 409 when no roll failed. Audited.
+         * @description Claim pack for the failed rolls of a delivery (M5): an English claim letter to the mill, each failed roll's inspection report, every defect photo, manifest.json and SHA256SUMS.txt (the checksum of every file, and the head of the audit chain when the pack was made). Requires a delivery decision to accept with rejects or reject, and signed QC roll claims; otherwise 409. Audited.
          */
         get: operations["claim_pack_api_v1_lots__lot_id__claim_pack_zip_get"];
         put?: never;
@@ -1937,6 +1957,12 @@ export interface components {
              * @default false
              */
             model_outdated: boolean;
+            /**
+             * Cutting Status
+             * @default not_issued
+             * @enum {string}
+             */
+            cutting_status: "not_ready" | "not_issued" | "draft" | "approved" | "acknowledged";
         };
         /** InspectionSnapshot */
         InspectionSnapshot: {
@@ -2259,6 +2285,11 @@ export interface components {
             /** Rolls */
             rolls: components["schemas"]["LotRollVerdict"][];
             decision: components["schemas"]["LotDecisionOut"] | null;
+            /**
+             * Claim Eligible
+             * @default false
+             */
+            claim_eligible: boolean;
         };
         /** MachineDetail */
         MachineDetail: {
@@ -3077,6 +3108,13 @@ export interface components {
              * @enum {string}
              */
             status: "accepted" | "review" | "rejected";
+            /** Lot Decision */
+            lot_decision?: ("ACCEPT" | "ACCEPT_WITH_REJECTS" | "REJECT" | "INSPECT_ALL") | null;
+            /**
+             * Claim Eligible
+             * @default false
+             */
+            claim_eligible: boolean;
         };
         /** ScorecardMonth */
         ScorecardMonth: {
@@ -4049,6 +4087,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cutting_queue_api_v1_cutting_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
                 };
             };
         };

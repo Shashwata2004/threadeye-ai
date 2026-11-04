@@ -496,7 +496,9 @@ def store_frame_photos(db: Session, insp: Inspection, runner: Runner, photos: Se
             best[photo[0]] = photo
     if not best:
         return 0
-    keys = [f"inspections/{insp.id}/frames/{f:06d}.jpg" for f in best]
+    # Different resolutions must have different blob keys: the conditional frame upsert below
+    # cannot undo overwriting a larger image's bytes with a smaller browser capture.
+    keys = [f"inspections/{insp.id}/frames/{f:06d}-{w}x{h}.jpg" for f, _, w, h in best.values()]
     shas = storage.put_many(db, [(k, jpeg) for k, (_, jpeg, _, _) in zip(keys, best.values(), strict=True)])
     rows = []
     for key, sha, (f, _, w, h) in zip(keys, shas, best.values(), strict=True):

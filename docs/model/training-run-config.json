@@ -1,0 +1,26 @@
+{
+  "train": {
+    "model": "s",
+    "epochs": 8,
+    "batch": 16,
+    "train_budget_h": 3.5,
+    "resume": false,
+    "init_from_previous": true,
+    "checkpoint_name": "latest_ckpt.pth",
+    "lr_scale": 0.25,
+    "yolox_commit": "6ddff4824372906469a7fae2dc3206c7aa4bbaee",
+    "linescan_augment": 1600,
+    "augmentation_seed": 20261104,
+    "mosaic_prob": 0.15,
+    "mosaic_scale": [
+      0.9,
+      1.1
+    ],
+    "random_size": [
+      20,
+      20
+    ],
+    "checkpoint_prefix": "models/training/yolox_s_linescan_20261104",
+    "frozen_manifest_sha256": "19f12c9d49d1ce10b13812e672d1502c131316c3a889affd4e4ff5b20a98808c"
+  }
+}

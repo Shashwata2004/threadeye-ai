@@ -460,7 +460,16 @@ def test_the_servers_larger_photo_of_a_frame_is_not_replaced_by_a_smaller_captur
         live.store_frame_photos(db, insp, runner, [(10, jpeg(960, 62), 960, 62)])
         db.commit()
         where = (InspectionFrame.inspection_id == insp_id, InspectionFrame.frame == 10)
-        assert db.scalars(select(InspectionFrame).where(*where)).one().width == 1920
+        saved = db.scalars(select(InspectionFrame).where(*where)).one()
+        assert saved.width == 1920
+        from threadeye.services import storage
+
+        data = storage.get(db, saved.image_key)
+        with Image.open(io.BytesIO(data)) as photo:
+            assert photo.size == (saved.width, saved.height) == (1920, 124)
+        import hashlib
+
+        assert hashlib.sha256(data).hexdigest() == saved.image_sha256
 
 
 def test_abort_preserves_defects_and_allows_a_new_inspection_of_the_same_roll(client: TestClient) -> None:

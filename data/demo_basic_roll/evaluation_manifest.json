@@ -1,0 +1,150 @@
+{
+  "split": "test",
+  "training_excluded": true,
+  "source_groups": [
+    "aitex:fabric-02"
+  ],
+  "basis": "Original source paths occur only in test in the existing Kaggle packed manifest",
+  "packed_manifest_sha256": "19f12c9d49d1ce10b13812e672d1502c131316c3a889affd4e4ff5b20a98808c",
+  "scenario": {
+    "id": "demo_basic_roll",
+    "fabric": "02",
+    "partition": 0,
+    "seed": 101,
+    "density": 2.5,
+    "noise": 0.8,
+    "vignette": 0.08,
+    "speed": 20
+  },
+  "source_images": [
+    {
+      "original": "aitex/extracted/Defect_images/0012_006_02.png",
+      "sha256": "44672a3e0bb6d7f8e397e6a10e675667d282aa03e5c24207f932af326564e5a9"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0014_006_02.png",
+      "sha256": "85a660bc1f79a5e7272c56acebfe56a6b5f405d5b01a4e72e2b23f7d11892c6e"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0022_019_02.png",
+      "sha256": "b64f1c9d84c26f9dfad9e2cfd1b102bd21355dfc9ebd1bf268a3a594a701ac1f"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0024_019_02.png",
+      "sha256": "ed7f1b9d79320795b369b2b635dd4d2ee51c00680b72a7b1981ffd1e68efcc52"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0025_019_02.png",
+      "sha256": "e68106d883c14427eaa6fb67d547c7ff6f33db3eca5da388456b278d40260a78"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0029_019_02.png",
+      "sha256": "209b5fd1f52aa363baecfc0c7272a2f9501e1efa1b355f3e356171127c6cd196"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0031_019_02.png",
+      "sha256": "3c2ed8516bb0f9dff43c7d10337149b3ef5f1a26a9a186086819b3ff78910960"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0032_019_02.png",
+      "sha256": "838a6f7058d28bd8c2f0e6dcff76da576feed7cf5cb42b28ba1483053ca08fb8"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0034_019_02.png",
+      "sha256": "5c10a688ecf5c0c0ff8d6f4981d92b937b269c7a41e214cc00cce058c48cb056"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0036_019_02.png",
+      "sha256": "099982704dcd859b445509a085a6389b54f7fab145b528aa503b2423e29fddc4"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0037_019_02.png",
+      "sha256": "71b3bc45d3f5780d9ac44a595008f7087143ec2fda22ef82cc1e5eac5a84b48e"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0040_019_02.png",
+      "sha256": "b5c398faf63d82ec475530b72c7185993dba6563a1eed84d0c6f408e05373fe5"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0041_019_02.png",
+      "sha256": "e0004889bda35a3c89fb9abcd0bc5f37429644032cf3b7067907f7343e17c04f"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0042_019_02.png",
+      "sha256": "e61787bddf445470cbaf8353f658bbff30b96a79e78502836abdee8699b40d06"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0069_023_02.png",
+      "sha256": "fbefab1e8f71955c4b4d60cedf9b3bbd32c553afa383f65a32f286f2421a959e"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0070_023_02.png",
+      "sha256": "789a4dc8d208bed89ab38c117b402eea70652d3c50751a18d6f469ec0da2bc3d"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0085_030_02.png",
+      "sha256": "a05dfd8e57c4e944e81e4a076204a20d82f655879d3e07e7131b432219ffecc7"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0086_030_02.png",
+      "sha256": "2d6a37aa4dcbb9f42154c0e408ff50e9a36abe8832cf2e3335374f361b3a3600"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0087_030_02.png",
+      "sha256": "b8678689527b997a48c5bf0cde7e89c796e5d7eb78500cef5cbe06344d78b145"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0088_030_02.png",
+      "sha256": "311ffe4b13e96c760224cfe168675e510014b17d9ee43b17f21717284743eec5"
+    },
+    {
+      "original": "aitex/extracted/Defect_images/0098_019_02.png",
+      "sha256": "ca5ec0f84fbd3303bc6c1fee797c61b80f36b9331718c53c78e7bfb5ff3b37df"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0001_000_02.png",
+      "sha256": "d7fb1cdebcfa1dbd0a6e52069e4d8bcb7c0959171f971f54ccb6e00cff8d566c"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0002_000_02.png",
+      "sha256": "8400a4ec9f9ded6698bfebbd31dca6cb6bbb09adea1135f9a3bbe4106e4071df"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0004_000_02.png",
+      "sha256": "dd8d07f2e7bb10bf81b13fac013cde9e4087bd7517fa1a1c231e8fa6b8aeac1d"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0012_000_02.png",
+      "sha256": "b351e2ef0335d35382fba58353a6f4c55382c6bb31dc2eaeb702a6a4d78ceeac"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0014_000_02.png",
+      "sha256": "403ec66a6a0c1eade5e10385e1d633069c37fb621e214cae3a2059c099132924"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0015_000_02.png",
+      "sha256": "0d3f4204ae7a1dfcfc658d3005d78cd342f7d137bede127bb48de54762de7925"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0016_000_02.png",
+      "sha256": "05e3e91b07e6789238af6feebf700138ba0e29a664d387c9fb0cea9f977ee339"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0017_000_02.png",
+      "sha256": "7b47cfe2213e2032939e58e8c155e6192103ae9c92a8ab26757444e77af106de"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0018_000_02.png",
+      "sha256": "3c0734b58a5ace6a91454239e4917ae81c9be49fbc85cb1ec1923e0d7516e101"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0019_000_02.png",
+      "sha256": "81d001a09fe3d80b1de05ec3cd57bd50dc112b7fc2200c5771076b4dfe7a9db8"
+    },
+    {
+      "original": "aitex/extracted/NODefect_images/2306894-210033u/0020_000_02.png",
+      "sha256": "c026b11d75f34ddd8ec7c584335aaac0af56bfa074659b0b990a6a949a78d19b"
+    }
+  ],
+  "limitation": "New simulated arrangement of existing held-out images; not a new independent fabric or blind test"
+}

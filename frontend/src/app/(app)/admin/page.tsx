@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMe, useProviders, useMasterData } from "@/lib/api/hooks";
 import { hasPerm, type Role } from "@/lib/api/client";
+import { PermissionNotice } from "@/components/PermissionNotice";
 import { request, type User, type MachineDetail, type Profile, type Rules } from "@/lib/api/operations";
 import { Card, CardTitle, Field, PageHeader, inputCls, primaryBtn, ghostBtn, screenRoot, useBi } from "@/components/screenKit";
 
@@ -16,7 +17,10 @@ export default function AdminPage() {
   const canMachines = hasPerm(me, "machines.manage");
   const canProfiles = hasPerm(me, "profiles.write");
   const client = useQueryClient();
-  const [tab, setTab] = useState("users");
+  const [tabChoice, setTab] = useState<string | null>(null);
+  const tab = tabChoice ?? (canUsers ? "users" : canMachines ? "machines" : canProfiles ? "profiles" : hasPerm(me, "providers.manage") ? "detectors" : "sample");
+  const tabAllowed = ({users: canUsers, machines: canMachines, profiles: hasPerm(me, "profiles.read"),
+    detectors: hasPerm(me, "master_data.read"), sample: hasPerm(me, "settings.manage")} as Record<string, boolean>)[tab];
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -92,8 +96,9 @@ export default function AdminPage() {
     ].map(([id, label]) => <button key={id} className={tab === id ? primaryBtn : ghostBtn} onClick={() => setTab(id)}>{label}</button>)}</nav>
     {error && <p role="alert" className="text-red-600">{error}</p>}
     {notice && <p role="status" className="text-emerald-600">{notice}</p>}
+    {!tabAllowed && <PermissionNotice title={bi("Your account cannot view this administration section.", "অ্যাডমিনের এই অংশ দেখার অনুমতি আপনার অ্যাকাউন্টে নেই।")}/>}
     {(users.isError || machines.isError || profiles.isError) && <p role="alert">{bi("Some records could not be loaded.", "কিছু তথ্য আনা যায়নি।")}</p>}
-    {tab === "users" && <Card><CardTitle>{bi("Accounts", "অ্যাকাউন্ট")}</CardTitle>
+    {tab === "users" && tabAllowed && <Card><CardTitle>{bi("Accounts", "অ্যাকাউন্ট")}</CardTitle>
       {canUsers ? <>
         <form onSubmit={addUser} className="mb-5 grid gap-3 sm:grid-cols-2">
           <Field label={bi("Username", "ইউজারনেম")}><input required minLength={3} pattern="[a-z0-9_.-]+" className={inputCls} value={username} onChange={(e) => setUsername(e.target.value)}/></Field>
@@ -112,7 +117,7 @@ export default function AdminPage() {
         </tbody></table></div>
       </> : <p>{bi("User management permission is required.", "ব্যবহারকারী পরিচালনার অনুমতি প্রয়োজন।")}</p>}
     </Card>}
-    {tab === "machines" && <Card><CardTitle>{bi("Machines and calibration", "মেশিন ও ক্যালিব্রেশন")}</CardTitle>
+    {tab === "machines" && tabAllowed && <Card><CardTitle>{bi("Machines and calibration", "মেশিন ও ক্যালিব্রেশন")}</CardTitle>
       {canMachines ? <>
         <select aria-label={bi("Edit machine", "মেশিন সম্পাদনা")} className={`${inputCls} mb-4`} value={machineId} onChange={(e) => {
           const m = machines.data?.find((x) => x.id === e.target.value); setMachineId(e.target.value);
@@ -130,7 +135,7 @@ export default function AdminPage() {
         <p className="mt-3 text-sm text-slate-500">{bi("Calibration is recorded for the machine. Simulated video retains its own known geometry.", "ক্যালিব্রেশন মেশিনের তথ্য হিসেবে থাকবে। সিমুলেটেড ভিডিওর নিজস্ব মাপ অপরিবর্তিত থাকে।")}</p>
       </> : <p>{bi("Machine management permission is required.", "মেশিন পরিচালনার অনুমতি প্রয়োজন।")}</p>}
     </Card>}
-    {tab === "profiles" && <Card><CardTitle>{bi("Versioned buyer rules and preview", "বায়ারের নিয়মের সংস্করণ ও প্রিভিউ")}</CardTitle>
+    {tab === "profiles" && tabAllowed && <Card><CardTitle>{bi("Versioned buyer rules and preview", "বায়ারের নিয়মের সংস্করণ ও প্রিভিউ")}</CardTitle>
       <select className={`${inputCls} mb-3`} aria-label={bi("Rule profile", "রুল প্রোফাইল")} value={profileId} onChange={(e) => selectProfile(e.target.value)}>
         <option value="">{bi("Select a profile", "প্রোফাইল বাছুন")}</option>{profiles.data?.map((p) => <option key={p.id} value={p.id}>{p.name} · v{p.version} · {p.status}</option>)}
       </select>
@@ -169,7 +174,7 @@ export default function AdminPage() {
         {preview && <div data-testid="profile-preview">{preview.points} pt · {preview.per_100.toFixed(2)} /100 · {preview.verdict}<p>{preview.explanation.join(" · ")}</p></div>}
       </div>}
     </Card>}
-    {tab === "detectors" && <Card><CardTitle>{bi("Installed detector configuration", "ইনস্টল করা শনাক্তকারীর অবস্থা")}</CardTitle>
+    {tab === "detectors" && tabAllowed && <Card><CardTitle>{bi("Installed detector configuration", "ইনস্টল করা শনাক্তকারীর অবস্থা")}</CardTitle>
       {providers?.map((p) => <div key={p.provider_id} className="mb-3 rounded border border-slate-300 p-3"><strong>{p.display_name}</strong>
         <p>{p.active ? bi("Active", "সক্রিয়") : bi("Inactive", "নিষ্ক্রিয়")} · {p.availability}</p><p className="text-sm">{p.note}</p>
         {hasPerm(me, "providers.manage") && !p.active && p.availability === "available" && <button disabled={busy} className={ghostBtn}
@@ -179,7 +184,7 @@ export default function AdminPage() {
         </div>)}
       <p>{bi("Changes apply to new inspections on this deployment; open inspections keep their original detector. Cloud and edge defaults are separate.", "এই সার্ভারের নতুন পরীক্ষায় পরিবর্তন কার্যকর হবে; খোলা পরীক্ষায় আগের শনাক্তকারী থাকবে। ক্লাউড ও এজের সেটিংস আলাদা।")}</p>
     </Card>}
-    {tab === "sample" && <Card><CardTitle>{bi("Archive demo deliveries", "ডেমো চালান আর্কাইভ")}</CardTitle>
+    {tab === "sample" && tabAllowed && <Card><CardTitle>{bi("Archive demo deliveries", "ডেমো চালান আর্কাইভ")}</CardTitle>
       <p className="mb-3 text-sm">{bi("Archiving hides SAMPLE deliveries from current lists and scorecards and aborts their open inspections. Reports and audit history are retained; unmarked real deliveries are untouched.",
         "আর্কাইভ করলে নমুনা চালান বর্তমান তালিকা ও স্কোরকার্ড থেকে সরবে এবং তাদের খোলা পরীক্ষা বন্ধ হবে। রিপোর্ট ও অডিট ইতিহাস থাকবে; বাস্তব চালান বদলাবে না।")}</p>
       {hasPerm(me, "settings.manage") ? <div className="space-y-3">

@@ -916,6 +916,33 @@
         }
       }
     },
+    "/api/v1/cutting": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Cutting Queue",
+        "description": "Discover approved instructions; drafts and invalidated approvals are not work orders.",
+        "operationId": "cutting_queue_api_v1_cutting_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Cutting Queue Api V1 Cutting Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/inspections/{inspection_id}/cutting": {
       "get": {
         "tags": [
@@ -3396,7 +3423,7 @@
           "inspections"
         ],
         "summary": "Claim Pack",
-        "description": "Claim pack for the failed rolls of a delivery (M5): an English claim letter to the mill, each failed roll's inspection report, every defect photo, manifest.json and SHA256SUMS.txt (the checksum of every file, and the head of the audit chain when the pack was made). 409 when no roll failed. Audited.",
+        "description": "Claim pack for the failed rolls of a delivery (M5): an English claim letter to the mill, each failed roll's inspection report, every defect photo, manifest.json and SHA256SUMS.txt (the checksum of every file, and the head of the audit chain when the pack was made). Requires a delivery decision to accept with rejects or reject, and signed QC roll claims; otherwise 409. Audited.",
         "operationId": "claim_pack_api_v1_lots__lot_id__claim_pack_zip_get",
         "parameters": [
           {
@@ -5381,6 +5408,18 @@
             "type": "boolean",
             "title": "Model Outdated",
             "default": false
+          },
+          "cutting_status": {
+            "type": "string",
+            "enum": [
+              "not_ready",
+              "not_issued",
+              "draft",
+              "approved",
+              "acknowledged"
+            ],
+            "title": "Cutting Status",
+            "default": "not_issued"
           }
         },
         "type": "object",
@@ -6375,6 +6414,11 @@
                 "type": "null"
               }
             ]
+          },
+          "claim_eligible": {
+            "type": "boolean",
+            "title": "Claim Eligible",
+            "default": false
           }
         },
         "type": "object",
@@ -8405,6 +8449,28 @@
               "rejected"
             ],
             "title": "Status"
+          },
+          "lot_decision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ACCEPT",
+                  "ACCEPT_WITH_REJECTS",
+                  "REJECT",
+                  "INSPECT_ALL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lot Decision"
+          },
+          "claim_eligible": {
+            "type": "boolean",
+            "title": "Claim Eligible",
+            "default": false
           }
         },
         "type": "object",

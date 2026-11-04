@@ -1,0 +1,98 @@
+{
+  "dataset": "linescan_roll",
+  "source": "aitex-fabric-02",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "8ccecc8f94cef232f12e0bf1a23ce009158ad5c72eb5659d7ba0af8e28235e13",
+    "model_info.json": "4be895e0a3343667e2d3ff5e887d3f5d04cf787c4476ca1155c31dc627b892c7",
+    "roll_meta.json": "21d1698eb3732bcecb75c2f4802a183fcd428a32fc5fa3c0fc1c1c26800ffe2a",
+    "frames.csv": "9cb636c71da78e3e4520d591f7963ad35adb3508c4de0ed9c19d7dc7c806bfcd",
+    "ground_truth.csv": "be1bcbc4be2fa259f3836f5bfb59058be650ee2444a519ca6ed265667b7dd277",
+    "nuisance.csv": "4a8b429e94f2671f758c283ec8545f80e03e64a77b64af30389dc6a7a3884483",
+    "roll_video.mp4": "66b368a2eb763c61bb02852f3a9a816f2bfc7d4572dad583a006cbd6d6ae58c1"
+  },
+  "evaluation": {
+    "tp": 4,
+    "fp": 7,
+    "fn": 3,
+    "precision": 0.3636,
+    "recall": 0.5714,
+    "f1": 0.4444,
+    "class_accuracy": 1.0,
+    "recall_per_class": {
+      "broken_yarn": 0.0,
+      "crease_mark": 0.0,
+      "slub": 1.0
+    },
+    "fp_by_type": {
+      "selvage": 6,
+      "wrinkle": 1
+    },
+    "nondefects_ignored": {
+      "loose_thread": 6,
+      "selvage_weave": 23
+    },
+    "missed": [
+      "2",
+      "5",
+      "7"
+    ]
+  },
+  "matches": [
+    [
+      "D-34",
+      "6",
+      0.6527
+    ],
+    [
+      "D-06",
+      "1",
+      0.6354
+    ],
+    [
+      "D-19",
+      "4",
+      0.4417
+    ],
+    [
+      "D-17",
+      "3",
+      0.4282
+    ]
+  ],
+  "missed_defects": [
+    {
+      "id": "2",
+      "class": "crease_mark",
+      "yard": 4.291
+    },
+    {
+      "id": "5",
+      "class": "broken_yarn",
+      "yard": 10.468
+    },
+    {
+      "id": "7",
+      "class": "broken_yarn",
+      "yard": 12.853
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 58.827,
+    "video_duration_seconds": 51.789,
+    "sampled_frames": 114
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 11,
+    "model_per_100": 51.09,
+    "model_verdict": "FAIL",
+    "oracle_points": 9,
+    "oracle_per_100": 41.8,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": true
+  },
+  "inference_threads": 2
+}

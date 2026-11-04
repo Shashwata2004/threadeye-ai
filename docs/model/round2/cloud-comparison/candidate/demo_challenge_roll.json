@@ -1,0 +1,116 @@
+{
+  "dataset": "demo_challenge_roll",
+  "source": "aitex-fabric-03",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "19751918c54ef074e97b8582426f1cbacac82521e397963a81f13208377fed74",
+    "model_info.json": "3fa6a491b6dc2a0ddb6ea9874dec73191abe617f3001b531138d9f98b983559a",
+    "roll_meta.json": "1377dc0a8d558ade38f459be8dfddb8e5e7989162c35f2048ae6a760bb8559e2",
+    "frames.csv": "f9ce4335ef6df4a933c4d71b4a915d89a13ee8ae544012a1df36fab3871d1674",
+    "ground_truth.csv": "011ee61f777ccf0acf6a0881928f45cdc52e5764d9308562b05b57cc5cea14d7",
+    "nuisance.csv": "7d3d47341624199abdb6853ebd059cfaa0ed4a2783813913658e18c9555b39b3",
+    "roll_video.mp4": "6ddab2885ab2c6398028fdb52d7d1eeec7274e94b8014894df0e0445e22e279a"
+  },
+  "evaluation": {
+    "tp": 8,
+    "fp": 8,
+    "fn": 3,
+    "precision": 0.5,
+    "recall": 0.7273,
+    "f1": 0.5926,
+    "class_accuracy": 0.75,
+    "recall_per_class": {
+      "broken_yarn": 0.0,
+      "selvage_defect": 1.0,
+      "slub": 1.0
+    },
+    "fp_by_type": {
+      "unexplained": 8
+    },
+    "nondefects_ignored": {
+      "loose_thread": 4
+    },
+    "missed": [
+      "6",
+      "8",
+      "11"
+    ]
+  },
+  "matches": [
+    [
+      "D-06",
+      "7",
+      0.867
+    ],
+    [
+      "D-02",
+      "2",
+      0.8133
+    ],
+    [
+      "D-03",
+      "3",
+      0.6616
+    ],
+    [
+      "D-04",
+      "4",
+      0.6082
+    ],
+    [
+      "D-05",
+      "5",
+      0.5087
+    ],
+    [
+      "D-14",
+      "10",
+      0.4906
+    ],
+    [
+      "D-12",
+      "9",
+      0.4445
+    ],
+    [
+      "D-01",
+      "1",
+      0.4402
+    ]
+  ],
+  "missed_defects": [
+    {
+      "id": "6",
+      "class": "broken_yarn",
+      "yard": 4.814
+    },
+    {
+      "id": "8",
+      "class": "broken_yarn",
+      "yard": 5.652
+    },
+    {
+      "id": "11",
+      "class": "broken_yarn",
+      "yard": 12.106
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 55.748,
+    "video_duration_seconds": 60.528,
+    "sampled_frames": 89
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 16,
+    "model_per_100": 74.32,
+    "model_verdict": "FAIL",
+    "oracle_points": 17,
+    "oracle_per_100": 78.96,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": true
+  },
+  "inference_threads": 2
+}
