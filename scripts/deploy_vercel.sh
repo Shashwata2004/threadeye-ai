@@ -57,6 +57,7 @@ build_api() {
     name="$(basename "$d")"
     mkdir -p "$out/datasets/$name"
     cp "$d"/*.csv "$d"/roll_meta.json "$out/datasets/$name/"
+    [ -f "$d/evaluation_manifest.json" ] && cp "$d/evaluation_manifest.json" "$out/datasets/$name/"
     [ -f "$d/HIDDEN" ] && cp "$d/HIDDEN" "$out/datasets/$name/"
   done
   (cd "$ROOT/backend" && "$UV" export --frozen --no-dev --no-hashes --no-emit-project --no-header \
