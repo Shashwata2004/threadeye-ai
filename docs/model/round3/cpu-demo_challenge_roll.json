@@ -1,0 +1,157 @@
+{
+  "dataset": "demo_challenge_roll",
+  "source": "aitex-fabric-03",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "7ec6c7e727c30c222076c1ca3cbf51cab001001097c6589459fa5288fd71ac7b",
+    "model_info.json": "e9ad1402cdc8ab2b7edad2bea960f24996ee4e24c615cb14aa37a543e8001b20",
+    "roll_meta.json": "1377dc0a8d558ade38f459be8dfddb8e5e7989162c35f2048ae6a760bb8559e2",
+    "frames.csv": "f9ce4335ef6df4a933c4d71b4a915d89a13ee8ae544012a1df36fab3871d1674",
+    "ground_truth.csv": "011ee61f777ccf0acf6a0881928f45cdc52e5764d9308562b05b57cc5cea14d7",
+    "nuisance.csv": "7d3d47341624199abdb6853ebd059cfaa0ed4a2783813913658e18c9555b39b3",
+    "roll_video.mp4": "6ddab2885ab2c6398028fdb52d7d1eeec7274e94b8014894df0e0445e22e279a"
+  },
+  "evaluation": {
+    "tp": 7,
+    "fp": 11,
+    "fn": 4,
+    "precision": 0.3889,
+    "recall": 0.6364,
+    "f1": 0.4828,
+    "class_accuracy": 0.7143,
+    "recall_per_class": {
+      "broken_yarn": 0.0,
+      "selvage_defect": 1.0,
+      "slub": 0.8571
+    },
+    "fp_by_type": {
+      "unexplained": 11
+    },
+    "nondefects_ignored": {
+      "loose_thread": 4
+    },
+    "missed": [
+      "6",
+      "7",
+      "8",
+      "11"
+    ]
+  },
+  "matches": [
+    [
+      "D-04",
+      "4",
+      0.8191
+    ],
+    [
+      "D-03",
+      "3",
+      0.7379
+    ],
+    [
+      "D-01",
+      "1",
+      0.2654
+    ],
+    [
+      "D-02",
+      "2",
+      0.2605
+    ],
+    [
+      "D-05",
+      "5",
+      0.2424
+    ],
+    [
+      "D-13",
+      "9",
+      0.2402
+    ],
+    [
+      "D-15",
+      "10",
+      0.1399
+    ]
+  ],
+  "right_class_by_truth": {
+    "4": true,
+    "3": true,
+    "1": true,
+    "2": false,
+    "5": true,
+    "9": true,
+    "10": false
+  },
+  "class_confusion": {
+    "4": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "3": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "1": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "2": {
+      "truth": "slub",
+      "predicted": "broken_yarn"
+    },
+    "5": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "9": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "10": {
+      "truth": "selvage_defect",
+      "predicted": "broken_yarn"
+    }
+  },
+  "broken_yarn_truth": 3,
+  "broken_yarn_right": 0,
+  "missed_defects": [
+    {
+      "id": "6",
+      "class": "broken_yarn",
+      "yard": 4.814
+    },
+    {
+      "id": "7",
+      "class": "slub",
+      "yard": 4.888
+    },
+    {
+      "id": "8",
+      "class": "broken_yarn",
+      "yard": 5.652
+    },
+    {
+      "id": "11",
+      "class": "broken_yarn",
+      "yard": 12.106
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 43.944,
+    "video_duration_seconds": 60.528,
+    "sampled_frames": 89
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 17,
+    "model_per_100": 78.96,
+    "model_verdict": "FAIL",
+    "oracle_points": 17,
+    "oracle_per_100": 78.96,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": true
+  }
+}

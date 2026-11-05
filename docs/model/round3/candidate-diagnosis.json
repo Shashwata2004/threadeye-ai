@@ -1,0 +1,91 @@
+{
+  "model_sha256": "7ec6c7e727c30c222076c1ca3cbf51cab001001097c6589459fa5288fd71ac7b",
+  "mode": "whole-1x",
+  "findings": [
+    {
+      "video": "demo_challenge_roll",
+      "id": "6",
+      "class": "broken_yarn",
+      "yard": 4.814351146559436,
+      "cause": "tracking_or_geometry",
+      "threshold": 0.14,
+      "best_broken_argmax_score": 0.3576338589191437,
+      "best_any_broken_score": 0.3576338589191437,
+      "production_tracks": [],
+      "every_frame_tracks": []
+    },
+    {
+      "video": "demo_challenge_roll",
+      "id": "8",
+      "class": "broken_yarn",
+      "yard": 5.651560410263678,
+      "cause": "tracking_or_geometry",
+      "threshold": 0.14,
+      "best_broken_argmax_score": 0.6740247011184692,
+      "best_any_broken_score": 0.6740247011184692,
+      "production_tracks": [],
+      "every_frame_tracks": []
+    },
+    {
+      "video": "demo_challenge_roll",
+      "id": "11",
+      "class": "broken_yarn",
+      "yard": 12.106216176718066,
+      "cause": "tracking_or_geometry",
+      "threshold": 0.14,
+      "best_broken_argmax_score": 0.7332170605659485,
+      "best_any_broken_score": 0.7332170605659485,
+      "production_tracks": [],
+      "every_frame_tracks": []
+    },
+    {
+      "video": "linescan_roll",
+      "id": "5",
+      "class": "broken_yarn",
+      "yard": 10.468056650399015,
+      "cause": "no_usable_prediction",
+      "threshold": 0.14,
+      "best_broken_argmax_score": 0.003627154277637601,
+      "best_any_broken_score": 0.003627154277637601,
+      "production_tracks": [],
+      "every_frame_tracks": []
+    },
+    {
+      "video": "linescan_roll",
+      "id": "7",
+      "class": "broken_yarn",
+      "yard": 12.853123920533557,
+      "cause": "no_usable_prediction",
+      "threshold": 0.14,
+      "best_broken_argmax_score": 4.758148861583322e-05,
+      "best_any_broken_score": 4.758148861583322e-05,
+      "production_tracks": [],
+      "every_frame_tracks": []
+    },
+    {
+      "video": "demo_mixed_roll",
+      "id": "4",
+      "class": "broken_yarn",
+      "yard": 7.247279375511131,
+      "cause": "no_usable_prediction",
+      "threshold": 0.14,
+      "best_broken_argmax_score": 0.0003267732681706548,
+      "best_any_broken_score": 0.0003267732681706548,
+      "production_tracks": [],
+      "every_frame_tracks": []
+    },
+    {
+      "video": "demo_mixed_roll",
+      "id": "7",
+      "class": "broken_yarn",
+      "yard": 12.183670200673737,
+      "cause": "wrong_class",
+      "threshold": 0.14,
+      "best_broken_argmax_score": 0.006352161522954702,
+      "best_any_broken_score": 0.006352161522954702,
+      "production_tracks": [],
+      "every_frame_tracks": []
+    }
+  ],
+  "scope": "All visible ROI frames, actual predictions, sampled/all-frame replay; same frozen matching rules as initial diagnosis. No threshold was changed."
+}

@@ -1,0 +1,307 @@
+{
+  "dataset": "val_0",
+  "source": "yolo:val_0",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "02de7b97544dc5483b7da95972141c329b0fbc8c1bb495246d03165c4a796037",
+    "model_info.json": "acd356cdb10e8713ce2d927bd97299b88498b41383cae977607d710aff11ee9b",
+    "roll_meta.json": "c9ae1dd42c4b01d5b4484b8a3a2d8579659b8f1e9f4ccd801c91ca9f32bcec58",
+    "frames.csv": "4e82a598d427543f0377fa6c1a8dcc3fe6e352470b285e3d528936a0957b5a2b",
+    "ground_truth.csv": "0720d5827231a14c9690658ef93695688913a937f5a2a76eda4e5b32d7b0c382",
+    "nuisance.csv": "4e82249aec8dcb5a3a07172171ba40a929ff2a6e10f11d2483adf1c857d95bc4",
+    "roll_video.mp4": "e2afc097e419bd41e442d8317cc48bf50d7d895e045e2194b750ca88cf2a7a40"
+  },
+  "evaluation": {
+    "tp": 16,
+    "fp": 24,
+    "fn": 13,
+    "precision": 0.4,
+    "recall": 0.5517,
+    "f1": 0.4638,
+    "class_accuracy": 0.9375,
+    "recall_per_class": {
+      "broken_yarn": 0.3333,
+      "crease_mark": 1.0,
+      "knot": 1.0,
+      "slub": 0.5217
+    },
+    "fp_by_type": {
+      "selvage": 1,
+      "unexplained": 22,
+      "wrinkle": 1
+    },
+    "nondefects_ignored": {
+      "loose_thread": 3,
+      "selvage_weave": 16,
+      "sticker": 1,
+      "wrinkle": 1
+    },
+    "missed": [
+      "2",
+      "4",
+      "7",
+      "8",
+      "10",
+      "12",
+      "14",
+      "17",
+      "19",
+      "25",
+      "27",
+      "28",
+      "29"
+    ]
+  },
+  "matches": [
+    [
+      "D-19",
+      "5",
+      0.945
+    ],
+    [
+      "D-53",
+      "23",
+      0.9408
+    ],
+    [
+      "D-51",
+      "21",
+      0.8895
+    ],
+    [
+      "D-43",
+      "16",
+      0.7857
+    ],
+    [
+      "D-50",
+      "20",
+      0.7545
+    ],
+    [
+      "D-52",
+      "22",
+      0.7176
+    ],
+    [
+      "D-48",
+      "18",
+      0.7047
+    ],
+    [
+      "D-21",
+      "6",
+      0.6914
+    ],
+    [
+      "D-57",
+      "24",
+      0.6813
+    ],
+    [
+      "D-31",
+      "11",
+      0.6736
+    ],
+    [
+      "D-33",
+      "13",
+      0.6397
+    ],
+    [
+      "D-58",
+      "26",
+      0.5775
+    ],
+    [
+      "D-09",
+      "1",
+      0.4504
+    ],
+    [
+      "D-36",
+      "15",
+      0.446
+    ],
+    [
+      "D-23",
+      "9",
+      0.4226
+    ],
+    [
+      "D-13",
+      "3",
+      0.1144
+    ]
+  ],
+  "right_class_by_truth": {
+    "5": true,
+    "23": true,
+    "21": false,
+    "16": true,
+    "20": true,
+    "22": true,
+    "18": true,
+    "6": true,
+    "24": true,
+    "11": true,
+    "13": true,
+    "26": true,
+    "1": true,
+    "15": true,
+    "9": true,
+    "3": true
+  },
+  "class_confusion": {
+    "5": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "23": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    },
+    "21": {
+      "truth": "slub",
+      "predicted": "other_defect"
+    },
+    "16": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "20": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "22": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    },
+    "18": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "6": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "24": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "11": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "13": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "26": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "1": {
+      "truth": "knot",
+      "predicted": "knot"
+    },
+    "15": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "9": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "3": {
+      "truth": "slub",
+      "predicted": "slub"
+    }
+  },
+  "broken_yarn_truth": 3,
+  "broken_yarn_right": 1,
+  "missed_defects": [
+    {
+      "id": "2",
+      "class": "slub",
+      "yard": 1.378
+    },
+    {
+      "id": "4",
+      "class": "slub",
+      "yard": 1.857
+    },
+    {
+      "id": "7",
+      "class": "slub",
+      "yard": 3.024
+    },
+    {
+      "id": "8",
+      "class": "slub",
+      "yard": 3.007
+    },
+    {
+      "id": "10",
+      "class": "slub",
+      "yard": 3.07
+    },
+    {
+      "id": "12",
+      "class": "slub",
+      "yard": 3.661
+    },
+    {
+      "id": "14",
+      "class": "slub",
+      "yard": 3.873
+    },
+    {
+      "id": "17",
+      "class": "broken_yarn",
+      "yard": 4.873
+    },
+    {
+      "id": "19",
+      "class": "slub",
+      "yard": 5.358
+    },
+    {
+      "id": "25",
+      "class": "slub",
+      "yard": 6.19
+    },
+    {
+      "id": "27",
+      "class": "slub",
+      "yard": 6.253
+    },
+    {
+      "id": "28",
+      "class": "broken_yarn",
+      "yard": 6.207
+    },
+    {
+      "id": "29",
+      "class": "slub",
+      "yard": 6.363
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 24.058,
+    "video_duration_seconds": 74.796,
+    "sampled_frames": 61
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 26,
+    "model_per_100": 241.52,
+    "model_verdict": "FAIL",
+    "oracle_points": 22,
+    "oracle_per_100": 204.36,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": true
+  }
+}

@@ -38,13 +38,18 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def measure(model: Path, roll: Path, *, threads: int = 0) -> dict:
+def measure(
+    model: Path, roll: Path, *, threads: int = 0, detector_config: dict | None = None
+) -> dict:
     key = load_answer_key(roll, require_media=True)
     source = VideoFileSource(roll)
     meta = source.parsed.meta
     profile = simulator_parity_profile()
     started = perf_counter()
-    detector = LocalModelDetector({"model_path": str(model), "threads": threads}, ProviderContext())
+    detector = LocalModelDetector(
+        {"model_path": str(model), "threads": threads, **(detector_config or {})},
+        ProviderContext(),
+    )
     runner = Runner(
         source,
         detector,
@@ -52,7 +57,10 @@ def measure(model: Path, roll: Path, *, threads: int = 0) -> dict:
         RollSpec(width_in=meta.fabric_width_in, declared_length_yd=meta.roll_length_yd),
         inspection_id="impact-evaluation",
     )
-    runner.run_to_end()
+    try:
+        runner.run_to_end()
+    finally:
+        source.close()
     elapsed = perf_counter() - started
     truths, nuisances = truth_from_key(key, meta.px_per_cm)
     predictions = []
@@ -74,6 +82,12 @@ def measure(model: Path, roll: Path, *, threads: int = 0) -> dict:
         fabric_width_cm=meta.fabric_width_cm,
         selvage_band_cm=meta.selvage_band_px / meta.px_per_cm,
     )
+    predicted = {p.pred_id: p for p in predictions}
+    truth_by_id = {t.defect_id: t for t in truths}
+    right = {
+        tid: predicted[pid].cls == truth_by_id[tid].cls
+        for pid, tid, _ in evaluation.matches
+    }
     runner.confirm_all()  # Explicit replay assumption, NOT a recorded inspector session.
     score = runner.score(final=True)
     if score is None:
@@ -105,6 +119,15 @@ def measure(model: Path, roll: Path, *, threads: int = 0) -> dict:
         "sha256": hashes,
         "evaluation": evaluation.as_dict(),
         "matches": evaluation.matches,
+        "right_class_by_truth": right,
+        "class_confusion": {
+            tid: {"truth": truth_by_id[tid].cls, "predicted": predicted[pid].cls}
+            for pid, tid, _ in evaluation.matches
+        },
+        "broken_yarn_truth": sum(t.cls == "broken_yarn" for t in truths),
+        "broken_yarn_right": sum(
+            t.cls == "broken_yarn" and right.get(t.defect_id, False) for t in truths
+        ),
         "missed_defects": [
             {"id": t.defect_id, "class": t.cls, "yard": round(t.box.center_yd, 3)}
             for t in truths
@@ -170,7 +193,10 @@ def markdown(report: dict) -> str:
         "The oracle is an evaluation reference, not a measured manual-inspection baseline. "
         "The model-only verdict cannot serve as an autonomous release decision; inspector review remains necessary.",
         "",
-        "Missed defects: " + "; ".join(f"#{d['id']} {d['class']} at {d['yard']} yd" for d in demo["missed_defects"]),
+        "Missed defects: "
+        + "; ".join(
+            f"#{d['id']} {d['class']} at {d['yard']} yd" for d in demo["missed_defects"]
+        ),
         "",
         "## Human and business impact",
         "",
@@ -189,7 +215,10 @@ def markdown(report: dict) -> str:
             "| Paired pilot metric | Result |",
             "|---|---:|",
         ]
-        lines += [f"| {k} | {'Not measured / undefined' if v is None else v} |" for k, v in pilot.items()]
+        lines += [
+            f"| {k} | {'Not measured / undefined' if v is None else v} |"
+            for k, v in pilot.items()
+        ]
     lines += [
         "",
         "## Limits and reproduction",
@@ -207,7 +236,9 @@ def markdown(report: dict) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", type=Path, default=ROOT / "data/model/threadeye_s.onnx")
+    parser.add_argument(
+        "--model", type=Path, default=ROOT / "data/model/threadeye_s.onnx"
+    )
     parser.add_argument("--roll", type=Path, default=ROOT / "data/linescan_roll")
     parser.add_argument("--out", type=Path, default=ROOT / "docs/impact")
     parser.add_argument("--pilot-csv", type=Path)
@@ -226,7 +257,9 @@ def main() -> None:
         "code_revision": revision,
         "implementation_sha256": {
             str(p.relative_to(ROOT)): sha256(p)
-            for p in sorted([*(ROOT / "backend/threadeye").rglob("*.py"), Path(__file__).resolve()])
+            for p in sorted(
+                [*(ROOT / "backend/threadeye").rglob("*.py"), Path(__file__).resolve()]
+            )
         },
         "machine": {
             "platform": platform.platform(),
@@ -235,13 +268,18 @@ def main() -> None:
             "architecture": platform.machine(),
             "logical_cpus": os.cpu_count(),
         },
-        "runtime_versions": {name: version(name) for name in ("onnxruntime", "numpy", "opencv-python-headless")},
+        "runtime_versions": {
+            name: version(name)
+            for name in ("onnxruntime", "numpy", "opencv-python-headless")
+        },
         "demo": measure(args.model, args.roll),
         "paired_pilot": pilot,
         "pilot_csv_sha256": sha256(args.pilot_csv) if args.pilot_csv else None,
     }
     args.out.mkdir(parents=True, exist_ok=True)
-    (args.out / "evidence.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (args.out / "evidence.json").write_text(
+        json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     (args.out / "REPORT.md").write_text(markdown(report), encoding="utf-8")
     print(f"Written: {args.out / 'REPORT.md'} and evidence.json")
 

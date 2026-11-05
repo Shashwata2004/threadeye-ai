@@ -28,7 +28,7 @@ import hashlib
 import json
 import math
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -118,6 +118,46 @@ def nms(boxes: Array, scores: Array, iou: float) -> list[int]:
     return keep
 
 
+def stitch_running_yarn(detections: list[tuple[BBox, str, float]]) -> list[tuple[BBox, str, float]]:
+    """Join overlapping collinear yarn fragments, never separated objects or different classes.
+
+    An unusually long line may be emitted as overlapping local fragments by a tiled-trained head.
+    Keep the largest existing score; this is geometric stitching, not a new confidence estimate.
+    """
+    output = list(detections)
+    changed = True
+    while changed:
+        changed = False
+        for i, (a, cls, sa) in enumerate(output):
+            if cls not in {"broken_yarn", "missing_yarn"}:
+                continue
+            aw, ah = a[2] - a[0], a[3] - a[1]
+            horizontal = aw >= 4 * ah
+            vertical = ah >= 4 * aw
+            if not (horizontal or vertical):
+                continue
+            for j in range(i + 1, len(output)):
+                b, other, sb = output[j]
+                if other != cls:
+                    continue
+                bw, bh = b[2] - b[0], b[3] - b[1]
+                ix = min(a[2], b[2]) - max(a[0], b[0])
+                iy = min(a[3], b[3]) - max(a[1], b[1])
+                aligned = (horizontal and bw >= 4 * bh and ix > 0 and iy >= 0.5 * min(ah, bh)) or (
+                    vertical and bh >= 4 * bw and iy > 0 and ix >= 0.5 * min(aw, bw)
+                )
+                if not aligned:
+                    continue
+                union = (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
+                output[i] = (union, cls, max(sa, sb))
+                output.pop(j)
+                changed = True
+                break
+            if changed:
+                break
+    return output
+
+
 class LocalModelDetector(DetectorProvider):
     def __init__(self, config: Mapping[str, Any], ctx: ProviderContext) -> None:
         super().__init__(config, ctx)
@@ -133,7 +173,10 @@ class LocalModelDetector(DetectorProvider):
         self.infer_scale = float(self.config.get("infer_scale", 1.0))
         self.pack = bool(self.config.get("pack", True))
         self.whole_strip = bool(self.config.get("whole_strip", True))
+        self.stitch_yarn = bool(self.config.get("stitch_yarn", False))
         self._any_size = False
+        # Offline diagnosis only; never enables answer-key access in the provider.
+        self.diagnostic_hook: Callable[[Any, Any, Any, int], None] | None = None
         self._load_info()
 
     # ------------------------------------------------------------------------------------ model files
@@ -158,6 +201,11 @@ class LocalModelDetector(DetectorProvider):
             # The scale the model was trained to look at (e.g. 2: AITEX-size defects enlarged): a model card
             # says it, so installing the model cannot leave it running at the wrong scale.
             self.infer_scale = float(info["infer_scale"])
+        if "stitch_yarn" not in self.config:
+            self.stitch_yarn = bool(info.get("postprocess", {}).get("stitch_yarn", False))
+        for option in ("whole_strip", "pack"):
+            if option not in self.config and option in info.get("inference", {}):
+                setattr(self, option, bool(info["inference"][option]))
 
     @property
     def info(self) -> ProviderInfo:
@@ -185,6 +233,7 @@ class LocalModelDetector(DetectorProvider):
                         "infer_scale": self.infer_scale,
                         "pack": self.pack,
                         "whole_strip": self.whole_strip,
+                        **({"stitch_yarn": True} if self.stitch_yarn else {}),
                     },
                     sort_keys=True,
                 ).encode()
@@ -268,6 +317,8 @@ class LocalModelDetector(DetectorProvider):
             ratios.append(r)
         raw = self.run(np.stack(tiles))
         preds = decode(raw, size)
+        if self.diagnostic_hook is not None:
+            self.diagnostic_hook(preds, layouts, ratios, ph)
         thr = np.array([self.class_thresholds.get(c, self.score_threshold) for c in self.classes], np.float32)
         all_boxes, all_scores, all_cls = [], [], []
         for p, group, r in zip(preds, layouts, ratios, strict=True):
@@ -307,6 +358,8 @@ class LocalModelDetector(DetectorProvider):
                 if b[2] - b[0] >= 1 and b[3] - b[1] >= 1:
                     box = (float(b[0]), float(b[1]), float(b[2]), float(b[3]))
                     out.append((box, self.classes[int(c)], float(scores[idx[k]])))
+        if self.stitch_yarn:
+            out = stitch_running_yarn(out)
         return sorted(out, key=lambda d: -d[2])
 
     def detect(self, frame: FramePacket) -> DetectionResult:

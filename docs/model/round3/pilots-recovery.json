@@ -1,0 +1,50 @@
+{
+  "source_job": "shashwatanandi2004/threadeye-linescan-round3-train/v1",
+  "recorded_at_utc": "2026-11-04T13:44:49.310023+00:00",
+  "log_sha256": "b46b6ee8dbbddd942da57710628ec864d8460efd0b1bcd3635f962f7bd586744",
+  "reason": "Reuse completed measured pilots; repeat final training with explicit epoch history and score-serialization repair. Video/GT pixels unchanged.",
+  "pilots": [
+    {
+      "name": "pilot_A",
+      "lr": 0.1,
+      "starting_source": "baseline",
+      "metrics": {
+        "precision": 0.8646,
+        "recall": 0.7133,
+        "right_recall": 0.7052,
+        "broken_right_recall": 0.7041420118343196,
+        "false_alarms": 83,
+        "seconds": 7.810102656999902,
+        "stitch_yarn": false
+      }
+    },
+    {
+      "name": "pilot_B",
+      "lr": 0.3,
+      "starting_source": "baseline",
+      "metrics": {
+        "precision": 0.8631,
+        "recall": 0.6703,
+        "right_recall": 0.6635,
+        "broken_right_recall": 0.631163708086785,
+        "false_alarms": 79,
+        "seconds": 7.102241824999965,
+        "stitch_yarn": false
+      }
+    },
+    {
+      "name": "pilot_C",
+      "lr": 0.1,
+      "starting_source": "round2",
+      "metrics": {
+        "precision": 0.8875,
+        "recall": 0.7645,
+        "right_recall": 0.7564,
+        "broken_right_recall": 0.7554240631163708,
+        "false_alarms": 72,
+        "seconds": 7.063780627999904,
+        "stitch_yarn": false
+      }
+    }
+  ]
+}

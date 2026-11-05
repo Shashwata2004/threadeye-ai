@@ -1,0 +1,382 @@
+{
+  "dataset": "val_2",
+  "source": "yolo:val_2",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "02de7b97544dc5483b7da95972141c329b0fbc8c1bb495246d03165c4a796037",
+    "model_info.json": "acd356cdb10e8713ce2d927bd97299b88498b41383cae977607d710aff11ee9b",
+    "roll_meta.json": "f8aacc2fbdc1b3f7f4bcf14fa2758b2038420dda2629bf57de7d5fac4fc7f387",
+    "frames.csv": "6bce0dc7b50ff08becb4f692d18a445609fc52578e3a631876c6cbfad634888e",
+    "ground_truth.csv": "ddf417be8b51720bbb007bfbad7f33724c7630c00682dce947d6477048149c9d",
+    "nuisance.csv": "e9312694a0736920cb3fa3b97f92d86bbb94d781e06d76f00619d42cd369dce9",
+    "roll_video.mp4": "7b96463a8d961f53c81c31f53917951d06d8131808a120adceab2b4cfb2f5a69"
+  },
+  "evaluation": {
+    "tp": 20,
+    "fp": 16,
+    "fn": 19,
+    "precision": 0.5556,
+    "recall": 0.5128,
+    "f1": 0.5333,
+    "class_accuracy": 0.9,
+    "recall_per_class": {
+      "broken_yarn": 0.5833,
+      "contamination": 1.0,
+      "crease_mark": 0.5556,
+      "knot": 0.0,
+      "other_defect": 0.25,
+      "slub": 0.5
+    },
+    "fp_by_type": {
+      "unexplained": 16
+    },
+    "nondefects_ignored": {
+      "hand": 1,
+      "loose_thread": 3,
+      "selvage_weave": 23
+    },
+    "missed": [
+      "2",
+      "4",
+      "5",
+      "7",
+      "11",
+      "12",
+      "13",
+      "16",
+      "18",
+      "19",
+      "20",
+      "22",
+      "24",
+      "25",
+      "26",
+      "29",
+      "30",
+      "32",
+      "33"
+    ]
+  },
+  "matches": [
+    [
+      "D-35",
+      "23",
+      0.9644
+    ],
+    [
+      "D-11",
+      "8",
+      0.9211
+    ],
+    [
+      "D-07",
+      "3",
+      0.908
+    ],
+    [
+      "D-54",
+      "34",
+      0.9041
+    ],
+    [
+      "D-15",
+      "9",
+      0.8781
+    ],
+    [
+      "D-32",
+      "21",
+      0.8357
+    ],
+    [
+      "D-43",
+      "28",
+      0.8007
+    ],
+    [
+      "D-61",
+      "38",
+      0.7953
+    ],
+    [
+      "D-58",
+      "37",
+      0.7915
+    ],
+    [
+      "D-56",
+      "35",
+      0.7887
+    ],
+    [
+      "D-62",
+      "39",
+      0.7702
+    ],
+    [
+      "D-23",
+      "14",
+      0.7618
+    ],
+    [
+      "D-41",
+      "27",
+      0.7303
+    ],
+    [
+      "D-06",
+      "1",
+      0.653
+    ],
+    [
+      "D-29",
+      "17",
+      0.5934
+    ],
+    [
+      "D-16",
+      "10",
+      0.4688
+    ],
+    [
+      "D-48",
+      "31",
+      0.4562
+    ],
+    [
+      "D-10",
+      "6",
+      0.456
+    ],
+    [
+      "D-27",
+      "15",
+      0.4487
+    ],
+    [
+      "D-57",
+      "36",
+      0.4443
+    ]
+  ],
+  "right_class_by_truth": {
+    "23": true,
+    "8": true,
+    "3": true,
+    "34": true,
+    "9": true,
+    "21": true,
+    "28": true,
+    "38": false,
+    "37": true,
+    "35": true,
+    "39": true,
+    "14": true,
+    "27": true,
+    "1": true,
+    "17": true,
+    "10": true,
+    "31": true,
+    "6": false,
+    "15": true,
+    "36": true
+  },
+  "class_confusion": {
+    "23": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    },
+    "8": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "3": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    },
+    "34": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "9": {
+      "truth": "contamination",
+      "predicted": "contamination"
+    },
+    "21": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "28": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "38": {
+      "truth": "broken_yarn",
+      "predicted": "crease_mark"
+    },
+    "37": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "35": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "39": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "14": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    },
+    "27": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "1": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "17": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "10": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "31": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "6": {
+      "truth": "crease_mark",
+      "predicted": "missing_yarn"
+    },
+    "15": {
+      "truth": "other_defect",
+      "predicted": "other_defect"
+    },
+    "36": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    }
+  },
+  "broken_yarn_truth": 12,
+  "broken_yarn_right": 6,
+  "missed_defects": [
+    {
+      "id": "2",
+      "class": "broken_yarn",
+      "yard": 0.325
+    },
+    {
+      "id": "4",
+      "class": "other_defect",
+      "yard": 0.584
+    },
+    {
+      "id": "5",
+      "class": "slub",
+      "yard": 0.581
+    },
+    {
+      "id": "7",
+      "class": "broken_yarn",
+      "yard": 1.008
+    },
+    {
+      "id": "11",
+      "class": "broken_yarn",
+      "yard": 1.22
+    },
+    {
+      "id": "12",
+      "class": "crease_mark",
+      "yard": 1.751
+    },
+    {
+      "id": "13",
+      "class": "knot",
+      "yard": 1.727
+    },
+    {
+      "id": "16",
+      "class": "slub",
+      "yard": 2.702
+    },
+    {
+      "id": "18",
+      "class": "broken_yarn",
+      "yard": 2.77
+    },
+    {
+      "id": "19",
+      "class": "slub",
+      "yard": 2.918
+    },
+    {
+      "id": "20",
+      "class": "other_defect",
+      "yard": 3.366
+    },
+    {
+      "id": "22",
+      "class": "broken_yarn",
+      "yard": 3.448
+    },
+    {
+      "id": "24",
+      "class": "crease_mark",
+      "yard": 3.979
+    },
+    {
+      "id": "25",
+      "class": "crease_mark",
+      "yard": 3.979
+    },
+    {
+      "id": "26",
+      "class": "other_defect",
+      "yard": 4.321
+    },
+    {
+      "id": "29",
+      "class": "crease_mark",
+      "yard": 4.721
+    },
+    {
+      "id": "30",
+      "class": "slub",
+      "yard": 4.827
+    },
+    {
+      "id": "32",
+      "class": "slub",
+      "yard": 5.04
+    },
+    {
+      "id": "33",
+      "class": "slub",
+      "yard": 5.146
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 21.515,
+    "video_duration_seconds": 111.467,
+    "sampled_frames": 61
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 28,
+    "model_per_100": 260.09,
+    "model_verdict": "FAIL",
+    "oracle_points": 28,
+    "oracle_per_100": 260.09,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": true
+  }
+}

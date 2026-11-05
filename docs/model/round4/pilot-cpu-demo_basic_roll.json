@@ -1,0 +1,87 @@
+{
+  "dataset": "demo_basic_roll",
+  "source": "aitex-fabric-02",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "d041a9a9d1efc994dbcfe233ef58b9b8e64c252c69c234cff2d14df551683ec7",
+    "model_info.json": "2ba415dd227d99f1dcd463e0fda3e2dac0a45392513c92c329272f525328b3d1",
+    "roll_meta.json": "0b5f70711b3ae2a53fba2a13559ddcaf5fe3d69082d8b05edc927d7d48d1ce2a",
+    "frames.csv": "999d0dacfd1755cde618fd9f900bf2be26f1193981a19ba36c9787c16577dff2",
+    "ground_truth.csv": "835c8ec29c6c8e858c1c844e3afb159f006d64572d4691bdc5431a8bc9f22073",
+    "nuisance.csv": "4863e794e8ba0316d59975ca6d2e1506094d3386d57816aa47c8366e3cf8df63",
+    "roll_video.mp4": "61290972adbb6faa9ac8fc5446326bd9ae6289796523a812357aebf64c3dfa51"
+  },
+  "evaluation": {
+    "tp": 1,
+    "fp": 125,
+    "fn": 2,
+    "precision": 0.0079,
+    "recall": 0.3333,
+    "f1": 0.0155,
+    "class_accuracy": 1.0,
+    "recall_per_class": {
+      "crease_mark": 0.0,
+      "slub": 0.5
+    },
+    "fp_by_type": {
+      "loose_thread": 1,
+      "unexplained": 112,
+      "wrinkle": 12
+    },
+    "nondefects_ignored": {
+      "loose_thread": 2,
+      "wrinkle": 8
+    },
+    "missed": [
+      "1",
+      "3"
+    ]
+  },
+  "matches": [
+    [
+      "D-51",
+      "2",
+      0.3769
+    ]
+  ],
+  "right_class_by_truth": {
+    "2": true
+  },
+  "class_confusion": {
+    "2": {
+      "truth": "slub",
+      "predicted": "slub"
+    }
+  },
+  "broken_yarn_truth": 0,
+  "broken_yarn_right": 0,
+  "missed_defects": [
+    {
+      "id": "1",
+      "class": "slub",
+      "yard": 2.882
+    },
+    {
+      "id": "3",
+      "class": "crease_mark",
+      "yard": 10.468
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 42.722,
+    "video_duration_seconds": 48.964,
+    "sampled_frames": 114
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 48,
+    "model_per_100": 222.95,
+    "model_verdict": "FAIL",
+    "oracle_points": 4,
+    "oracle_per_100": 18.58,
+    "oracle_verdict": "PASS",
+    "verdict_agrees": false
+  }
+}

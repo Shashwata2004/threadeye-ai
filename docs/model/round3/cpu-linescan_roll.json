@@ -1,0 +1,124 @@
+{
+  "dataset": "linescan_roll",
+  "source": "aitex-fabric-02",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "7ec6c7e727c30c222076c1ca3cbf51cab001001097c6589459fa5288fd71ac7b",
+    "model_info.json": "e9ad1402cdc8ab2b7edad2bea960f24996ee4e24c615cb14aa37a543e8001b20",
+    "roll_meta.json": "21d1698eb3732bcecb75c2f4802a183fcd428a32fc5fa3c0fc1c1c26800ffe2a",
+    "frames.csv": "9cb636c71da78e3e4520d591f7963ad35adb3508c4de0ed9c19d7dc7c806bfcd",
+    "ground_truth.csv": "be1bcbc4be2fa259f3836f5bfb59058be650ee2444a519ca6ed265667b7dd277",
+    "nuisance.csv": "4a8b429e94f2671f758c283ec8545f80e03e64a77b64af30389dc6a7a3884483",
+    "roll_video.mp4": "66b368a2eb763c61bb02852f3a9a816f2bfc7d4572dad583a006cbd6d6ae58c1"
+  },
+  "evaluation": {
+    "tp": 5,
+    "fp": 0,
+    "fn": 2,
+    "precision": 1.0,
+    "recall": 0.7143,
+    "f1": 0.8333,
+    "class_accuracy": 1.0,
+    "recall_per_class": {
+      "broken_yarn": 0.0,
+      "crease_mark": 1.0,
+      "slub": 1.0
+    },
+    "fp_by_type": {},
+    "nondefects_ignored": {
+      "loose_thread": 7,
+      "wrinkle": 4
+    },
+    "missed": [
+      "5",
+      "7"
+    ]
+  },
+  "matches": [
+    [
+      "D-14",
+      "6",
+      0.7473
+    ],
+    [
+      "D-02",
+      "1",
+      0.6724
+    ],
+    [
+      "D-06",
+      "4",
+      0.555
+    ],
+    [
+      "D-05",
+      "3",
+      0.3738
+    ],
+    [
+      "D-03",
+      "2",
+      0.3725
+    ]
+  ],
+  "right_class_by_truth": {
+    "6": true,
+    "1": true,
+    "4": true,
+    "3": true,
+    "2": true
+  },
+  "class_confusion": {
+    "6": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "1": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "4": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "3": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "2": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    }
+  },
+  "broken_yarn_truth": 2,
+  "broken_yarn_right": 0,
+  "missed_defects": [
+    {
+      "id": "5",
+      "class": "broken_yarn",
+      "yard": 10.468
+    },
+    {
+      "id": "7",
+      "class": "broken_yarn",
+      "yard": 12.853
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 39.782,
+    "video_duration_seconds": 51.789,
+    "sampled_frames": 114
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 6,
+    "model_per_100": 27.87,
+    "model_verdict": "PASS",
+    "oracle_points": 9,
+    "oracle_per_100": 41.8,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "preparation_sha256": "19dfc0c31c0782f2969f5dfaa6208a0c16b8b7e6ac427d64e0ea0c5729d02276",
+  "reviewed_at_utc": "2026-11-05T01:50:50.553087+00:00",
+  "reviewer": "agent visual inspection",
+  "preview_count": 34,
+  "scope": "approved for bounded two-epoch pilot only, not deployment",
+  "observations": [
+    "WFDD grey scenes no longer contain unrelated printed backgrounds.",
+    "AITEX views preserve original texture; narrow yarn boxes clip to camera boundaries.",
+    "Actual renderer tile joins remain visible in several Moratuwa/Tianchi scenes; these are a known synthetic-domain limitation.",
+    "AITEX 006 example is a broad curved fault in the inspected view; it is not counted as an additional independent thin-vertical donor.",
+    "Training and validation original/background groups are disjoint; coordinate checks passed."
+  ]
+}

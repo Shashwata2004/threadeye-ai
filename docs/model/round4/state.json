@@ -1,0 +1,16 @@
+{
+  "phase": "renderer_pilot_not_qualified",
+  "checked_at_utc": "2026-11-05T02:03:32.967548+00:00",
+  "deadline_utc": "2026-11-05T03:02:05.451930+00:00",
+  "original_deadline_utc": "2026-11-04T23:39:37.323211+00:00",
+  "running_model_changed": false,
+  "reasons": [
+    "pilot: correct broken yarn on original videos did not meet the predeclared improvement condition",
+    "pilot: regression detections retained did not meet the predeclared improvement condition",
+    "pilot: regression false alerts did not meet the predeclared improvement condition",
+    "pilot: original-video false alerts did not meet the predeclared improvement condition",
+    "pilot: original-video correct broken yarn did not meet the predeclared improvement condition",
+    "pilot: video validation precision did not meet the predeclared improvement condition",
+    "pilot: video validation recall did not meet the predeclared improvement condition"
+  ]
+}

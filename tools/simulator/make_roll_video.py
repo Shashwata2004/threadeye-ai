@@ -996,6 +996,36 @@ def make_board(h: int, w: int, seed: int) -> np.ndarray:
 # --------------------------------------------------------------------------
 
 
+def render_fabric_view(renderer, decor, board, y, x0, frame_index, fab_w, view_h):
+    """Shared video/training raster path, before hand occlusion and camera effects."""
+    fab = np.ascontiguousarray(renderer.window(y, view_h)[:, :fab_w])
+    fab, edge = decor.apply(fab, y, frame_index)
+    if board is None:
+        return fab
+    frame = board.copy()
+    frame[:, x0:x0 + fab_w] = fab
+    if edge is not None:
+        band, left, right = edge
+        seg = frame[:, x0:x0 + band]
+        seg[:] = board[:, x0:x0 + band] * (1 - left[..., None]) + fab[:, :band] * left[..., None]
+        r0 = x0 + fab_w - band
+        seg = frame[:, r0:r0 + band]
+        seg[:] = board[:, r0:r0 + band] * (1 - right[..., None]) + fab[:, fab_w - band:] * right[..., None]
+    return frame
+
+
+def apply_camera_effects(frame, light, gain, blur_px, noise=None):
+    """The simulator's exposure blur, light field, gain and sensor noise, shared with training."""
+    if blur_px > 1.0:
+        frame = cv2.blur(frame, (1, int(round(blur_px))))
+    frame *= light
+    frame *= gain
+    if noise is not None:
+        frame += noise
+    np.clip(frame, 0, 255, out=frame)
+    return frame.astype(np.uint8)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Generate a simulated fabric-roll inspection video with ground truth.")
     ap.add_argument("--source", choices=["synthetic", "yolo", "aitex"], default="synthetic")
@@ -1165,7 +1195,8 @@ def main():
         k = int(d["center_yd"])
         per_yard[k] = per_yard.get(k, 0) + d["points"]
     total_points = sum(min(4, v) for v in per_yard.values())
-    per_100 = total_points * 3600 / (roll_yd * width_in)
+    # The validator and consumer calculate from these serialized dimensions, not hidden precision.
+    per_100 = total_points * 3600 / (round(roll_yd, 3) * round(width_in, 2))
 
     label_h = 0 if args.no_label else 36
     out_h = view_h + label_h
@@ -1198,20 +1229,7 @@ def main():
         if key == cache_key:
             frame = cached.copy()
         else:
-            fab = np.ascontiguousarray(renderer.window(y, view_h)[:, :fab_w])
-            fab, edge = decor.apply(fab, y, i)
-            if board is not None:
-                frame = board.copy()
-                frame[:, x0:x0 + fab_w] = fab
-                if edge is not None:
-                    band, left, right = edge
-                    seg = frame[:, x0:x0 + band]
-                    seg[:] = board[:, x0:x0 + band] * (1 - left[..., None]) + fab[:, :band] * left[..., None]
-                    r0 = x0 + fab_w - band
-                    seg = frame[:, r0:r0 + band]
-                    seg[:] = board[:, r0:r0 + band] * (1 - right[..., None]) + fab[:, fab_w - band:] * right[..., None]
-            else:
-                frame = fab
+            frame = render_fabric_view(renderer, decor, board, y, x0, i, fab_w, view_h)
             cache_key, cached = key, frame.copy()
         hand_on = False
         for hd in hands:
@@ -1224,17 +1242,11 @@ def main():
                 frame = draw_hand(frame, target, 0.25 + 0.75 * progress, px_per_cm, hd["seed"])
                 hand_on = True
         blur_px = speeds[i] / 60 * 100 * px_per_cm * args.exposure_s
-        if blur_px > 1.0:
-            frame = cv2.blur(frame, (1, int(round(blur_px))))
         gain = 1.0 + noise_rng.normal(0, 0.006)
         if args.realistic:
             gain *= 1.0 + 0.025 * math.sin(2 * math.pi * i / args.fps / 37.0 + exp_phase)
-        frame *= light
-        frame *= gain
-        if noise_bank:
-            frame += noise_bank[int(noise_rng.integers(len(noise_bank)))]
-        np.clip(frame, 0, 255, out=frame)
-        frame = frame.astype(np.uint8)
+        noise = noise_bank[int(noise_rng.integers(len(noise_bank)))] if noise_bank else None
+        frame = apply_camera_effects(frame, light, gain, blur_px, noise)
         if args.debug_boxes:
             for d in defects:
                 if d["y1_px"] >= y and d["y0_px"] <= y + view_h:

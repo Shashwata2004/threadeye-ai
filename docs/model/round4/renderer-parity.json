@@ -1,0 +1,10 @@
+{
+  "shared_raster_bitwise_equal": true,
+  "shared_camera_bitwise_equal": true,
+  "blur_pixels_tested": [
+    0,
+    1,
+    3.2
+  ],
+  "fixture": "deterministic float32 synthetic raster and selvage edge alpha"
+}

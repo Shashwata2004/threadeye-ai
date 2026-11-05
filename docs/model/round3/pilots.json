@@ -1,0 +1,404 @@
+[
+  {
+    "checkpoint": "/kaggle/working/round3/pilot_A/pilot_A/latest_ckpt.pth",
+    "exp": "/kaggle/working/round3/pilot_A/exp.py",
+    "name": "pilot_A",
+    "lr": 0.1,
+    "starting_checkpoint": "/kaggle/input/notebooks/shashwatanandi2004/threadeye-train-2/runs/threadeye_s/latest_ckpt.pth",
+    "metrics": {
+      "precision": 0.8646,
+      "recall": 0.7133,
+      "right_recall": 0.7052,
+      "broken_right_recall": 0.7041420118343196,
+      "false_alarms": 83,
+      "seconds": 7.810102656999902,
+      "stitch_yarn": false,
+      "thresholds": {
+        "hole": 0.76,
+        "stain": 0.8,
+        "slub": 0.18,
+        "broken_yarn": 0.16,
+        "missing_yarn": 0.42,
+        "knot": 0.7,
+        "crease_mark": 0.46,
+        "contamination": 0.7,
+        "shade_bar": 0.05,
+        "other_defect": 0.35,
+        "sticker": 0.05,
+        "loose_thread": 0.1,
+        "wrinkle": 0.1,
+        "hand": 0.3
+      },
+      "report": {
+        "matching": "same class and IoU >= 0.3 or detection centre inside the truth box",
+        "tiles": 1000,
+        "defects": 743,
+        "found_any_class": 0.7133,
+        "found_right_class": 0.7052,
+        "defect_boxes": 675,
+        "precision": 0.8646,
+        "false_alarms": 83,
+        "false_alarms_per_100_tiles": 8.3,
+        "nondefects": 166,
+        "nondefects_called_defect": 0.0422,
+        "per_class": {
+          "broken_yarn": {
+            "threshold": 0,
+            "truth": 507,
+            "recall": 0.7041,
+            "precision": 0.8541
+          },
+          "contamination": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 1.0,
+            "precision": 1.0
+          },
+          "crease_mark": {
+            "threshold": 0,
+            "truth": 52,
+            "recall": 0.8077,
+            "precision": 0.9333
+          },
+          "hole": {
+            "threshold": 0,
+            "truth": 4,
+            "recall": 0.25,
+            "precision": 1.0
+          },
+          "knot": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 0.5,
+            "precision": 1.0
+          },
+          "loose_thread": {
+            "threshold": 0,
+            "truth": 56,
+            "recall": 1.0,
+            "precision": 0.9825
+          },
+          "missing_yarn": {
+            "threshold": 0,
+            "truth": 101,
+            "recall": 0.6337,
+            "precision": 0.8533
+          },
+          "other_defect": {
+            "threshold": 0,
+            "truth": 3,
+            "recall": 0.3333,
+            "precision": 0.5
+          },
+          "shade_bar": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 0.0,
+            "precision": 0.0
+          },
+          "slub": {
+            "threshold": 0,
+            "truth": 64,
+            "recall": 0.8281,
+            "precision": 0.8689
+          },
+          "stain": {
+            "threshold": 0,
+            "truth": 6,
+            "recall": 0.5,
+            "precision": 1.0
+          },
+          "sticker": {
+            "threshold": 0,
+            "truth": 55,
+            "recall": 1.0,
+            "precision": 1.0
+          },
+          "wrinkle": {
+            "threshold": 0,
+            "truth": 55,
+            "recall": 0.8364,
+            "precision": 0.92
+          }
+        },
+        "per_source": {
+          "native-line-scan": {
+            "tiles": 1000,
+            "defects": 743,
+            "found_any_class": 0.7133,
+            "found_right_class": 0.7052,
+            "false_alarms_per_100_tiles": 8.3
+          }
+        }
+      }
+    }
+  },
+  {
+    "checkpoint": "/kaggle/working/round3/pilot_B/pilot_B/latest_ckpt.pth",
+    "exp": "/kaggle/working/round3/pilot_B/exp.py",
+    "name": "pilot_B",
+    "lr": 0.3,
+    "starting_checkpoint": "/kaggle/input/notebooks/shashwatanandi2004/threadeye-train-2/runs/threadeye_s/latest_ckpt.pth",
+    "metrics": {
+      "precision": 0.8631,
+      "recall": 0.6703,
+      "right_recall": 0.6635,
+      "broken_right_recall": 0.631163708086785,
+      "false_alarms": 79,
+      "seconds": 7.102241824999965,
+      "stitch_yarn": false,
+      "thresholds": {
+        "hole": 0.56,
+        "stain": 0.8,
+        "slub": 0.26,
+        "broken_yarn": 0.28,
+        "missing_yarn": 0.26,
+        "knot": 0.6,
+        "crease_mark": 0.26,
+        "contamination": 0.68,
+        "shade_bar": 0.05,
+        "other_defect": 0.25,
+        "sticker": 0.1,
+        "loose_thread": 0.15,
+        "wrinkle": 0.45,
+        "hand": 0.3
+      },
+      "report": {
+        "matching": "same class and IoU >= 0.3 or detection centre inside the truth box",
+        "tiles": 1000,
+        "defects": 743,
+        "found_any_class": 0.6703,
+        "found_right_class": 0.6635,
+        "defect_boxes": 598,
+        "precision": 0.8631,
+        "false_alarms": 79,
+        "false_alarms_per_100_tiles": 7.9,
+        "nondefects": 166,
+        "nondefects_called_defect": 0.0361,
+        "per_class": {
+          "broken_yarn": {
+            "threshold": 0,
+            "truth": 507,
+            "recall": 0.6312,
+            "precision": 0.8556
+          },
+          "contamination": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 1.0,
+            "precision": 1.0
+          },
+          "crease_mark": {
+            "threshold": 0,
+            "truth": 52,
+            "recall": 0.7885,
+            "precision": 0.9111
+          },
+          "hole": {
+            "threshold": 0,
+            "truth": 4,
+            "recall": 1.0,
+            "precision": 1.0
+          },
+          "knot": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 0.5,
+            "precision": 1.0
+          },
+          "loose_thread": {
+            "threshold": 0,
+            "truth": 56,
+            "recall": 1.0,
+            "precision": 1.0
+          },
+          "missing_yarn": {
+            "threshold": 0,
+            "truth": 101,
+            "recall": 0.6832,
+            "precision": 0.8519
+          },
+          "other_defect": {
+            "threshold": 0,
+            "truth": 3,
+            "recall": 0.3333,
+            "precision": 0.5
+          },
+          "shade_bar": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 0.0,
+            "precision": 0.0
+          },
+          "slub": {
+            "threshold": 0,
+            "truth": 64,
+            "recall": 0.8125,
+            "precision": 0.8667
+          },
+          "stain": {
+            "threshold": 0,
+            "truth": 6,
+            "recall": 0.5,
+            "precision": 1.0
+          },
+          "sticker": {
+            "threshold": 0,
+            "truth": 55,
+            "recall": 1.0,
+            "precision": 1.0
+          },
+          "wrinkle": {
+            "threshold": 0,
+            "truth": 55,
+            "recall": 0.8545,
+            "precision": 1.0
+          }
+        },
+        "per_source": {
+          "native-line-scan": {
+            "tiles": 1000,
+            "defects": 743,
+            "found_any_class": 0.6703,
+            "found_right_class": 0.6635,
+            "false_alarms_per_100_tiles": 7.9
+          }
+        }
+      }
+    }
+  },
+  {
+    "checkpoint": "/kaggle/working/round3/pilot_C/pilot_C/latest_ckpt.pth",
+    "exp": "/kaggle/working/round3/pilot_C/exp.py",
+    "name": "pilot_C",
+    "lr": 0.1,
+    "starting_checkpoint": "/kaggle/input/notebooks/shashwatanandi2004/threadeye-linescan-r2/runs/threadeye_s/latest_ckpt.pth",
+    "metrics": {
+      "precision": 0.8875,
+      "recall": 0.7645,
+      "right_recall": 0.7564,
+      "broken_right_recall": 0.7554240631163708,
+      "false_alarms": 72,
+      "seconds": 7.063780627999904,
+      "stitch_yarn": false,
+      "thresholds": {
+        "hole": 0.54,
+        "stain": 0.82,
+        "slub": 0.18,
+        "broken_yarn": 0.1,
+        "missing_yarn": 0.34,
+        "knot": 0.8,
+        "crease_mark": 0.42,
+        "contamination": 0.74,
+        "shade_bar": 0.1,
+        "other_defect": 0.66,
+        "sticker": 0.05,
+        "loose_thread": 0.4,
+        "wrinkle": 0.55,
+        "hand": 0.3
+      },
+      "report": {
+        "matching": "same class and IoU >= 0.3 or detection centre inside the truth box",
+        "tiles": 1000,
+        "defects": 743,
+        "found_any_class": 0.7645,
+        "found_right_class": 0.7564,
+        "defect_boxes": 817,
+        "precision": 0.8875,
+        "false_alarms": 72,
+        "false_alarms_per_100_tiles": 7.2,
+        "nondefects": 166,
+        "nondefects_called_defect": 0.006,
+        "per_class": {
+          "broken_yarn": {
+            "threshold": 0,
+            "truth": 507,
+            "recall": 0.7554,
+            "precision": 0.8646
+          },
+          "contamination": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 1.0,
+            "precision": 1.0
+          },
+          "crease_mark": {
+            "threshold": 0,
+            "truth": 52,
+            "recall": 0.8077,
+            "precision": 0.875
+          },
+          "hole": {
+            "threshold": 0,
+            "truth": 4,
+            "recall": 0.5,
+            "precision": 1.0
+          },
+          "knot": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 0.5,
+            "precision": 1.0
+          },
+          "loose_thread": {
+            "threshold": 0,
+            "truth": 56,
+            "recall": 0.9821,
+            "precision": 1.0
+          },
+          "missing_yarn": {
+            "threshold": 0,
+            "truth": 101,
+            "recall": 0.7426,
+            "precision": 0.8721
+          },
+          "other_defect": {
+            "threshold": 0,
+            "truth": 3,
+            "recall": 0.3333,
+            "precision": 1.0
+          },
+          "shade_bar": {
+            "threshold": 0,
+            "truth": 2,
+            "recall": 0.5,
+            "precision": 0.1429
+          },
+          "slub": {
+            "threshold": 0,
+            "truth": 64,
+            "recall": 0.8125,
+            "precision": 0.8525
+          },
+          "stain": {
+            "threshold": 0,
+            "truth": 6,
+            "recall": 0.5,
+            "precision": 1.0
+          },
+          "sticker": {
+            "threshold": 0,
+            "truth": 55,
+            "recall": 1.0,
+            "precision": 1.0
+          },
+          "wrinkle": {
+            "threshold": 0,
+            "truth": 55,
+            "recall": 0.8909,
+            "precision": 1.0
+          }
+        },
+        "per_source": {
+          "native-line-scan": {
+            "tiles": 1000,
+            "defects": 743,
+            "found_any_class": 0.7645,
+            "found_right_class": 0.7564,
+            "false_alarms_per_100_tiles": 7.2
+          }
+        }
+      }
+    }
+  }
+]

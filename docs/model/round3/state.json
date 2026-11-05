@@ -1,0 +1,23 @@
+{
+  "phase": "candidate_not_qualified",
+  "checked_at_utc": "2026-11-04T17:29:38.254190+00:00",
+  "deadline_utc": "2026-11-04T17:43:11+00:00",
+  "running_model_changed": false,
+  "reasons": [
+    "regression: fewer than 26/30 defects",
+    "regression: fewer than 5/7 broken yarn correctly classified",
+    "final_test: not evaluated because validation did not pass",
+    "validation: recall below 85%",
+    "validation: precision below 85%",
+    "validation: correct broken-yarn recall below 80%",
+    "native image validation: recall below 85%",
+    "native image validation: correct broken-yarn recall below 80%"
+  ],
+  "model_sha256": "7ec6c7e727c30c222076c1ca3cbf51cab001001097c6589459fa5288fd71ac7b",
+  "training_finished": true,
+  "renderer_matched_target_training_complete": false,
+  "final_test_evaluated": false,
+  "production_model_changed": false,
+  "app_health": "API8099 and frontend3000 HTTP200",
+  "report": "docs/model/round3/REPORT.md"
+}

@@ -1,0 +1,30 @@
+{
+  "linescan_roll": {
+    "roll_meta.json": "21d1698eb3732bcecb75c2f4802a183fcd428a32fc5fa3c0fc1c1c26800ffe2a",
+    "frames.csv": "9cb636c71da78e3e4520d591f7963ad35adb3508c4de0ed9c19d7dc7c806bfcd",
+    "ground_truth.csv": "be1bcbc4be2fa259f3836f5bfb59058be650ee2444a519ca6ed265667b7dd277",
+    "nuisance.csv": "4a8b429e94f2671f758c283ec8545f80e03e64a77b64af30389dc6a7a3884483",
+    "roll_video.mp4": "66b368a2eb763c61bb02852f3a9a816f2bfc7d4572dad583a006cbd6d6ae58c1"
+  },
+  "demo_basic_roll": {
+    "roll_meta.json": "0b5f70711b3ae2a53fba2a13559ddcaf5fe3d69082d8b05edc927d7d48d1ce2a",
+    "frames.csv": "999d0dacfd1755cde618fd9f900bf2be26f1193981a19ba36c9787c16577dff2",
+    "ground_truth.csv": "835c8ec29c6c8e858c1c844e3afb159f006d64572d4691bdc5431a8bc9f22073",
+    "nuisance.csv": "4863e794e8ba0316d59975ca6d2e1506094d3386d57816aa47c8366e3cf8df63",
+    "roll_video.mp4": "61290972adbb6faa9ac8fc5446326bd9ae6289796523a812357aebf64c3dfa51"
+  },
+  "demo_mixed_roll": {
+    "roll_meta.json": "9034271bb8d71b6150b5c7418398eec70710d544454244ba3f87808b341e9f53",
+    "frames.csv": "272ef9636f5a0704b970d42f4e8bd12ebf0761edeb22518ad7eecb71f3333703",
+    "ground_truth.csv": "0a4bb36684e9fc89b55fffcac4c0267bfce2121ad420265bbef3ff2128b559bd",
+    "nuisance.csv": "629e330d78621f7d355448d32b1f8d3882ebbacb98c5889e033bf6a0b3296410",
+    "roll_video.mp4": "8c73450fc5c792acd67c48d52b0ca045119d4db65667602b249e76f1f8a7eccc"
+  },
+  "demo_challenge_roll": {
+    "roll_meta.json": "1377dc0a8d558ade38f459be8dfddb8e5e7989162c35f2048ae6a760bb8559e2",
+    "frames.csv": "f9ce4335ef6df4a933c4d71b4a915d89a13ee8ae544012a1df36fab3871d1674",
+    "ground_truth.csv": "011ee61f777ccf0acf6a0881928f45cdc52e5764d9308562b05b57cc5cea14d7",
+    "nuisance.csv": "7d3d47341624199abdb6853ebd059cfaa0ed4a2783813913658e18c9555b39b3",
+    "roll_video.mp4": "6ddab2885ab2c6398028fdb52d7d1eeec7274e94b8014894df0e0445e22e279a"
+  }
+}

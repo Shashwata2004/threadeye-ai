@@ -1,0 +1,22 @@
+{
+  "moratuwa": [
+    "moratuwa/extracted/Fabric Defects Dataset/Fabric Defect Dataset/Vertical/13.jpg",
+    "moratuwa/extracted/Fabric Defects Dataset/Fabric Defect Dataset/Vertical/22.jpg",
+    "tianchi/images/train/1d9b4d0de291adfb1449513131_jpg.rf.541489c829a85352f45bf7056ff04e7d.jpg",
+    "tianchi/images/train/5b3369b10ce670ea0846405694_jpg.rf.a9456cb89d09b17109d03bf1433a7823.jpg",
+    "tianchi/images/train/662e4d2f774271311012051242_jpg.rf.b58f218cd85aba37467d442caadf122e.jpg",
+    "tianchi/images/train/fe4e9209c48309731443015485_jpg.rf.0873c9d709e1ced0e5860a59603d41b8.jpg"
+  ],
+  "aitex": [
+    "aitex/extracted/Defect_images/0090_002_01.png"
+  ],
+  "tianchi": [
+    "tianchi/images/train/1e87a7d12bca1ace0844482011_jpg.rf.59b204e6a293601f009aaa028e51914a.jpg",
+    "tianchi/images/train/28df71e1c8369d790827017845_jpg.rf.ea17fb7958650a86bded516213dcc7ac.jpg",
+    "tianchi/images/train/29da8d53e24bbebf1039214406_jpg.rf.9dcff66376e81f7dde122ab70067c1ae.jpg",
+    "tianchi/images/train/36ca54d261eae69a1206499296_jpg.rf.a79cb445033f5cbf05074c318d48b029.jpg",
+    "tianchi/images/train/639eb3fe4c7fe0701543149853_jpg.rf.6e39b1d572b2537c3c1640317906ed5a.jpg",
+    "tianchi/images/train/cc77b073a2d3cab61613373896_jpg.rf.0fdbd20c4da8985fd7c84bb9d3b0d122.jpg",
+    "tianchi/images/valid/d8ea1d0ed5f265811523431665_jpg.rf.dc3b513ddc3ce6cca20632c9f25309d5.jpg"
+  ]
+}

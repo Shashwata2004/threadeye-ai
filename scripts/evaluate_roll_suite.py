@@ -1,4 +1,5 @@
 """Replay the fixed simulated roll suite with a real ONNX detector, without DB writes."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,31 +14,68 @@ ROLLS = ["linescan_roll", "demo_basic_roll", "demo_mixed_roll", "demo_challenge_
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", type=Path, default=ROOT / "data/model/threadeye_s.onnx")
+    parser.add_argument(
+        "--model", type=Path, default=ROOT / "data/model/threadeye_s.onnx"
+    )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--threads", type=int, default=2)
+    parser.add_argument(
+        "--detector-config", type=Path, help="Offline inference experiment, JSON object"
+    )
     args = parser.parse_args()
+    detector_config = (
+        json.loads(args.detector_config.read_text()) if args.detector_config else {}
+    )
     args.out.mkdir(parents=True, exist_ok=True)
     results = []
     for name in ROLLS:
         output = args.out / f"{name}.json"
         # Resume only a complete result with exactly the same model/card/video inputs.
         previous = json.loads(output.read_text()) if output.exists() else None
-        paths = [args.model, args.model.with_name("model_info.json"),
-                 *(ROOT / "data" / name / f for f in ["roll_meta.json", "frames.csv", "ground_truth.csv", "nuisance.csv", "roll_video.mp4"])]
+        paths = [
+            args.model,
+            args.model.with_name("model_info.json"),
+            *(
+                ROOT / "data" / name / f
+                for f in [
+                    "roll_meta.json",
+                    "frames.csv",
+                    "ground_truth.csv",
+                    "nuisance.csv",
+                    "roll_video.mp4",
+                ]
+            ),
+        ]
         expected = {p.name: sha256(p) for p in paths}
-        if previous and previous["sha256"] == expected and previous.get("inference_threads") == args.threads:
+        if (
+            previous
+            and previous["sha256"] == expected
+            and previous.get("inference_threads") == args.threads
+            and previous.get("detector_config", {}) == detector_config
+        ):
             result = previous
         else:
-            result = measure(args.model, ROOT / "data" / name, threads=args.threads)
+            result = measure(
+                args.model,
+                ROOT / "data" / name,
+                threads=args.threads,
+                detector_config=detector_config,
+            )
+            result["detector_config"] = detector_config
             result["inference_threads"] = args.threads
             output.write_text(json.dumps(result, indent=2))
         results.append(result)
         ev = result["evaluation"]
-        print(f"{name}: TP {ev['tp']}, FP {ev['fp']}, FN {ev['fn']}, recall {ev['recall']:.3f}", flush=True)
-    summary = {"measured_at_utc": datetime.now(UTC).isoformat(), "model_sha256": sha256(args.model),
-               "limitation": "Simulated development/regression suite; source images may recur across scenarios. Not a factory pilot or independent overall test score.",
-               "rolls": results}
+        print(
+            f"{name}: TP {ev['tp']}, FP {ev['fp']}, FN {ev['fn']}, recall {ev['recall']:.3f}",
+            flush=True,
+        )
+    summary = {
+        "measured_at_utc": datetime.now(UTC).isoformat(),
+        "model_sha256": sha256(args.model),
+        "limitation": "Simulated development/regression suite; source images may recur across scenarios. Not a factory pilot or independent overall test score.",
+        "rolls": results,
+    }
     (args.out / "suite.json").write_text(json.dumps(summary, indent=2))
 
 

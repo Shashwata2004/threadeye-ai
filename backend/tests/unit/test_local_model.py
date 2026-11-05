@@ -74,6 +74,30 @@ def test_tiles_match_the_training_cut() -> None:
     assert tile_positions(500, 640, 0.2) == [0]
 
 
+def test_running_yarn_stitching_preserves_separate_and_unrelated_defects() -> None:
+    from threadeye.providers.local_model import stitch_running_yarn
+
+    found = stitch_running_yarn(
+        [
+            ((0, 10, 100, 20), "broken_yarn", 0.7),
+            ((80, 11, 180, 21), "broken_yarn", 0.6),
+            ((200, 10, 300, 20), "broken_yarn", 0.8),  # real gap: never bridge it
+            ((0, 50, 100, 60), "broken_yarn", 0.9),  # a different line
+            ((0, 10, 100, 20), "loose_thread", 0.9),
+        ]
+    )
+    assert found[0] == ((0, 10, 180, 21), "broken_yarn", 0.7)
+    assert len(found) == 4
+
+
+def test_vertical_yarn_fragments_stitch_without_hallucinating_confidence() -> None:
+    from threadeye.providers.local_model import stitch_running_yarn
+
+    assert stitch_running_yarn([((20, 0, 25, 100), "missing_yarn", 0.5), ((21, 80, 26, 180), "missing_yarn", 0.8)]) == [
+        ((20, 0, 26, 180), "missing_yarn", 0.8)
+    ]
+
+
 def test_boxes_come_back_in_view_pixels_and_overlap_copies_merge(tmp_path: Path) -> None:
     plan = {
         # One stain seen by two overlapping tiles (view x 500..540): one detection after NMS.

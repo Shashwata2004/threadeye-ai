@@ -1,0 +1,107 @@
+{
+  "matching": "same class and IoU >= 0.3 or detection centre inside the truth box",
+  "tiles": 1000,
+  "defects": 743,
+  "found_any_class": 0.5034,
+  "found_right_class": 0.4549,
+  "defect_boxes": 688,
+  "precision": 0.5508,
+  "false_alarms": 305,
+  "false_alarms_per_100_tiles": 30.5,
+  "nondefects": 166,
+  "nondefects_called_defect": 0.1145,
+  "per_class": {
+    "broken_yarn": {
+      "threshold": 0,
+      "truth": 507,
+      "recall": 0.3609,
+      "precision": 0.5719
+    },
+    "contamination": {
+      "threshold": 0,
+      "truth": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    "crease_mark": {
+      "threshold": 0,
+      "truth": 52,
+      "recall": 0.75,
+      "precision": 0.9512
+    },
+    "hole": {
+      "threshold": 0,
+      "truth": 4,
+      "recall": 0.25,
+      "precision": 1.0
+    },
+    "knot": {
+      "threshold": 0,
+      "truth": 2,
+      "recall": 0.5,
+      "precision": 0.25
+    },
+    "loose_thread": {
+      "threshold": 0,
+      "truth": 56,
+      "recall": 0.9286,
+      "precision": 0.9811
+    },
+    "missing_yarn": {
+      "threshold": 0,
+      "truth": 101,
+      "recall": 0.5644,
+      "precision": 0.2969
+    },
+    "other_defect": {
+      "threshold": 0,
+      "truth": 3,
+      "recall": 0.3333,
+      "precision": 0.02
+    },
+    "shade_bar": {
+      "threshold": 0,
+      "truth": 2,
+      "recall": 0.0,
+      "precision": 0.0
+    },
+    "slub": {
+      "threshold": 0,
+      "truth": 64,
+      "recall": 0.7656,
+      "precision": 0.8448
+    },
+    "stain": {
+      "threshold": 0,
+      "truth": 6,
+      "recall": 0.8333,
+      "precision": 0.4545
+    },
+    "sticker": {
+      "threshold": 0,
+      "truth": 55,
+      "recall": 0.9636,
+      "precision": 1.0
+    },
+    "wrinkle": {
+      "threshold": 0,
+      "truth": 55,
+      "recall": 0.4727,
+      "precision": 1.0
+    }
+  },
+  "per_source": {
+    "native-line-scan": {
+      "tiles": 1000,
+      "defects": 743,
+      "found_any_class": 0.5034,
+      "found_right_class": 0.4549,
+      "false_alarms_per_100_tiles": 30.5
+    }
+  },
+  "broken_right_recall": 0.3609467455621302,
+  "seconds": 134.97386318899953,
+  "model_sha256": "02de7b97544dc5483b7da95972141c329b0fbc8c1bb495246d03165c4a796037",
+  "scope": "native validation images; installed thresholds frozen; no sampling/tracking; no threshold selection",
+  "validation_sha256": "859929aba1013f0cd712664ff6b68975cf971fd7804dd3efcf16a8eed03c6f0b"
+}

@@ -1,0 +1,20 @@
+{
+  "started_at_utc": "2026-11-04T11:43:11+00:00",
+  "deadline_utc": "2026-11-04T17:43:11+00:00",
+  "diagnostic_deadline_utc": "2026-11-04T12:43:11+00:00",
+  "seed": 202611043,
+  "priority": "line-scan broken yarn; overall test advisory",
+  "baseline": "build/kaggle/baseline-model/threadeye_s.onnx",
+  "round2": "build/kaggle/round2/candidate-output/model/threadeye_s.onnx",
+  "promotion": {
+    "regression_tp_min": 26,
+    "broken_right_class_min": 5,
+    "regression_fp_max": 14,
+    "original_fp_max": 1,
+    "validation_recall_min": 0.85,
+    "validation_precision_min": 0.85,
+    "broken_recall_min": 0.8,
+    "max_cpu_video_ratio": 1.5
+  },
+  "reuse_pilots_sha": "f4fa042976698152dd45e027b7343e4c242009ff766814b667cfe3a3bede7783"
+}

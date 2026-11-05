@@ -1,0 +1,137 @@
+{
+  "dataset": "demo_mixed_roll",
+  "source": "aitex-fabric-02",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "7ec6c7e727c30c222076c1ca3cbf51cab001001097c6589459fa5288fd71ac7b",
+    "model_info.json": "e9ad1402cdc8ab2b7edad2bea960f24996ee4e24c615cb14aa37a543e8001b20",
+    "roll_meta.json": "9034271bb8d71b6150b5c7418398eec70710d544454244ba3f87808b341e9f53",
+    "frames.csv": "272ef9636f5a0704b970d42f4e8bd12ebf0761edeb22518ad7eecb71f3333703",
+    "ground_truth.csv": "0a4bb36684e9fc89b55fffcac4c0267bfce2121ad420265bbef3ff2128b559bd",
+    "nuisance.csv": "629e330d78621f7d355448d32b1f8d3882ebbacb98c5889e033bf6a0b3296410",
+    "roll_video.mp4": "8c73450fc5c792acd67c48d52b0ca045119d4db65667602b249e76f1f8a7eccc"
+  },
+  "evaluation": {
+    "tp": 5,
+    "fp": 1,
+    "fn": 4,
+    "precision": 0.8333,
+    "recall": 0.5556,
+    "f1": 0.6667,
+    "class_accuracy": 1.0,
+    "recall_per_class": {
+      "broken_yarn": 0.0,
+      "crease_mark": 1.0,
+      "slub": 0.6667
+    },
+    "fp_by_type": {
+      "loose_thread": 1
+    },
+    "nondefects_ignored": {
+      "loose_thread": 5
+    },
+    "missed": [
+      "4",
+      "6",
+      "7",
+      "9"
+    ]
+  },
+  "matches": [
+    [
+      "D-04",
+      "3",
+      0.7405
+    ],
+    [
+      "D-01",
+      "1",
+      0.4371
+    ],
+    [
+      "D-11",
+      "8",
+      0.4333
+    ],
+    [
+      "D-03",
+      "2",
+      0.3822
+    ],
+    [
+      "D-10",
+      "5",
+      0.354
+    ]
+  ],
+  "right_class_by_truth": {
+    "3": true,
+    "1": true,
+    "8": true,
+    "2": true,
+    "5": true
+  },
+  "class_confusion": {
+    "3": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "1": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "8": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "2": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "5": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    }
+  },
+  "broken_yarn_truth": 2,
+  "broken_yarn_right": 0,
+  "missed_defects": [
+    {
+      "id": "4",
+      "class": "broken_yarn",
+      "yard": 7.247
+    },
+    {
+      "id": "6",
+      "class": "slub",
+      "yard": 10.622
+    },
+    {
+      "id": "7",
+      "class": "broken_yarn",
+      "yard": 12.184
+    },
+    {
+      "id": "9",
+      "class": "slub",
+      "yard": 12.755
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 41.175,
+    "video_duration_seconds": 53.045,
+    "sampled_frames": 114
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 7,
+    "model_per_100": 32.51,
+    "model_verdict": "PASS",
+    "oracle_points": 11,
+    "oracle_per_100": 51.09,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": false
+  }
+}

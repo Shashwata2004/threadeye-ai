@@ -1,0 +1,52 @@
+{
+  "started_at_utc": "2026-11-04T17:39:37.323211+00:00",
+  "deadline_utc": "2026-11-04T23:39:37.323211+00:00",
+  "seed": 202611044,
+  "scope": "actual DatasetSource/RollRenderer camera frames; video-gated two-epoch pilot before final fine-tuning",
+  "prior_video_baseline": {
+    "regression_tp": 23,
+    "regression_broken_right": 0,
+    "regression_fp": 14,
+    "validation_precision": 0.40764331210191085,
+    "validation_recall": 0.5333333333333333,
+    "validation_broken_right_recall": 0.4827586206896552
+  },
+  "pilot_gate": {
+    "native_precision_min": 0.85,
+    "regression_broken_right_min": 1,
+    "regression_tp_min": 23,
+    "regression_fp_max": 14,
+    "original_fp_max": 1,
+    "validation_precision_min": 0.40764331210191085,
+    "validation_recall_min": 0.5333333333333333,
+    "validation_broken_right_recall_min": 0.4827586206896552,
+    "original_broken_right_min": 1
+  },
+  "final_release": "same original requested gates; no deployment on pilot evidence alone",
+  "installed_model_changed": false,
+  "continuation_started_at_utc": "2026-11-05T01:02:05.451930+00:00",
+  "continuation_deadline_utc": "2026-11-05T03:02:05.451930+00:00",
+  "prior_deadline_missed": true,
+  "continuation_reason": "User-authorized pilot was interrupted after CPU preparation submission. No GPU pilot ran during the idle interval. Preserve the missed wall-time deadline; finish only the remaining pilot/conditional final work with a two-hour continuation cap.",
+  "preparation_job": "shashwatanandi2004/threadeye-linescan-round4-prepare/v3",
+  "training_job": "shashwatanandi2004/threadeye-linescan-round4-final",
+  "code_dataset": "shashwatanandi2004/threadeye-linescan-round4-code",
+  "video_preparation_job": "shashwatanandi2004/threadeye-linescan-round3-prepare/v2",
+  "prior_diagnostics_dir": "build/kaggle/round3/diagnostics",
+  "round_label": "Round four",
+  "preparation_v1_rejected": "Visual review found unrelated-background colour quilts/flat-field artifacts; no GPU pilot used v1.",
+  "train_images": 6000,
+  "validation_images": 1000,
+  "data_generation_optimization": "Keep full AITEX source profiles cached and vectorize nearest-clean lookup; use 6000 frames with unchanged 50/30/20 ratios for the bounded two-epoch pilot.",
+  "training_input": [
+    320,
+    640
+  ],
+  "evaluation_layouts": [
+    "whole",
+    "tiles"
+  ],
+  "evaluation_scales": [
+    1
+  ]
+}

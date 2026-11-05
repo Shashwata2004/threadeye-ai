@@ -1,0 +1,230 @@
+{
+  "regression": {
+    "metrics": {
+      "precision": 0.055865921787709494,
+      "recall": 0.3333333333333333,
+      "broken_right_recall": 0.0,
+      "false_alarms": 169,
+      "broken_truth": 7,
+      "tp": 10,
+      "fp": 169,
+      "fn": 20
+    },
+    "rolls": [
+      {
+        "dataset": "linescan_roll",
+        "tp": 2,
+        "fp": 16,
+        "fn": 5,
+        "broken_truth": 2,
+        "broken_right": 0,
+        "cpu_ratio": 0.7752804649636024
+      },
+      {
+        "dataset": "demo_basic_roll",
+        "tp": 1,
+        "fp": 125,
+        "fn": 2,
+        "broken_truth": 0,
+        "broken_right": 0,
+        "cpu_ratio": 0.8725185850829181
+      },
+      {
+        "dataset": "demo_mixed_roll",
+        "tp": 3,
+        "fp": 2,
+        "fn": 6,
+        "broken_truth": 2,
+        "broken_right": 0,
+        "cpu_ratio": 0.7861815439720992
+      },
+      {
+        "dataset": "demo_challenge_roll",
+        "tp": 4,
+        "fp": 26,
+        "fn": 7,
+        "broken_truth": 3,
+        "broken_right": 0,
+        "cpu_ratio": 0.6577782183452286
+      }
+    ]
+  },
+  "validation": {
+    "metrics": {
+      "precision": 0.40145985401459855,
+      "recall": 0.4583333333333333,
+      "broken_right_recall": 0.5862068965517241,
+      "false_alarms": 82,
+      "broken_truth": 29,
+      "tp": 55,
+      "fp": 82,
+      "fn": 65
+    },
+    "rolls": [
+      {
+        "dataset": "val_0",
+        "tp": 10,
+        "fp": 19,
+        "fn": 19,
+        "broken_truth": 3,
+        "broken_right": 1,
+        "cpu_ratio": 0.31572543986309426
+      },
+      {
+        "dataset": "val_1",
+        "tp": 9,
+        "fp": 38,
+        "fn": 17,
+        "broken_truth": 6,
+        "broken_right": 4,
+        "cpu_ratio": 0.29381913333069026
+      },
+      {
+        "dataset": "val_2",
+        "tp": 20,
+        "fp": 9,
+        "fn": 19,
+        "broken_truth": 12,
+        "broken_right": 6,
+        "cpu_ratio": 0.1989916298097195
+      },
+      {
+        "dataset": "val_3",
+        "tp": 16,
+        "fp": 16,
+        "fn": 10,
+        "broken_truth": 8,
+        "broken_right": 6,
+        "cpu_ratio": 0.2599390229148015
+      }
+    ]
+  },
+  "native_validation": {
+    "precision": 0.8698,
+    "recall": 0.5465,
+    "right_recall": 0.5312,
+    "broken_right_recall": 0.5506958250497018,
+    "false_alarms": 59,
+    "seconds": 5.364592151000124,
+    "stitch_yarn": false,
+    "thresholds": {
+      "hole": 0.3,
+      "stain": 0.3,
+      "slub": 0.45,
+      "broken_yarn": 0.18,
+      "missing_yarn": 0.64,
+      "knot": 0.76,
+      "crease_mark": 0.52,
+      "contamination": 0.76,
+      "shade_bar": 0.05,
+      "other_defect": 0.3,
+      "sticker": 0.05,
+      "loose_thread": 0.1,
+      "wrinkle": 0.35,
+      "hand": 0.3
+    },
+    "report": {
+      "matching": "same class and IoU >= 0.3 or detection centre inside the truth box",
+      "tiles": 1000,
+      "defects": 721,
+      "found_any_class": 0.5465,
+      "found_right_class": 0.5312,
+      "defect_boxes": 512,
+      "precision": 0.8698,
+      "false_alarms": 59,
+      "false_alarms_per_100_tiles": 5.9,
+      "nondefects": 536,
+      "nondefects_called_defect": 0.0075,
+      "per_class": {
+        "broken_yarn": {
+          "threshold": 0,
+          "truth": 503,
+          "recall": 0.5507,
+          "precision": 0.8549
+        },
+        "contamination": {
+          "threshold": 0,
+          "truth": 2,
+          "recall": 0.5,
+          "precision": 1.0
+        },
+        "crease_mark": {
+          "threshold": 0,
+          "truth": 50,
+          "recall": 0.66,
+          "precision": 0.8684
+        },
+        "knot": {
+          "threshold": 0,
+          "truth": 2,
+          "recall": 1.0,
+          "precision": 1.0
+        },
+        "loose_thread": {
+          "threshold": 0,
+          "truth": 177,
+          "recall": 0.9548,
+          "precision": 0.9941
+        },
+        "missing_yarn": {
+          "threshold": 0,
+          "truth": 100,
+          "recall": 0.31,
+          "precision": 0.8611
+        },
+        "other_defect": {
+          "threshold": 0,
+          "truth": 6,
+          "recall": 0.1667,
+          "precision": 0.5
+        },
+        "shade_bar": {
+          "threshold": 0,
+          "truth": 2,
+          "recall": 0.0,
+          "precision": 0.0
+        },
+        "slub": {
+          "threshold": 0,
+          "truth": 56,
+          "recall": 0.6786,
+          "precision": 0.8085
+        },
+        "sticker": {
+          "threshold": 0,
+          "truth": 167,
+          "recall": 1.0,
+          "precision": 1.0
+        },
+        "wrinkle": {
+          "threshold": 0,
+          "truth": 192,
+          "recall": 0.8125,
+          "precision": 0.7879
+        }
+      },
+      "per_source": {
+        "native-line-scan": {
+          "tiles": 1000,
+          "defects": 721,
+          "found_any_class": 0.5465,
+          "found_right_class": 0.5312,
+          "false_alarms_per_100_tiles": 5.9
+        }
+      }
+    }
+  },
+  "pilot_gate_passed": false,
+  "reasons": [
+    "pilot: correct broken yarn on original videos did not meet the predeclared improvement condition",
+    "pilot: regression detections retained did not meet the predeclared improvement condition",
+    "pilot: regression false alerts did not meet the predeclared improvement condition",
+    "pilot: original-video false alerts did not meet the predeclared improvement condition",
+    "pilot: original-video correct broken yarn did not meet the predeclared improvement condition",
+    "pilot: video validation precision did not meet the predeclared improvement condition",
+    "pilot: video validation recall did not meet the predeclared improvement condition"
+  ],
+  "model_sha256": "d041a9a9d1efc994dbcfe233ef58b9b8e64c252c69c234cff2d14df551683ec7",
+  "final_test_evaluated": false,
+  "model_deployed": false
+}

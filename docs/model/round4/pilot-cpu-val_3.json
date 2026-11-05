@@ -1,0 +1,291 @@
+{
+  "dataset": "val_3",
+  "source": "yolo:val_3",
+  "simulated_video": true,
+  "real_model_inference": true,
+  "profile": "Simulator parity",
+  "sha256": {
+    "threadeye_s.onnx": "d041a9a9d1efc994dbcfe233ef58b9b8e64c252c69c234cff2d14df551683ec7",
+    "model_info.json": "2ba415dd227d99f1dcd463e0fda3e2dac0a45392513c92c329272f525328b3d1",
+    "roll_meta.json": "85a937d2b5b5f3da7474eb2d7e3d8d4737fdf5c41744dcaa2f32775cf840c3fc",
+    "frames.csv": "daf292111f7db05770937a34d4602a952c9ff32dee619d01a25cf2d038f17a48",
+    "ground_truth.csv": "37c7129bd8e920430a466b735de8c850c38f272de1037a465f7f7872a735699b",
+    "nuisance.csv": "f53f128563b483f2cb8c670042f0d2d5fa94d690d5f02a3e1ae0298c7da72fb6",
+    "roll_video.mp4": "f4329976eb881e41b1fb2a3fd66011488ae65ad839b4b8bbf7a72249da25fe99"
+  },
+  "evaluation": {
+    "tp": 16,
+    "fp": 16,
+    "fn": 10,
+    "precision": 0.5,
+    "recall": 0.6154,
+    "f1": 0.5517,
+    "class_accuracy": 0.9375,
+    "recall_per_class": {
+      "broken_yarn": 0.75,
+      "crease_mark": 0.6667,
+      "hole": 0.0,
+      "missing_yarn": 0.3333,
+      "other_defect": 0.0,
+      "slub": 0.7778
+    },
+    "fp_by_type": {
+      "loose_thread": 1,
+      "unexplained": 14,
+      "wrinkle": 1
+    },
+    "nondefects_ignored": {
+      "loose_thread": 4,
+      "selvage_weave": 1,
+      "sticker": 1,
+      "wrinkle": 29
+    },
+    "missed": [
+      "8",
+      "9",
+      "11",
+      "12",
+      "13",
+      "17",
+      "19",
+      "21",
+      "23",
+      "26"
+    ]
+  },
+  "matches": [
+    [
+      "D-06",
+      "3",
+      0.9224
+    ],
+    [
+      "D-01",
+      "2",
+      0.9069
+    ],
+    [
+      "D-02",
+      "1",
+      0.8939
+    ],
+    [
+      "D-26",
+      "15",
+      0.8913
+    ],
+    [
+      "D-62",
+      "24",
+      0.8809
+    ],
+    [
+      "D-25",
+      "14",
+      0.8662
+    ],
+    [
+      "D-08",
+      "4",
+      0.782
+    ],
+    [
+      "D-66",
+      "25",
+      0.7602
+    ],
+    [
+      "D-13",
+      "7",
+      0.7532
+    ],
+    [
+      "D-11",
+      "6",
+      0.7444
+    ],
+    [
+      "D-16",
+      "10",
+      0.701
+    ],
+    [
+      "D-09",
+      "5",
+      0.6907
+    ],
+    [
+      "D-49",
+      "20",
+      0.6296
+    ],
+    [
+      "D-40",
+      "18",
+      0.5419
+    ],
+    [
+      "D-39",
+      "16",
+      0.4619
+    ],
+    [
+      "D-63",
+      "22",
+      0.4581
+    ]
+  ],
+  "right_class_by_truth": {
+    "3": true,
+    "2": true,
+    "1": true,
+    "15": false,
+    "24": true,
+    "14": true,
+    "4": true,
+    "25": true,
+    "7": true,
+    "6": true,
+    "10": true,
+    "5": true,
+    "20": true,
+    "18": true,
+    "16": true,
+    "22": true
+  },
+  "class_confusion": {
+    "3": {
+      "truth": "crease_mark",
+      "predicted": "crease_mark"
+    },
+    "2": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "1": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "15": {
+      "truth": "crease_mark",
+      "predicted": "broken_yarn"
+    },
+    "24": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "14": {
+      "truth": "missing_yarn",
+      "predicted": "missing_yarn"
+    },
+    "4": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "25": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "7": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "6": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "10": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "5": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "20": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "18": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    },
+    "16": {
+      "truth": "slub",
+      "predicted": "slub"
+    },
+    "22": {
+      "truth": "broken_yarn",
+      "predicted": "broken_yarn"
+    }
+  },
+  "broken_yarn_truth": 8,
+  "broken_yarn_right": 6,
+  "missed_defects": [
+    {
+      "id": "8",
+      "class": "broken_yarn",
+      "yard": 1.67
+    },
+    {
+      "id": "9",
+      "class": "slub",
+      "yard": 1.721
+    },
+    {
+      "id": "11",
+      "class": "missing_yarn",
+      "yard": 2.366
+    },
+    {
+      "id": "12",
+      "class": "missing_yarn",
+      "yard": 2.599
+    },
+    {
+      "id": "13",
+      "class": "crease_mark",
+      "yard": 2.705
+    },
+    {
+      "id": "17",
+      "class": "slub",
+      "yard": 3.873
+    },
+    {
+      "id": "19",
+      "class": "hole",
+      "yard": 3.946
+    },
+    {
+      "id": "21",
+      "class": "broken_yarn",
+      "yard": 5.676
+    },
+    {
+      "id": "23",
+      "class": "hole",
+      "yard": 5.962
+    },
+    {
+      "id": "26",
+      "class": "other_defect",
+      "yard": 6.365
+    }
+  ],
+  "timing": {
+    "headless_seconds_including_model_setup": 21.485,
+    "video_duration_seconds": 82.654,
+    "sampled_frames": 61
+  },
+  "decision_replay": {
+    "assumption": "Auto-confirm detections without human corrections. A replay, not a production decision.",
+    "model_points": 26,
+    "model_per_100": 241.52,
+    "model_verdict": "FAIL",
+    "oracle_points": 24,
+    "oracle_per_100": 222.94,
+    "oracle_verdict": "FAIL",
+    "verdict_agrees": true
+  }
+}

@@ -282,12 +282,15 @@ def _fetch_demo_assets(args: argparse.Namespace) -> int:
         os.replace(tmp, path)
 
     data_dir, model_dir = Path(args.data), Path(args.model_dir)
+    from threadeye.services.model_activation import validated_local_model
+
+    pinned = validated_local_model(model_dir)
     wanted: dict[str, Path] = {}
     for meta in sorted(data_dir.glob("*/roll_meta.json")):
         wanted[storage.video_key(meta.parent.name)] = meta.parent / "roll_video.mp4"
     missing = 0
     with _bulk_session() as db:
-        rows = db.execute(select(Blob.key, Blob.sha256).where(Blob.key.like(f"{MODEL_KEY}/%"))).all()
+        rows = [] if pinned else db.execute(select(Blob.key, Blob.sha256).where(Blob.key.like(f"{MODEL_KEY}/%"))).all()
         for key, _ in rows:
             wanted[key] = model_dir / key.rsplit("/", 1)[1]
         shas = dict(db.execute(select(Blob.key, Blob.sha256).where(Blob.key.in_(list(wanted)))).all())
@@ -301,7 +304,9 @@ def _fetch_demo_assets(args: argparse.Namespace) -> int:
                 continue
             write(path, storage.get(db, key))
             print(f"  {path}: downloaded ({path.stat().st_size / 1e6:.1f} MB)")
-    if not rows:
+    if pinned:
+        print("  retained locally validated model (local_activation.json); shared model download skipped")
+    elif not rows:
         print("  no trained model in Supabase yet (run `make cloud-upload-model` on the training laptop)")
         missing = 1
     return missing
