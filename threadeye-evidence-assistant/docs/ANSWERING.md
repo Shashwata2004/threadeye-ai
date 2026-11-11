@@ -113,5 +113,6 @@ PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-answers \
 - The corpus and evaluation are synthetic, small and domain-constrained.
 - The relevance gate is heuristic and can conservatively abstain on valid novel paraphrases.
 - Contradiction handling is conservative abstention, not resolution.
-- Prompt-injection detection is pattern-based; broader adversarial testing belongs to Prompt 07.
+- Prompt-injection detection remains pattern/heuristic based even after Prompt 07 adversarial testing; it is not a
+  complete classifier or security boundary for a future generative model.
 - No LLM generation, reranker, answer rewriting, MCP, UI or public endpoint exists.

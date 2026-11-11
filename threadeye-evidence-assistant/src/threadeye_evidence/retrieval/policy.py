@@ -40,3 +40,10 @@ ADVERSARIAL_EVALUATION_POLICY = RetrievalAccessPolicy(
     "synthetic_security_fixture",
     True,
 )
+
+SECURITY_EVALUATION_POLICY = RetrievalAccessPolicy(
+    "threadeye-security-evidence-v1",
+    "prompt07-test-only",
+    "synthetic_security_fixture",
+    True,
+)

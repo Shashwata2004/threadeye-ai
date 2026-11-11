@@ -47,6 +47,20 @@ Prompt 06 adds and verifies:
 - Genuine database answer, abstention, unauthorized-scope and adversarial-document demonstrations.
 - CLI commands: `answer-evidence` and `evaluate-answers`.
 
+Prompt 07 adds and verifies:
+
+- Five separately approved fictional adversarial documents and an isolated security-fixture retrieval policy.
+- NFKC input handling, hidden-control/mixed-script rejection, safe question echo, identifier/domain consistency and
+  conservative keyword-stuffing detection without changing Prompt 06 numeric thresholds.
+- Stronger citation integrity through stored-content hash recomputation, span consistency, complete optional-filter
+  validation and bounded citation counts.
+- Structured fail-closed behavior for database/model/profile/keyword/vector/citation failures; hybrid failures are
+  never silently treated as degraded success.
+- A fixed independent 60-case dataset with separate 30-case development and final-holdout splits plus security,
+  leakage, failure and latency metrics.
+- `index-security-fixtures` and `evaluate-security` CLI commands.
+- 139 passing tests with genuine BGE and PostgreSQL/pgvector enabled and no skips.
+
 ## Not implemented
 
 - LLM-generated answer generation or LLM-generated citations.
@@ -54,5 +68,5 @@ Prompt 06 adds and verifies:
 - MCP server/client, local LLM generation, agent orchestration, companion UI, public deployment.
 - ThreadEye production database/API integration or real-document embedding.
 
-Prompt 06 is a real extractive evidence-answering pipeline, but it is not an LLM-powered RAG generator. No hosted or
+Prompt 07 is a hardened extractive evidence-answering pipeline, but it is not an LLM-powered RAG generator. No hosted or
 local LLM, reranking, MCP, agent, frontend, or public-deployment claim should be made.

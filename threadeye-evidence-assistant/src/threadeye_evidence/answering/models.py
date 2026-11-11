@@ -14,6 +14,7 @@ class AnswerStatus(str, Enum):
     UNSUPPORTED_REQUEST = "unsupported_request"
     RETRIEVAL_ERROR = "retrieval_error"
     CITATION_VALIDATION_FAILED = "citation_validation_failed"
+    VALIDATION_ERROR = "validation_error"
 
 
 class AbstentionReason(str, Enum):
@@ -29,6 +30,12 @@ class AbstentionReason(str, Enum):
     SECRET_EXFILTRATION_REQUEST = "secret_exfiltration_request"
     UNTRUSTED_INSTRUCTION_EVIDENCE = "untrusted_instruction_evidence"
     VERDICT_OVERRIDE_REQUEST = "verdict_override_request"
+    INVALID_RETRIEVAL_MODE = "invalid_retrieval_mode"
+    MALFORMED_INPUT = "malformed_input"
+    RESOURCE_LIMIT_EXCEEDED = "resource_limit_exceeded"
+    IDENTIFIER_MISMATCH = "identifier_mismatch"
+    KEYWORD_POISONING = "keyword_poisoning"
+    DOMAIN_MISMATCH = "domain_mismatch"
 
 
 @dataclass(frozen=True)

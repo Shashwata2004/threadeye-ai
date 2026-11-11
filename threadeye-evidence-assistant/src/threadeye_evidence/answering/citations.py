@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
@@ -53,6 +54,8 @@ def validate_citations(
 ) -> CitationValidationReport:
     if not citations:
         raise CitationValidationError("an answered response requires at least one citation")
+    if len(citations) > 3:
+        raise CitationValidationError("citation count exceeds the bounded answer contract")
     if answer != " ".join(citation.excerpt for citation in citations):
         raise CitationValidationError("extractive answers may contain only the ordered cited excerpts")
     indexed: Mapping[str, RankedEvidence] = {item.candidate.chunk_id: item for item in evidence}
@@ -62,6 +65,10 @@ def validate_citations(
         if ranked is None:
             raise CitationValidationError("cited chunk was not present in authorized retrieval results")
         candidate = ranked.candidate
+        if hashlib.sha256(candidate.sanitized_text.encode("utf-8")).hexdigest() != candidate.chunk_sha256:
+            raise CitationValidationError("stored chunk content no longer matches its content hash")
+        if candidate.normalized_end - candidate.normalized_start != len(candidate.sanitized_text):
+            raise CitationValidationError("stored normalized chunk span is inconsistent with its text")
         expected = (
             candidate.source_relative_path,
             candidate.source_sha256,
@@ -86,6 +93,15 @@ def validate_citations(
             raise CitationValidationError("citation is outside the authorized retrieval scope")
         if candidate.authorization_reference != filters.authorization_reference or candidate.profile_key != profile_key:
             raise CitationValidationError("citation authorization or model profile does not match")
+        optional_matches = (
+            (filters.source_relative_path, candidate.source_relative_path),
+            (filters.source_sha256, candidate.source_sha256),
+            (filters.corpus_version, candidate.corpus_version),
+            (filters.processing_version, candidate.processing_version),
+            (filters.document_classification, candidate.document_classification),
+        )
+        if any(expected is not None and expected != actual for expected, actual in optional_matches):
+            raise CitationValidationError("citation does not satisfy the complete retrieval filter set")
         if not (candidate.normalized_start <= citation.normalized_start < citation.normalized_end <= candidate.normalized_end):
             raise CitationValidationError("citation span is outside the normalized sanitized chunk")
         local_start = citation.normalized_start - candidate.normalized_start

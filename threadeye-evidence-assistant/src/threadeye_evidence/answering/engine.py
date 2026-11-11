@@ -6,7 +6,7 @@ from time import perf_counter
 from typing import Any
 
 from threadeye_evidence.answering.abstention import SufficiencyConfig, assess_sufficiency
-from threadeye_evidence.answering.citations import CitationValidationError, citation_from_excerpt, validate_citations
+from threadeye_evidence.answering.citations import citation_from_excerpt, validate_citations
 from threadeye_evidence.answering.extractive import ExtractiveAnswerProvider
 from threadeye_evidence.answering.models import (
     AbstentionReason,
@@ -14,10 +14,11 @@ from threadeye_evidence.answering.models import (
     EvidenceAnswer,
     SufficiencyDecision,
 )
-from threadeye_evidence.answering.policy import rejected_request_reason
-from threadeye_evidence.retrieval.engine import HybridRetriever
+from threadeye_evidence.answering.policy import QuestionSecurityError, normalize_question_input, rejected_request_reason
+from threadeye_evidence.corpus.sanitization import SanitizationRejected, sanitize_markdown
+from threadeye_evidence.retrieval.engine import HybridRetriever, RetrievalBackendError
 from threadeye_evidence.retrieval.fusion import RRFConfig
-from threadeye_evidence.retrieval.models import RetrievalFilters, RetrievalMode, validate_limit, validate_query
+from threadeye_evidence.retrieval.models import MAX_QUERY_CHARS, RetrievalFilters, RetrievalMode, validate_limit, validate_query
 
 
 _LIMITATIONS = (
@@ -84,28 +85,70 @@ class EvidenceAnswerEngine:
         rrf_config: RRFConfig | None = None,
     ) -> EvidenceAnswer:
         started = perf_counter()
-        value = validate_query(question)
-        validate_limit(top_k)
-        validate_limit(candidate_k, field_name="candidate_k")
+        safe_question = ""
+        if isinstance(question, str):
+            try:
+                safe_question = sanitize_markdown(question[:1_000]).text
+            except SanitizationRejected:
+                safe_question = "[REDACTED_UNSAFE_INPUT]"
         active_mode = mode.value if isinstance(mode, RetrievalMode) else str(mode)
+        try:
+            normalized = normalize_question_input(question)
+            if len(normalized.strip()) > MAX_QUERY_CHARS:
+                return self._response(
+                    safe_question.strip(), filters, active_mode, started,
+                    status=AnswerStatus.VALIDATION_ERROR,
+                    reason=AbstentionReason.RESOURCE_LIMIT_EXCEEDED.value,
+                    retrieval_metadata={"failure_stage": "query_length", "degraded": False},
+                )
+            value = validate_query(normalized)
+        except (QuestionSecurityError, ValueError, UnicodeError):
+            return self._response(
+                safe_question.strip(), filters, active_mode, started,
+                status=AnswerStatus.VALIDATION_ERROR,
+                reason=AbstentionReason.MALFORMED_INPUT.value,
+                retrieval_metadata={"failure_stage": "input_validation", "degraded": False},
+            )
+        try:
+            validate_limit(top_k)
+            validate_limit(candidate_k, field_name="candidate_k")
+            if candidate_k < top_k:
+                raise ValueError("candidate_k must not be smaller than top_k")
+        except ValueError:
+            return self._response(
+                safe_question.strip(), filters, active_mode, started,
+                status=AnswerStatus.VALIDATION_ERROR,
+                reason=AbstentionReason.RESOURCE_LIMIT_EXCEEDED.value,
+                retrieval_metadata={"failure_stage": "resource_validation", "degraded": False},
+            )
+        try:
+            RetrievalMode(active_mode)
+        except ValueError:
+            return self._response(
+                safe_question.strip(), filters, active_mode, started,
+                status=AnswerStatus.VALIDATION_ERROR,
+                reason=AbstentionReason.INVALID_RETRIEVAL_MODE.value,
+                retrieval_metadata={"failure_stage": "mode_validation", "degraded": False},
+            )
         rejected = rejected_request_reason(value)
         if rejected:
             status = AnswerStatus.INSUFFICIENT_EVIDENCE if rejected == AbstentionReason.CONTRADICTORY_EVIDENCE.value else AnswerStatus.UNSUPPORTED_REQUEST
             decision = SufficiencyDecision(False, rejected, (), {"policy_preflight": True, "config_version": self.sufficiency_config.version})
-            return self._response(value, filters, active_mode, started, status=status, reason=rejected, sufficiency=decision)
+            return self._response(safe_question.strip(), filters, active_mode, started, status=status, reason=rejected, sufficiency=decision)
 
         try:
             authorized_count = self.retriever.store.authorization_scope_count(filters, self.retriever.provider.metadata)
         except Exception:
             return self._response(
-                value, filters, active_mode, started,
+                safe_question.strip(), filters, active_mode, started,
                 status=AnswerStatus.RETRIEVAL_ERROR,
                 reason=AbstentionReason.RETRIEVAL_BACKEND_FAILURE.value,
+                retrieval_metadata={"failure_stage": "authorization_database", "degraded": False},
             )
         if authorized_count == 0:
             decision = SufficiencyDecision(False, AbstentionReason.AUTHORIZATION_SCOPE_EMPTY.value, (), {"authorized_chunk_count": 0})
             return self._response(
-                value, filters, active_mode, started,
+                safe_question.strip(), filters, active_mode, started,
                 status=AnswerStatus.UNAUTHORIZED,
                 reason=AbstentionReason.AUTHORIZATION_SCOPE_EMPTY.value,
                 sufficiency=decision,
@@ -120,11 +163,21 @@ class EvidenceAnswerEngine:
                 candidate_k=candidate_k,
                 rrf_config=rrf_config,
             )
-        except Exception:
+        except RetrievalBackendError as exc:
+            message = str(exc).lower()
+            stage = "keyword_retrieval" if "keyword" in message else "vector_retrieval" if "vector" in message else "hybrid_retrieval"
             return self._response(
-                value, filters, active_mode, started,
+                safe_question.strip(), filters, active_mode, started,
                 status=AnswerStatus.RETRIEVAL_ERROR,
                 reason=AbstentionReason.RETRIEVAL_BACKEND_FAILURE.value,
+                retrieval_metadata={"failure_stage": stage, "degraded": False},
+            )
+        except Exception:
+            return self._response(
+                safe_question.strip(), filters, active_mode, started,
+                status=AnswerStatus.RETRIEVAL_ERROR,
+                reason=AbstentionReason.RETRIEVAL_BACKEND_FAILURE.value,
+                retrieval_metadata={"failure_stage": "retrieval", "degraded": False},
             )
         metadata = {
             "backend_status": dict(retrieved.backend_status),
@@ -136,7 +189,7 @@ class EvidenceAnswerEngine:
         decision = assess_sufficiency(value, retrieved.results, self.sufficiency_config)
         if not decision.sufficient:
             return self._response(
-                value, filters, active_mode, started,
+                safe_question.strip(), filters, active_mode, started,
                 status=AnswerStatus.INSUFFICIENT_EVIDENCE,
                 reason=decision.reason,
                 retrieval_metadata=metadata,
@@ -157,10 +210,12 @@ class EvidenceAnswerEngine:
                 self.sufficiency_config,
             )
             metadata["citation_validation"] = {"valid": True, "validated_count": len(citations)}
-        except (CitationValidationError, ValueError):
+        except Exception:
+            metadata["failure_stage"] = "citation_validation"
+            metadata["degraded"] = False
             failed = SufficiencyDecision(False, AbstentionReason.INVALID_CITATION.value, (), decision.signals)
             return self._response(
-                value, filters, active_mode, started,
+                safe_question.strip(), filters, active_mode, started,
                 status=AnswerStatus.CITATION_VALIDATION_FAILED,
                 reason=AbstentionReason.INVALID_CITATION.value,
                 retrieval_metadata=metadata,
@@ -168,7 +223,7 @@ class EvidenceAnswerEngine:
             )
         processing = tuple(sorted({item.ranked_evidence.candidate.processing_version for item in extracted.supports}))
         return self._response(
-            value, filters, active_mode, started,
+            safe_question.strip(), filters, active_mode, started,
             status=AnswerStatus.ANSWERED,
             reason=None,
             retrieval_metadata=metadata,

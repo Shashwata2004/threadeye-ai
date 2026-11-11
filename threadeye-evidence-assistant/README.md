@@ -3,7 +3,8 @@
 This isolated companion inventories explicitly approved ThreadEye documentation and, for fictional fixtures only,
 runs approval-gated sanitization, real local embeddings, PostgreSQL full-text search, pgvector cosine search, and
 weighted reciprocal-rank fusion. Prompt 06 adds conservative extractive evidence answers, exact provenance citations,
-and explicit abstention.
+and explicit abstention. Prompt 07 adds adversarial fixtures, citation mutation defenses, Unicode/input controls,
+failure isolation, and a reproducible 60-case security evaluation.
 It does not modify or import the ThreadEye application. All six real ThreadEye documents remain blocked from
 content ingestion and embedding.
 
@@ -90,6 +91,15 @@ PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-answers \
   --split development --offline-model --format summary
 PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-answers \
   --split held_out --offline-model --format summary
+
+# Index only exact separately approved fictional security fixtures
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence index-security-fixtures --offline-model
+
+# Development first; final holdout remains frozen
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-security \
+  --split development --offline-model --format summary
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-security \
+  --split final_holdout --offline-model --format summary
 ```
 
 After the first verified download, add `--offline-model` to vector commands. Stop without deleting data using
@@ -110,5 +120,6 @@ THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 \
 Read [the grounded-answering and abstention design](docs/ANSWERING.md),
 [the hybrid retrieval design and benchmark](docs/HYBRID_RETRIEVAL.md),
 [the vector implementation](docs/VECTOR_INDEXING.md), [ingestion controls](docs/INGESTION.md),
-[architecture](docs/ARCHITECTURE.md), and [threat model](docs/THREAT_MODEL.md). Inventory approval is not
+[architecture](docs/ARCHITECTURE.md), [security evaluation](docs/SECURITY_EVALUATION.md), and
+[threat model](docs/THREAT_MODEL.md). Inventory approval is not
 permission to embed, redistribute, train on, publish, or expose a real document.

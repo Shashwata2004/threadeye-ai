@@ -46,6 +46,56 @@
         "approved_by": "project-owner-prompt-06",
         "scope": "synthetic_prompt_injection_test_only"
       }
+    },
+    {
+      "path": "security-instructions.md",
+      "purpose": "Prompt 07 fictional direct and indirect prompt-injection security cases.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "25879423184e7a96d942cec484450dcdbec92eb759cc840238a678fde88361aa",
+      "caveats": "Contains only fictional malicious instructions and fake paths.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    },
+    {
+      "path": "security-conflicts.md",
+      "purpose": "Prompt 07 fictional conflicting-evidence case.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "fe4b137cdc33573ed58261470748d2a8b7a676b06eb8bd2249b9810501661565",
+      "caveats": "Contains no real inspection claim and has no operational authority.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    },
+    {
+      "path": "security-keyword-poison.md",
+      "purpose": "Prompt 07 fictional keyword-stuffing retrieval-poison case.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "4e4d8e32769a006f9be889dd7bd76c28ef2ab2625c7baef41a8baf9929061fa4",
+      "caveats": "Repeated terms are test data and contain no true supplier or inspection fact.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    },
+    {
+      "path": "security-semantic-decoy.md",
+      "purpose": "Prompt 07 fictional semantically similar but domain-unrelated case.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "16b828dc03e42c15598b906cdf714cdec70e163fe591770994945cd1a98714e8",
+      "caveats": "Software-message analogy only; not textile evidence.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    },
+    {
+      "path": "security-citation-spoof.md",
+      "purpose": "Prompt 07 fictional fake citation and metadata case.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "ef46b739c7b7dc1f04e3ca57545374b5f8ed95d6031bb4746155bf0c0f427013",
+      "caveats": "All hashes, paths and citations inside are intentionally fake.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
     }
   ]
 }

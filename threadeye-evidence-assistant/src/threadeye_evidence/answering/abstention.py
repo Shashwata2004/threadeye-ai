@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from typing import Sequence
 
 from threadeye_evidence.answering.models import AbstentionReason, SufficiencyDecision
-from threadeye_evidence.answering.policy import contains_explicit_contradiction, contains_untrusted_instruction
+from threadeye_evidence.answering.policy import contains_explicit_contradiction, contains_keyword_stuffing, contains_untrusted_instruction
 from threadeye_evidence.retrieval.models import RankedEvidence
 
 
@@ -15,6 +15,9 @@ _TOKEN = re.compile(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*")
 _IDENTIFIER = re.compile(r"\b[A-Z]{2,}(?:-[A-Z0-9]+)+\b")
 _STOPWORDS = frozenset(
     "a an and are as at be before by can did do does for from how i in is it of on or that the this to was what when where which who why with".split()
+)
+_DOMAIN_ANCHORS = frozenset(
+    "fabric roll textile defect hole stain slub yarn edge scoring penalty inspected supplier supervisor classification observation evidence quarantine reviewer approval".split()
 )
 
 
@@ -58,7 +61,7 @@ def assess_sufficiency(
     config: SufficiencyConfig,
 ) -> SufficiencyDecision:
     query_tokens = content_tokens(question)
-    identifiers = set(_IDENTIFIER.findall(question))
+    identifiers = {value.upper() for value in _IDENTIFIER.findall(question)}
     if len(query_tokens) < config.min_question_tokens and not identifiers:
         return SufficiencyDecision(False, AbstentionReason.AMBIGUOUS_QUESTION.value, (), {"query_token_count": len(query_tokens), "config_version": config.version})
     if not results:
@@ -66,13 +69,23 @@ def assess_sufficiency(
     if any(contains_explicit_contradiction(item.candidate.sanitized_text) for item in results):
         return SufficiencyDecision(False, AbstentionReason.CONTRADICTORY_EVIDENCE.value, (), {"config_version": config.version})
 
-    safe_results = [item for item in results if not contains_untrusted_instruction(item.candidate.sanitized_text)]
+    poisoned_sources = {
+        item.candidate.source_relative_path
+        for item in results
+        if contains_untrusted_instruction(item.candidate.sanitized_text)
+    }
+    safe_results = [item for item in results if item.candidate.source_relative_path not in poisoned_sources]
     if not safe_results:
-        return SufficiencyDecision(False, AbstentionReason.UNTRUSTED_INSTRUCTION_EVIDENCE.value, (), {"config_version": config.version})
+        return SufficiencyDecision(
+            False,
+            AbstentionReason.UNTRUSTED_INSTRUCTION_EVIDENCE.value,
+            (),
+            {"config_version": config.version, "quarantined_source_count": len(poisoned_sources)},
+        )
     def selection_score(item: RankedEvidence) -> tuple[float, str]:
         candidate_tokens = content_tokens(item.candidate.sanitized_text + " " + " ".join(item.candidate.heading_hierarchy))
         candidate_overlap = len(query_tokens & candidate_tokens)
-        candidate_identifiers = set(_IDENTIFIER.findall(item.candidate.sanitized_text))
+        candidate_identifiers = {value.upper() for value in _IDENTIFIER.findall(item.candidate.sanitized_text)}
         identifier_bonus = 100.0 if identifiers & candidate_identifiers else 0.0
         keyword_bonus = 20.0 if item.keyword_rank is not None and (item.candidate.keyword_score or 0) > 0 else 0.0
         semantic = item.candidate.cosine_similarity or 0.0
@@ -80,10 +93,19 @@ def assess_sufficiency(
 
     selected = max(safe_results, key=selection_score)
     candidate = selected.candidate
+    if contains_keyword_stuffing(candidate.sanitized_text):
+        return SufficiencyDecision(False, AbstentionReason.KEYWORD_POISONING.value, (), {"config_version": config.version})
     evidence_tokens = content_tokens(candidate.sanitized_text + " " + " ".join(candidate.heading_hierarchy))
     overlap = len(query_tokens & evidence_tokens)
     similarity = candidate.cosine_similarity
-    exact_identifier = bool(identifiers & set(_IDENTIFIER.findall(candidate.sanitized_text)))
+    exact_identifier = bool(identifiers & {value.upper() for value in _IDENTIFIER.findall(candidate.sanitized_text)})
+    if identifiers and not exact_identifier:
+        return SufficiencyDecision(
+            False,
+            AbstentionReason.IDENTIFIER_MISMATCH.value,
+            (),
+            {"config_version": config.version, "requested_identifiers": sorted(identifiers)},
+        )
     keyword_match = selected.keyword_rank is not None and candidate.keyword_score is not None and candidate.keyword_score > 0
     other_similarities = [item.candidate.cosine_similarity for item in safe_results if item is not selected and item.candidate.cosine_similarity is not None]
     second_similarity = max(other_similarities) if other_similarities else None
@@ -93,6 +115,16 @@ def assess_sufficiency(
         overlap >= config.min_lexical_overlap
         or similarity >= config.strong_semantic_similarity
     )
+    query_domain = query_tokens & _DOMAIN_ANCHORS
+    evidence_domain = evidence_tokens & _DOMAIN_ANCHORS
+    domain_consistent = not query_domain or bool(query_domain & evidence_domain)
+    if not domain_consistent:
+        return SufficiencyDecision(
+            False,
+            AbstentionReason.DOMAIN_MISMATCH.value,
+            (),
+            {"config_version": config.version, "query_domain_anchors": sorted(query_domain)},
+        )
     unambiguous = keyword_match or exact_identifier or overlap >= 2 or margin is None or margin >= config.min_semantic_margin
     sufficient = (exact_identifier or keyword_match or semantic_supported) and unambiguous
     signals = {
@@ -105,6 +137,7 @@ def assess_sufficiency(
         "semantic_margin": margin,
         "semantic_supported": semantic_supported,
         "unambiguous": unambiguous,
+        "domain_consistent": domain_consistent,
         "selected_original_rank": selected.final_rank,
     }
     if not sufficient:

@@ -24,8 +24,9 @@ from threadeye_evidence.retrieval.engine import HybridRetriever, RetrievalBacken
 from threadeye_evidence.retrieval.evaluation import evaluate_retrieval, load_evaluation_dataset
 from threadeye_evidence.retrieval.fusion import RRFConfig
 from threadeye_evidence.retrieval.models import RetrievalFilters, RetrievalMode, RetrievalValidationError
-from threadeye_evidence.retrieval.policy import SYNTHETIC_EVALUATION_POLICY
+from threadeye_evidence.retrieval.policy import SECURITY_EVALUATION_POLICY, SYNTHETIC_EVALUATION_POLICY
 from threadeye_evidence.retrieval.store import RetrievalStore
+from threadeye_evidence.security.evaluation import evaluate_security, load_security_dataset
 from threadeye_evidence.vector.database import DatabaseSafetyError, DatabaseSettings, EvidenceDatabase
 from threadeye_evidence.vector.embeddings import EmbeddingValidationError, FastEmbedProvider
 from threadeye_evidence.vector.indexing import default_migrations_dir, index_ingestion_result
@@ -165,6 +166,21 @@ def _print_answer_evaluation_summary(report: dict[str, object]) -> None:
         )
 
 
+def _print_security_evaluation_summary(report: dict[str, object]) -> None:
+    print(f"dataset={report['evaluation_dataset_version']} split={report['selected_split']}")
+    for split, metrics in report["metrics"].items():
+        exact = metrics["exact_expected_outcome"]
+        attack = metrics["prompt_injection_attack_success"]
+        failures = metrics["failure_mode_correctness"]
+        print(
+            f"{split}: cases={metrics['cases']} exact={exact['numerator']}/{exact['denominator']} "
+            f"attack_success={attack['numerator']}/{attack['denominator']} "
+            f"failure_correct={failures['numerator']}/{failures['denominator']} "
+            f"avg_ms={metrics['average_latency_ms']:.3f} p95_ms={metrics['p95_latency_ms']:.3f} "
+            f"runtime_failures={metrics['runtime_failures']}"
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="ThreadEye isolated evidence inventory and retrieval")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -197,6 +213,14 @@ def build_parser() -> argparse.ArgumentParser:
     index.add_argument("--max-chars", type=int, default=600)
     index.add_argument("--batch-size", type=int, default=8)
     _add_vector_options(index)
+
+    security_index = subparsers.add_parser(
+        "index-security-fixtures", help="index only the exact approved Prompt 07 fictional security fixtures"
+    )
+    security_index.add_argument("--source-root", type=Path, default=Path("examples/synthetic"))
+    security_index.add_argument("--manifest", type=Path, default=Path("knowledge/synthetic-manifest.json"))
+    security_index.add_argument("--batch-size", type=int, default=8)
+    _add_vector_options(security_index)
 
     status = subparsers.add_parser("index-status", help="show isolated pgvector index status")
     _add_vector_options(status)
@@ -247,6 +271,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_retrieval_filters(answer_eval)
     _add_sufficiency_options(answer_eval)
     _add_vector_options(answer_eval)
+
+    security_eval = subparsers.add_parser("evaluate-security", help="run the independent Prompt 07 adversarial evaluation")
+    security_eval.add_argument("--dataset", type=Path, default=_project_root() / "evaluation/security-v1.json")
+    security_eval.add_argument("--split", choices=("development", "final_holdout", "all"), default="final_holdout")
+    security_eval.add_argument("--format", choices=("json", "summary"), default="summary")
+    _add_retrieval_filters(security_eval)
+    _add_sufficiency_options(security_eval)
+    _add_vector_options(security_eval)
     return parser
 
 
@@ -327,6 +359,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                 }
             )
             return 0
+        if args.command == "index-security-fixtures":
+            manifest = load_manifest(args.manifest)
+            provider = _provider(args)
+            database = _database(args.database_url)
+            migrations = database.migrate()
+            documents = (
+                "security-instructions.md", "security-conflicts.md", "security-keyword-poison.md",
+                "security-semantic-decoy.md", "security-citation-spoof.md",
+            )
+            reports = []
+            for document in documents:
+                result = ingest_document(
+                    args.source_root, manifest, document,
+                    intended_use="prompt07_security_evaluation",
+                    chunk_config=ChunkConfig(target_chars=300, max_chars=600),
+                )
+                reports.append(index_ingestion_result(
+                    result, provider, database, batch_size=args.batch_size,
+                    retrieval_policy=SECURITY_EVALUATION_POLICY,
+                ).to_mapping())
+            _print({
+                "status": "indexed", "fixture_count": len(documents), "migrations": migrations,
+                "embedding": provider.metadata.to_mapping(), "indexing": reports,
+                "retrieval_policy": SECURITY_EVALUATION_POLICY.__dict__,
+            })
+            return 0
         if args.command == "index-status":
             provider = _provider(args)
             database = _database(args.database_url)
@@ -402,6 +460,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 selected_split=args.split,
             )
             _print(report) if args.format == "json" else _print_answer_evaluation_summary(report)
+            return 0
+        if args.command == "evaluate-security":
+            dataset = load_security_dataset(args.dataset)
+            engine = EvidenceAnswerEngine(_retriever(args), sufficiency_config=_sufficiency_config(args))
+            command = f"threadeye-evidence evaluate-security --dataset {args.dataset} --split {args.split}"
+            report = evaluate_security(
+                dataset, engine, _retrieval_filters(args), selected_split=args.split, command=command,
+            )
+            _print(report) if args.format == "json" else _print_security_evaluation_summary(report)
             return 0
     except (
         SafetyViolation,
