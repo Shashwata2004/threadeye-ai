@@ -48,7 +48,8 @@ class PgvectorIntegrationTests(unittest.TestCase):
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(lambda _: migrate(), range(2)))
-        self.assertEqual(results, [["001_evidence_vectors.sql"], ["001_evidence_vectors.sql"]])
+        expected = ["001_evidence_vectors.sql", "002_hybrid_retrieval.sql"]
+        self.assertEqual(results, [expected, expected])
 
     def test_insert_upsert_and_repeated_indexing_do_not_duplicate(self) -> None:
         result = synthetic_result(relative_path="idempotent.md")

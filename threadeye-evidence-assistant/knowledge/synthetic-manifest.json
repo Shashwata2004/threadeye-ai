@@ -23,7 +23,7 @@
       "source_classification": "synthetic_test_fixture",
       "inventory_approved": true,
       "future_ingestion_approved": true,
-      "expected_sha256": "875c44c06f012ba324f0c3387ce1f8c806299f29f94fd414f369921325ab3c96",
+      "expected_sha256": "e8c74eaf5454e00635af32fe9c08d3c56d90e5a19b37bec61d600e08c7c3406d",
       "caveats": "Fictional content only; authorization does not apply to ThreadEye production data or real project documents.",
       "team_authorization": {
         "reference": "PROMPT-04-SYNTHETIC-VECTOR-FIXTURE",

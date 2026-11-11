@@ -1,6 +1,6 @@
 # Architecture
 
-## Prompt 04 boundary
+## Prompt 05 boundary
 
 ```text
 Exact manifest entry
@@ -12,7 +12,9 @@ Exact manifest entry
   → pinned BGE CPU embeddings
   → dimension/finite-value validation
   → isolated PostgreSQL transaction and pgvector upsert
-  → exact cosine query with provenance
+  → separate serving authorization (test-only synthetic corpus)
+  → PostgreSQL FTS and/or exact cosine retrieval with provenance
+  → weighted reciprocal-rank fusion for hybrid mode
 ```
 
 The companion has no runtime dependency on ThreadEye application packages. Inventory remains metadata-only.
@@ -43,6 +45,11 @@ transaction.
 
 ## Search strategy
 
-Prompt 04 uses exact `<=>` cosine distance with deterministic chunk-ID tie-breaking and a hard top-20 limit. The
-synthetic corpus is too small to justify HNSW; only B-tree metadata indexes are created. No vector-index scan is
-claimed. Prompt 05 will add separate keyword/vector retrieval, fusion, filters, and evaluation.
+Vector mode uses exact `<=>` cosine distance. Keyword mode uses a stored English `tsvector`,
+`websearch_to_tsquery`, and `ts_rank_cd`. Hybrid mode executes both branches over the same SQL authorization scope,
+then calculates `sum(weight/(k+rank))`; it never adds incomparable native scores. Results deduplicate by stable chunk
+ID, preserve provenance/native scores, break ties by chunk ID, and enforce a hard top-20 limit.
+
+The synthetic corpus is too small to justify HNSW. A GIN full-text index exists for growth, but the verified
+representative `EXPLAIN (ANALYZE, BUFFERS)` selected a sequential scan over six authorized chunks. No GIN scan or
+vector-index scan is falsely claimed.

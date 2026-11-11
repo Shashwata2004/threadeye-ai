@@ -1,3 +1,3 @@
-"""Read-only ThreadEye evidence inventory foundation."""
+"""Isolated, authorized ThreadEye evidence retrieval companion."""
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"

@@ -58,6 +58,11 @@ The query command embeds one validated string, uses exact pgvector cosine distan
 results to 20. It returns sanitized synthetic text plus source path/hash, chunk hash, headings, normalized span,
 processing/sanitization/authorization fields, model revision, corpus version, distance, and similarity.
 
+Prompt 05 preserves this exact profile and distance operator behind a stricter shared retrieval scope. Serving now
+requires `retrieval_authorized=true` plus exact corpus, access policy, ingestion authorization reference, and model
+profile matches. Optional source/hash/corpus/processing/classification filters are also parameterized. An incompatible
+authorized corpus/profile combination fails with a controlled re-embedding error instead of mixing vectors.
+
 The corpus is intentionally tiny, so a sequential exact scan is more appropriate than HNSW. Metadata B-tree indexes
 support source/profile and run-status operations. No approximate vector-index usage or full RAG is claimed.
 

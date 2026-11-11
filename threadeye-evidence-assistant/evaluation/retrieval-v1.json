@@ -1,0 +1,326 @@
+{
+  "dataset_version": "threadeye-retrieval-eval-v1",
+  "created_before_prediction_review": true,
+  "corpus_id": "threadeye-synthetic-evidence-v1",
+  "access_policy": "prompt05-test-only",
+  "authorization_reference": "PROMPT-04-SYNTHETIC-VECTOR-FIXTURE",
+  "source_relative_path": "technical-evidence.md",
+  "description": "Fixed fictional relevance labels for Prompt 05 keyword, vector, and hybrid retrieval evaluation.",
+  "queries": [
+    {
+      "query_id": "Q001",
+      "query": "fabric receiving",
+      "expected_sections": ["Fabric Receiving"],
+      "relevance_criteria": "The chunk must describe the fictional receiving workflow.",
+      "category": "exact_terminology",
+      "notes": "Direct section-name lookup.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q002",
+      "query": "\"quarantine lane\"",
+      "expected_sections": ["Fabric Receiving"],
+      "relevance_criteria": "The chunk must state that an arriving roll is placed in quarantine.",
+      "category": "quoted_phrase",
+      "notes": "Tests web-style exact phrase parsing.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q003",
+      "query": "supplier lot arrival",
+      "expected_sections": ["Fabric Receiving"],
+      "relevance_criteria": "The chunk must cover supplier-lot and arrival metadata.",
+      "category": "short_keyword",
+      "notes": "Concise multi-term query.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q004",
+      "query": "How is incoming material held before visual checking?",
+      "expected_sections": ["Fabric Receiving"],
+      "relevance_criteria": "The chunk must explain pre-inspection quarantine of a received roll.",
+      "category": "semantic_paraphrase",
+      "notes": "Avoids the words fabric receiving and quarantine lane.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q005",
+      "query": "ROLL-NST-204",
+      "expected_sections": ["Fabric Receiving"],
+      "relevance_criteria": "The chunk must contain the exact fictional roll identifier.",
+      "category": "technical_identifier",
+      "notes": "Hyphenated identifier.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q006",
+      "query": "Which information is recorded when a fictional roll first arrives, and what happens before inspection?",
+      "expected_sections": ["Fabric Receiving"],
+      "relevance_criteria": "The chunk must describe arrival metadata and quarantine before inspection.",
+      "category": "long_question",
+      "notes": "Natural-language receiving question.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q007",
+      "query": "defect classification",
+      "expected_sections": ["Defect Classification"],
+      "relevance_criteria": "The chunk must describe fictional defect labels and classification evidence.",
+      "category": "exact_terminology",
+      "notes": "Direct section-name lookup.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q008",
+      "query": "holes stains slubs broken yarn",
+      "expected_sections": ["Defect Classification"],
+      "relevance_criteria": "The chunk must enumerate the fictional defect taxonomy.",
+      "category": "short_keyword",
+      "notes": "Multiple high-signal terms.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q009",
+      "query": "\"confidence note\" image reference",
+      "expected_sections": ["Defect Classification"],
+      "relevance_criteria": "The chunk must describe evidence attached to a classification.",
+      "category": "quoted_phrase",
+      "notes": "Phrase plus related term.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q010",
+      "query": "What lets a reviewer audit how a flaw label was assigned?",
+      "expected_sections": ["Defect Classification"],
+      "relevance_criteria": "The chunk must explain traceable evidence for assigning a defect label.",
+      "category": "semantic_paraphrase",
+      "notes": "Uses flaw instead of defect.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q011",
+      "query": "DEF-HOLE-04",
+      "expected_sections": ["Defect Classification"],
+      "relevance_criteria": "The chunk must contain the exact fictional defect identifier.",
+      "category": "technical_identifier",
+      "notes": "Hyphenated identifier.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q012",
+      "query": "Where are the label, location, confidence information, and image pointer kept for an observed flaw?",
+      "expected_sections": ["Defect Classification"],
+      "relevance_criteria": "The chunk must enumerate classification evidence fields.",
+      "category": "long_question",
+      "notes": "Detailed classification paraphrase.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q013",
+      "query": "four-point scoring",
+      "expected_sections": ["Four-Point Scoring Explanation"],
+      "relevance_criteria": "The chunk must explain the fictional four-point scoring concept.",
+      "category": "exact_terminology",
+      "notes": "Direct heading terminology.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q014",
+      "query": "penalty points longest dimension",
+      "expected_sections": ["Four-Point Scoring Explanation"],
+      "relevance_criteria": "The chunk must connect penalty points to defect size.",
+      "category": "short_keyword",
+      "notes": "High-signal scoring terms.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q015",
+      "query": "\"one to four penalty points\"",
+      "expected_sections": ["Four-Point Scoring Explanation"],
+      "relevance_criteria": "The chunk must contain the quoted scoring range.",
+      "category": "quoted_phrase",
+      "notes": "Exact scoring phrase.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q016",
+      "query": "How are flaw penalties adjusted so inspected areas can be compared?",
+      "expected_sections": ["Four-Point Scoring Explanation"],
+      "relevance_criteria": "The chunk must discuss aggregation and normalization of scoring.",
+      "category": "semantic_paraphrase",
+      "notes": "Uses adjusted and flaw instead of normalized and defect.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q017",
+      "query": "FP-4",
+      "expected_sections": ["Four-Point Scoring Explanation"],
+      "relevance_criteria": "The chunk must contain the exact fictional scoring identifier.",
+      "category": "technical_identifier",
+      "notes": "Short hyphenated identifier.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q018",
+      "query": "Which fictional guide assigns penalties from defect size and normalizes them over inspected area?",
+      "expected_sections": ["Four-Point Scoring Explanation"],
+      "relevance_criteria": "The chunk must explain both size-based points and area normalization.",
+      "category": "long_question",
+      "notes": "Detailed scoring question.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q019",
+      "query": "quality inspection evidence",
+      "expected_sections": ["Quality Inspection Evidence"],
+      "relevance_criteria": "The chunk must describe the fictional evidence bundle.",
+      "category": "exact_terminology",
+      "notes": "Direct section name.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q020",
+      "query": "content hash sanitized observation",
+      "expected_sections": ["Quality Inspection Evidence"],
+      "relevance_criteria": "The chunk must describe sanitized evidence and change-detecting hashes.",
+      "category": "short_keyword",
+      "notes": "Evidence-specific terminology.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q021",
+      "query": "\"raw private documents\" credentials",
+      "expected_sections": ["Quality Inspection Evidence"],
+      "relevance_criteria": "The chunk must state what the fictional bundle never stores.",
+      "category": "quoted_phrase",
+      "notes": "Security-oriented phrase.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q022",
+      "query": "What makes later changes to an inspection record detectable?",
+      "expected_sections": ["Quality Inspection Evidence"],
+      "relevance_criteria": "The chunk must identify content hashing as change evidence.",
+      "category": "semantic_paraphrase",
+      "notes": "Semantic hashing question.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q023",
+      "query": "EVID-SYN-009",
+      "expected_sections": ["Quality Inspection Evidence"],
+      "relevance_criteria": "The chunk must contain the exact fictional evidence identifier.",
+      "category": "technical_identifier",
+      "notes": "Hyphenated identifier.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q024",
+      "query": "Which bundle combines a sanitized observation, timestamp, roll reference, review status, and content hash?",
+      "expected_sections": ["Quality Inspection Evidence"],
+      "relevance_criteria": "The chunk must enumerate the evidence bundle contents.",
+      "category": "long_question",
+      "notes": "Detailed evidence question.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q025",
+      "query": "supervisor review",
+      "expected_sections": ["Supervisor Review"],
+      "relevance_criteria": "The chunk must describe the fictional supervisor workflow.",
+      "category": "exact_terminology",
+      "notes": "Direct section name.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q026",
+      "query": "confirms rejects classification reason",
+      "expected_sections": ["Supervisor Review"],
+      "relevance_criteria": "The chunk must describe the supervisor decision and recorded reason.",
+      "category": "short_keyword",
+      "notes": "Decision terminology.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q027",
+      "query": "\"explicit and traceable\" approval",
+      "expected_sections": ["Supervisor Review"],
+      "relevance_criteria": "The chunk must describe explicit traceable approval.",
+      "category": "quoted_phrase",
+      "notes": "Exact approval phrase.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q028",
+      "query": "Who decides whether a proposed flaw label should stand and documents why?",
+      "expected_sections": ["Supervisor Review"],
+      "relevance_criteria": "The chunk must describe human confirmation or rejection with a reason.",
+      "category": "semantic_paraphrase",
+      "notes": "Avoids supervisor and classification.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q029",
+      "query": "REV-SYN-21",
+      "expected_sections": ["Supervisor Review"],
+      "relevance_criteria": "The chunk must contain the exact fictional review identifier.",
+      "category": "technical_identifier",
+      "notes": "Hyphenated identifier.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q030",
+      "query": "Why can automated retrieval surface evidence but not approve a roll or replace a human decision?",
+      "expected_sections": ["Supervisor Review"],
+      "relevance_criteria": "The chunk must state the boundary between retrieval and supervisor approval.",
+      "category": "long_question",
+      "notes": "Human-in-the-loop boundary.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q031",
+      "query": "reviewer classification evidence and final decision",
+      "expected_sections": ["Defect Classification", "Supervisor Review"],
+      "relevance_criteria": "Either classification audit evidence or final supervisor decision is relevant.",
+      "category": "overlapping_topics",
+      "notes": "Intentionally spans two sections.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q032",
+      "query": "review status and traceable approval evidence",
+      "expected_sections": ["Quality Inspection Evidence", "Supervisor Review"],
+      "relevance_criteria": "Evidence-bundle review status and explicit supervisor approval are both relevant.",
+      "category": "ambiguous_terminology",
+      "notes": "The word review legitimately maps to two sections.",
+      "expected_no_result": false
+    },
+    {
+      "query_id": "Q033",
+      "query": "employee payroll withholding tax",
+      "expected_sections": [],
+      "relevance_criteria": "No synthetic evidence section discusses payroll or taxation.",
+      "category": "out_of_corpus",
+      "notes": "Expected lexical no-result; semantic false positives are measured honestly.",
+      "expected_no_result": true
+    },
+    {
+      "query_id": "Q034",
+      "query": "lubricating a knitting machine gearbox",
+      "expected_sections": [],
+      "relevance_criteria": "No synthetic evidence section gives machinery-maintenance instructions.",
+      "category": "out_of_corpus",
+      "notes": "Expected lexical no-result; vector retrieval may still return a nearest neighbor.",
+      "expected_no_result": true
+    },
+    {
+      "query_id": "Q035",
+      "query": "international shipping invoice payment",
+      "expected_sections": [],
+      "relevance_criteria": "No synthetic evidence section covers logistics billing.",
+      "category": "out_of_corpus",
+      "notes": "Expected lexical no-result and honest semantic behavior measurement.",
+      "expected_no_result": true
+    }
+  ]
+}

@@ -1,12 +1,12 @@
 # ThreadEye Evidence Assistant
 
 This isolated companion inventories explicitly approved ThreadEye documentation and, for fictional fixtures only,
-runs approval-gated sanitization, real local embeddings, PostgreSQL/pgvector indexing, and exact cosine search.
+runs approval-gated sanitization, real local embeddings, PostgreSQL full-text search, pgvector cosine search, and
+weighted reciprocal-rank fusion.
 It does not modify or import the ThreadEye application. All six real ThreadEye documents remain blocked from
 content ingestion and embedding.
 
-Full RAG answers, keyword retrieval, fusion, reranking, MCP, local LLM generation, a UI, and deployment are not
-implemented.
+Full RAG answers, reranking, MCP, local LLM generation, a UI, and deployment are not implemented.
 
 ## Environments
 
@@ -52,7 +52,7 @@ set -a; source .env.db; set +a
 export THREADEYE_EVIDENCE_DATABASE_URL="postgresql://${EVIDENCE_DB_USER}:${EVIDENCE_DB_PASSWORD}@127.0.0.1:${EVIDENCE_DB_PORT}/${EVIDENCE_DB_NAME}"
 ```
 
-## Prompt 04 CLI
+## Index and retrieval CLI
 
 ```bash
 # Metadata plus genuine CPU inference verification
@@ -64,9 +64,21 @@ PYTHONPATH=src .venv/bin/python -m threadeye_evidence index
 # Migration, pgvector, profile, source, and chunk status
 PYTHONPATH=src .venv/bin/python -m threadeye_evidence index-status
 
-# Exact cosine search; results include sanitized text and complete provenance
+# Backward-compatible authorized vector query
 PYTHONPATH=src .venv/bin/python -m threadeye_evidence query \
   "Who reviews flagged defect classifications and records a reason?" --top-k 3
+
+# Independent PostgreSQL keyword, genuine BGE vector, or two-branch hybrid retrieval
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence search \
+  --mode keyword --query 'ROLL-NST-204' --top-k 3 --offline-model
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence search \
+  --mode vector --query 'Who decides whether a proposed flaw label should stand?' --top-k 3 --offline-model
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence search \
+  --mode hybrid --query 'content hash sanitized observation' --top-k 3 --candidate-k 6 \
+  --rrf-k 60 --keyword-weight 1 --vector-weight 1 --format summary --offline-model
+
+# Fixed 35-query benchmark; runs keyword, vector, and hybrid separately
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-retrieval --offline-model --format summary
 ```
 
 After the first verified download, add `--offline-model` to vector commands. Stop without deleting data using
@@ -84,6 +96,7 @@ THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 \
   PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Read [the vector implementation](docs/VECTOR_INDEXING.md), [ingestion controls](docs/INGESTION.md),
+Read [the hybrid retrieval design and benchmark](docs/HYBRID_RETRIEVAL.md),
+[the vector implementation](docs/VECTOR_INDEXING.md), [ingestion controls](docs/INGESTION.md),
 [architecture](docs/ARCHITECTURE.md), and [threat model](docs/THREAT_MODEL.md). Inventory approval is not
 permission to embed, redistribute, train on, publish, or expose a real document.

@@ -20,13 +20,25 @@ Prompt 04 adds:
 - Synthetic five-topic corpus and unit, security, regression, genuine-model, and real-database tests.
 - CLI commands: `model-info`, `index`, `index-status`, and `query`.
 
+Prompt 05 adds and verifies:
+
+- Stored English `tsvector` generated only from sanitized text, a GIN index, `websearch_to_tsquery`, and
+  `ts_rank_cd` keyword ranking.
+- Strict test-only serving authorization, independent of ingestion approval, applied within both SQL branches.
+- Three modes: PostgreSQL keyword, pinned-BGE pgvector, and genuine two-branch hybrid retrieval.
+- Configurable weighted reciprocal-rank fusion with `k=60`, stable chunk deduplication, native scores/ranks, and
+  deterministic ties.
+- Fixed 35-query fictional evaluation dataset with Hit Rate@1/3/5, Recall@5, MRR, no-result accuracy, latency, and
+  explicit per-query failures.
+- `search` and `evaluate-retrieval` CLI commands with structured JSON and summaries.
+- 100 passing tests with all real-model and isolated-database integration flags enabled.
+
 ## Not implemented
 
-- Keyword/BM25 retrieval, hybrid retrieval, reciprocal-rank fusion, or filtering.
-- Reranking or retrieval evaluation baseline.
-- RAG answer generation or LLM-generated citations.
+- RAG answer generation, grounded answer generation, answer-level citations, or LLM-generated citations.
+- Reranking, contextual RAG, graph RAG, Self-RAG, corrective RAG, or agentic RAG.
 - MCP server/client, local LLM generation, agent orchestration, companion UI, public deployment.
 - ThreadEye production database/API integration or real-document embedding.
 
-Vector indexing alone is not a full RAG system. No Naive RAG, hybrid search, reranking, MCP, or Local LLM claim should
-be made from Prompt 04.
+Hybrid retrieval is not a full RAG system. No answer-generation, reranking, MCP, Local LLM, agent, frontend, or public
+deployment claim should be made from Prompt 05.

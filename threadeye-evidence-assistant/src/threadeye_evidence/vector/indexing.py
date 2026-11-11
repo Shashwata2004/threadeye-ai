@@ -7,6 +7,7 @@ import secrets
 from pathlib import Path
 
 from threadeye_evidence.corpus.ingestion import IngestionResult
+from threadeye_evidence.retrieval.policy import DENY_RETRIEVAL_POLICY, RetrievalAccessPolicy
 from threadeye_evidence.vector.database import EvidenceDatabase, IndexReport, SearchResult
 from threadeye_evidence.vector.embeddings import EmbeddingProvider
 from threadeye_evidence.vector.provenance import approved_chunk_batch
@@ -32,6 +33,7 @@ def index_ingestion_result(
     database: EvidenceDatabase,
     *,
     batch_size: int = 32,
+    retrieval_policy: RetrievalAccessPolicy = DENY_RETRIEVAL_POLICY,
 ) -> IndexReport:
     batch = approved_chunk_batch(result)
     vectors = provider.embed_documents([chunk.content for chunk in batch.chunks], batch_size=batch_size)
@@ -40,6 +42,7 @@ def index_ingestion_result(
         batch,
         vectors,
         provider.metadata,
+        retrieval_policy,
         run_id=run_id,
         corpus_version=corpus_version(result, provider),
     )

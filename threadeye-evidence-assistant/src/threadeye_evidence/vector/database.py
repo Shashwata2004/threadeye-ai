@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Sequence
 from urllib.parse import unquote, urlsplit
 
+from threadeye_evidence.retrieval.policy import RetrievalAccessPolicy
 from threadeye_evidence.vector.embeddings import EmbeddingMetadata
 from threadeye_evidence.vector.provenance import ApprovedChunkBatch
 
@@ -184,6 +185,7 @@ class EvidenceDatabase:
         batch: ApprovedChunkBatch,
         vectors: Sequence[Sequence[float]],
         metadata: EmbeddingMetadata,
+        retrieval_policy: RetrievalAccessPolicy,
         *,
         run_id: str,
         corpus_version: str,
@@ -252,6 +254,10 @@ class EvidenceDatabase:
                             chunk.sanitization_status,
                             chunk.approval_reference,
                             batch.intended_use,
+                            retrieval_policy.corpus_id,
+                            retrieval_policy.access_policy,
+                            retrieval_policy.authorized,
+                            retrieval_policy.document_classification,
                             metadata.provider_id,
                             metadata.model_id,
                             metadata.model_revision,
@@ -269,12 +275,15 @@ class EvidenceDatabase:
                       profile_key, chunk_id, source_relative_path, source_sha256, chunk_sha256,
                       sanitized_text, heading_hierarchy, normalized_start, normalized_end,
                       source_span_basis, processing_version, sanitization_status,
-                      authorization_reference, intended_use, provider_id, model_id, model_revision,
-                      embedding_dimension, distance_metric, embedding, corpus_version,
+                      authorization_reference, intended_use, retrieval_corpus_id,
+                      retrieval_access_policy, retrieval_authorized, document_classification,
+                      provider_id, model_id, model_revision, embedding_dimension, distance_metric,
+                      embedding, corpus_version,
                       last_index_run_id
                     ) values (
                       %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                      %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                      %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                      %s, %s, %s, %s
                     )
                     on conflict (profile_key, chunk_id) do update set
                       source_relative_path = excluded.source_relative_path,
@@ -289,6 +298,10 @@ class EvidenceDatabase:
                       sanitization_status = excluded.sanitization_status,
                       authorization_reference = excluded.authorization_reference,
                       intended_use = excluded.intended_use,
+                      retrieval_corpus_id = excluded.retrieval_corpus_id,
+                      retrieval_access_policy = excluded.retrieval_access_policy,
+                      retrieval_authorized = excluded.retrieval_authorized,
+                      document_classification = excluded.document_classification,
                       provider_id = excluded.provider_id,
                       model_id = excluded.model_id,
                       model_revision = excluded.model_revision,

@@ -1,4 +1,4 @@
-"""Command-line entry point for inventory, ingestion, embeddings, and vector verification."""
+"""Command-line entry point for evidence ingestion, indexing, and retrieval."""
 
 from __future__ import annotations
 
@@ -17,9 +17,15 @@ from threadeye_evidence.corpus.inventory import inventory_documents
 from threadeye_evidence.corpus.output import write_sanitized_snapshot
 from threadeye_evidence.corpus.safety import SafetyViolation
 from threadeye_evidence.corpus.sanitization import SanitizationRejected
+from threadeye_evidence.retrieval.engine import HybridRetriever, RetrievalBackendError
+from threadeye_evidence.retrieval.evaluation import evaluate_retrieval, load_evaluation_dataset
+from threadeye_evidence.retrieval.fusion import RRFConfig
+from threadeye_evidence.retrieval.models import RetrievalFilters, RetrievalMode, RetrievalValidationError
+from threadeye_evidence.retrieval.policy import SYNTHETIC_EVALUATION_POLICY
+from threadeye_evidence.retrieval.store import RetrievalStore
 from threadeye_evidence.vector.database import DatabaseSafetyError, DatabaseSettings, EvidenceDatabase
 from threadeye_evidence.vector.embeddings import EmbeddingValidationError, FastEmbedProvider
-from threadeye_evidence.vector.indexing import default_migrations_dir, index_ingestion_result, vector_query
+from threadeye_evidence.vector.indexing import default_migrations_dir, index_ingestion_result
 from threadeye_evidence.vector.provenance import ProvenanceValidationError
 
 
@@ -53,8 +59,70 @@ def _print(payload: object) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True, default=str))
 
 
+def _project_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _add_retrieval_filters(parser: argparse.ArgumentParser) -> None:
+    policy = SYNTHETIC_EVALUATION_POLICY
+    parser.add_argument("--corpus-id", default=policy.corpus_id)
+    parser.add_argument("--access-policy", default=policy.access_policy)
+    parser.add_argument("--authorization-reference", default="PROMPT-04-SYNTHETIC-VECTOR-FIXTURE")
+    parser.add_argument("--source-relative-path")
+    parser.add_argument("--source-sha256")
+    parser.add_argument("--corpus-version")
+    parser.add_argument("--processing-version")
+    parser.add_argument("--document-classification", default=policy.document_classification)
+
+
+def _retrieval_filters(args: argparse.Namespace) -> RetrievalFilters:
+    return RetrievalFilters(
+        args.corpus_id,
+        args.access_policy,
+        args.authorization_reference,
+        args.source_relative_path,
+        args.source_sha256,
+        args.corpus_version,
+        args.processing_version,
+        args.document_classification,
+    )
+
+
+def _retriever(args: argparse.Namespace) -> HybridRetriever:
+    provider = _provider(args)
+    database = _database(args.database_url)
+    database.migrate()
+    return HybridRetriever(RetrievalStore(database), provider)
+
+
+def _print_search_summary(payload: dict[str, object]) -> None:
+    print(f"mode={payload['mode']} results={payload['result_count']} latency_ms={payload['latency_ms']:.3f}")
+    print(f"backends={json.dumps(payload['backend_status'], sort_keys=True)}")
+    for result in payload["results"]:
+        headings = " > ".join(result["heading_hierarchy"])
+        print(
+            f"{result['final_rank']}. {result['chunk_id']} | {headings} | "
+            f"methods={','.join(result['retrieval_methods'])} | "
+            f"keyword_rank={result['keyword_rank']} vector_rank={result['vector_rank']} "
+            f"rrf={result['rrf_score']}"
+        )
+
+
+def _print_evaluation_summary(report: dict[str, object]) -> None:
+    print(f"dataset={report['evaluation_dataset_version']} queries={report['query_count']}")
+    for mode, metrics in report["metrics"].items():
+        print(
+            f"{mode}: Hit@1={metrics['hit_rate_at_1']:.3f} "
+            f"Hit@3={metrics['hit_rate_at_3']:.3f} Hit@5={metrics['hit_rate_at_5']:.3f} "
+            f"Recall@5={metrics['recall_at_5']:.3f} MRR={metrics['mrr']:.3f} "
+            f"NoResult={metrics['no_result_accuracy']:.3f} "
+            f"AvgMs={metrics['average_query_latency_ms']:.3f} "
+            f"Failures={metrics['per_query_failure_count']}"
+        )
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="ThreadEye metadata-only evidence inventory")
+    parser = argparse.ArgumentParser(description="ThreadEye isolated evidence inventory and retrieval")
     subparsers = parser.add_subparsers(dest="command", required=True)
     inventory = subparsers.add_parser("inventory", help="inventory exact manifest-approved documents")
     inventory.add_argument("--source-root", required=True, type=Path, help="trusted operator-configured ThreadEye root")
@@ -93,6 +161,27 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("query_text", help="non-empty synthetic verification query")
     query.add_argument("--top-k", type=int, default=5)
     _add_vector_options(query)
+
+    search = subparsers.add_parser("search", help="run authorized keyword, vector, or hybrid retrieval")
+    search.add_argument("--mode", choices=[mode.value for mode in RetrievalMode], required=True)
+    search.add_argument("--query", required=True, help="non-empty query, at most 1000 characters")
+    search.add_argument("--top-k", type=int, default=5)
+    search.add_argument("--candidate-k", type=int, default=20)
+    search.add_argument("--rrf-k", type=float, default=60.0)
+    search.add_argument("--keyword-weight", type=float, default=1.0)
+    search.add_argument("--vector-weight", type=float, default=1.0)
+    search.add_argument("--format", choices=("json", "summary"), default="json")
+    _add_retrieval_filters(search)
+    _add_vector_options(search)
+
+    evaluate = subparsers.add_parser("evaluate-retrieval", help="benchmark all three retrieval modes")
+    evaluate.add_argument("--dataset", type=Path, default=_project_root() / "evaluation/retrieval-v1.json")
+    evaluate.add_argument("--rrf-k", type=float, default=60.0)
+    evaluate.add_argument("--keyword-weight", type=float, default=1.0)
+    evaluate.add_argument("--vector-weight", type=float, default=1.0)
+    evaluate.add_argument("--format", choices=("json", "summary"), default="summary")
+    _add_retrieval_filters(evaluate)
+    _add_vector_options(evaluate)
     return parser
 
 
@@ -122,7 +211,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             payload = result.to_mapping(include_content=False)
             if args.write_output:
-                project_root = Path(__file__).resolve().parents[2]
+                project_root = _project_root()
                 output_path = write_sanitized_snapshot(result, project_root)
                 payload["sanitized_output"] = str(output_path.relative_to(project_root))
             _print(payload)
@@ -157,7 +246,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             provider = _provider(args)
             database = _database(args.database_url)
             migrations = database.migrate()
-            report = index_ingestion_result(result, provider, database, batch_size=args.batch_size)
+            report = index_ingestion_result(
+                result,
+                provider,
+                database,
+                batch_size=args.batch_size,
+                retrieval_policy=SYNTHETIC_EVALUATION_POLICY,
+            )
             _print(
                 {
                     "status": "indexed",
@@ -174,19 +269,48 @@ def main(argv: Sequence[str] | None = None) -> int:
             _print(database.status(provider.metadata))
             return 0
         if args.command == "query":
-            provider = _provider(args)
-            database = _database(args.database_url)
-            database.migrate()
-            results = vector_query(args.query_text, provider, database, top_k=args.top_k)
-            _print(
-                {
-                    "query": args.query_text,
-                    "top_k": args.top_k,
-                    "result_count": len(results),
-                    "embedding": provider.metadata.to_mapping(),
-                    "results": [result.to_mapping() for result in results],
-                }
+            retriever = _retriever(args)
+            response = retriever.search(
+                args.query_text,
+                mode=RetrievalMode.VECTOR,
+                filters=RetrievalFilters(
+                    SYNTHETIC_EVALUATION_POLICY.corpus_id,
+                    SYNTHETIC_EVALUATION_POLICY.access_policy,
+                    "PROMPT-04-SYNTHETIC-VECTOR-FIXTURE",
+                    document_classification=SYNTHETIC_EVALUATION_POLICY.document_classification,
+                ),
+                top_k=args.top_k,
             )
+            _print(response.to_mapping())
+            return 0
+        if args.command == "search":
+            response = _retriever(args).search(
+                args.query,
+                mode=args.mode,
+                filters=_retrieval_filters(args),
+                top_k=args.top_k,
+                candidate_k=args.candidate_k,
+                rrf_config=RRFConfig(args.rrf_k, args.keyword_weight, args.vector_weight),
+            )
+            payload = response.to_mapping()
+            _print(payload) if args.format == "json" else _print_search_summary(payload)
+            return 0
+        if args.command == "evaluate-retrieval":
+            dataset = load_evaluation_dataset(args.dataset)
+            rrf_config = RRFConfig(args.rrf_k, args.keyword_weight, args.vector_weight)
+            command = (
+                "threadeye-evidence evaluate-retrieval "
+                f"--dataset {args.dataset} --rrf-k {args.rrf_k} "
+                f"--keyword-weight {args.keyword_weight} --vector-weight {args.vector_weight}"
+            )
+            report = evaluate_retrieval(
+                dataset,
+                _retriever(args),
+                _retrieval_filters(args),
+                rrf_config=rrf_config,
+                command=command,
+            )
+            _print(report) if args.format == "json" else _print_evaluation_summary(report)
             return 0
     except (
         SafetyViolation,
@@ -194,6 +318,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         EmbeddingValidationError,
         ProvenanceValidationError,
         DatabaseSafetyError,
+        RetrievalBackendError,
+        RetrievalValidationError,
         RuntimeError,
         ValueError,
         OSError,

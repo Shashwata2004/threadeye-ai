@@ -11,6 +11,7 @@ from threadeye_evidence.corpus.ingestion import ingest_document
 from threadeye_evidence.vector.database import DatabaseSettings, EvidenceDatabase
 from threadeye_evidence.vector.embeddings import BGE_MODEL_REVISION, FastEmbedProvider
 from threadeye_evidence.vector.indexing import default_migrations_dir, index_ingestion_result, vector_query
+from threadeye_evidence.retrieval.policy import SYNTHETIC_EVALUATION_POLICY
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +53,13 @@ class RealEmbeddingTests(unittest.TestCase):
         )
         database = EvidenceDatabase(DatabaseSettings.from_dsn(DATABASE_URL), migrations_dir=default_migrations_dir())
         database.migrate()
-        report = index_ingestion_result(result, self.provider, database, batch_size=4)
+        report = index_ingestion_result(
+            result,
+            self.provider,
+            database,
+            batch_size=4,
+            retrieval_policy=SYNTHETIC_EVALUATION_POLICY,
+        )
         matches = vector_query(
             "Who reviews flagged defect classifications and records a reason?",
             self.provider,
