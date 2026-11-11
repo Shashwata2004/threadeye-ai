@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Sequence
 
 from threadeye_evidence.config import InventoryConfig
 from threadeye_evidence.corpus.allowlist import load_manifest
+from threadeye_evidence.corpus.chunking import ChunkConfig
+from threadeye_evidence.corpus.ingestion import ingest_document
 from threadeye_evidence.corpus.inventory import inventory_documents
+from threadeye_evidence.corpus.output import write_sanitized_snapshot
+from threadeye_evidence.corpus.safety import SafetyViolation
+from threadeye_evidence.corpus.sanitization import SanitizationRejected
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -23,6 +29,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path("knowledge/manifest.json"),
         help="companion-project allowlist manifest",
     )
+    ingest = subparsers.add_parser("ingest", help="sanitize and chunk one exact authorized manifest document")
+    ingest.add_argument("--source-root", type=Path, default=Path("examples/synthetic"))
+    ingest.add_argument("--manifest", type=Path, default=Path("knowledge/synthetic-manifest.json"))
+    ingest.add_argument("--document", default="demo.md", help="exact path already present in the manifest")
+    ingest.add_argument("--intended-use", default="prompt03_synthetic_demo")
+    ingest.add_argument("--target-chars", type=int, default=800)
+    ingest.add_argument("--max-chars", type=int, default=1200)
+    ingest.add_argument("--write-output", action="store_true", help="write an ignored sanitized snapshot")
     return parser
 
 
@@ -40,6 +54,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 1 if any(record.error for record in records) else 0
+    if args.command == "ingest":
+        try:
+            manifest = load_manifest(args.manifest)
+            result = ingest_document(
+                args.source_root,
+                manifest,
+                args.document,
+                intended_use=args.intended_use,
+                chunk_config=ChunkConfig(target_chars=args.target_chars, max_chars=args.max_chars),
+            )
+            payload = result.to_mapping(include_content=False)
+            if args.write_output:
+                project_root = Path(__file__).resolve().parents[2]
+                output_path = write_sanitized_snapshot(result, project_root)
+                payload["sanitized_output"] = str(output_path.relative_to(project_root))
+            print(json.dumps(payload, indent=2, sort_keys=True))
+            return 0
+        except (SafetyViolation, SanitizationRejected, ValueError, OSError) as exc:
+            print(json.dumps({"status": "rejected", "reason": str(exc)}, sort_keys=True), file=sys.stderr)
+            return 2
     return 2
 
 

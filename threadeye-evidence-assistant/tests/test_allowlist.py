@@ -34,6 +34,10 @@ class AllowlistTests(unittest.TestCase):
             with self.subTest(candidate=candidate), self.assertRaises(SafetyViolation):
                 validate_relative_path(candidate)
 
+    def test_unsupported_document_format_is_rejected(self) -> None:
+        with self.assertRaisesRegex(SafetyViolation, "unapproved source extension"):
+            validate_relative_path("notes.txt")
+
     @unittest.skipUnless(hasattr(os, "symlink"), "symlinks are unavailable")
     def test_symlink_escape_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as root_dir, tempfile.TemporaryDirectory() as outside_dir:

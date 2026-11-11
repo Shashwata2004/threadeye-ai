@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "source_project": "threadeye-evidence-assistant-synthetic-fixtures",
+  "documents": [
+    {
+      "path": "demo.md",
+      "purpose": "Synthetic Prompt 03 sanitization and heading-aware chunking demonstration.",
+      "source_classification": "synthetic_test_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "b0dfa9ad1da0e6bda46a42cb8a43bcc234438323c2bbb6dc80c97a0b1cede679",
+      "caveats": "Fictional content only; authorization does not apply to any real ThreadEye document.",
+      "team_authorization": {
+        "reference": "PROMPT-03-SYNTHETIC-FIXTURE",
+        "intended_use": "prompt03_synthetic_demo",
+        "approved_by": "project-owner-workflow-update",
+        "scope": "synthetic_fixture_only"
+      }
+    }
+  ]
+}

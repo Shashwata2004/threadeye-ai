@@ -1,6 +1,6 @@
 [project]
 name = "threadeye-evidence-assistant"
-version = "0.1.0"
+version = "0.2.0"
 description = "Read-only evidence inventory foundation for ThreadEye AI"
 readme = "README.md"
 requires-python = ">=3.9"

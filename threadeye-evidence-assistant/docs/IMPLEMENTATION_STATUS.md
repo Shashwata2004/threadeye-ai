@@ -12,9 +12,23 @@
 - Synthetic-fixture unit and security tests
 - Protected ThreadEye file-hash baseline metadata
 
+## Implemented in Prompt 03
+
+- Independent inventory and content-ingestion approval gates
+- Document-specific team authorization and intended-use matching
+- Pre/post-read and manifest SHA-256 verification
+- Conservative sensitive-pattern redaction with private-key fail-closed behavior
+- Deterministic Markdown line-ending, whitespace, paragraph, list and code-fence normalization
+- Heading-hierarchy-aware variable chunking
+- Bounded oversized-section splitting at paragraph, sentence or line boundaries
+- Stable chunk identifiers and content hashes
+- Contiguous normalized source spans with zero overlap and verified complete coverage
+- Provenance metadata for source, authorization, processing version and sanitization state
+- Synthetic CLI dry-run and explicitly requested ignored sanitized snapshots
+- Approval, sanitization, normalization, chunking, provenance and regression tests
+
 ## Not implemented yet
 
-- Document sanitization or chunking
 - Embeddings or embedding-model selection
 - PostgreSQL or pgvector
 - Vector retrieval or hybrid search

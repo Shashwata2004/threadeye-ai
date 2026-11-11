@@ -1,6 +1,6 @@
 # Architecture
 
-## Current Prompt 02 boundary
+## Current Prompt 03 boundary
 
 ```text
 Approved ThreadEye Documents
@@ -9,20 +9,28 @@ Approved ThreadEye Documents
 Read-only Path Validation
           |
           v
-Metadata + SHA-256 Inventory
+Inventory Approval
           |
           v
-JSON on standard output
+Independent Ingestion Approval + Team Authorization
+          |
+          v
+Hash Verification → Sanitization → Normalization → Heading-aware Chunking
+          |
+          v
+Safe Statistics or Ignored Sanitized Snapshot
 ```
 
-The companion project is independently configured and has no runtime dependency on ThreadEye application
-packages. Its only integration surface is an operator-selected ThreadEye source root plus the exact relative
-Markdown paths approved in `knowledge/manifest.json`.
+The companion project has no runtime dependency on ThreadEye application packages. Its only integration
+surface is an operator-selected source root plus exact relative Markdown paths approved in a manifest.
 
-Inventory processing is deterministic with respect to file bytes: SHA-256 is calculated by streaming each
-approved regular file in binary mode. The output includes relative path, byte size, content hash, modification
-timestamp, classification, approval flags, caveats, and a validation error when a document is missing or unsafe.
-It never includes document contents.
+Inventory remains metadata-only. Content ingestion is a separate gate: the entry must also set
+`future_ingestion_approved`, contain a document-specific team authorization, and match the requested intended
+use. Authorization is checked before source content is read. The six real-document entries remain blocked.
+
+Authorized synthetic input is hash-verified before and after reading, sanitized in memory, normalized without
+rendering, and partitioned into deterministic heading-aware chunks. Only sanitized content can reach the
+optional ignored snapshot. Dry-run output contains statistics and provenance metadata, not chunk contents.
 
 ## Dependency and deployment isolation
 
@@ -42,11 +50,15 @@ Approved ThreadEye Documents
 Read-only Inventory & Validation
           |
           v
-Future Sanitized Ingestion       [NOT IMPLEMENTED]
+Approval-gated Sanitized Ingestion
           |
           v
-Future RAG / MCP / LLM Services  [NOT IMPLEMENTED]
+Deterministic Heading-aware Chunks
+          |
+          v
+Future Embeddings / RAG / MCP / LLM Services  [NOT IMPLEMENTED]
 ```
 
-Any future stage must add a separate authorization review before content leaves the source checkout. Local
-inventory approval alone never authorizes ingestion, embedding, redistribution, training, or publication.
+Manifest authorization is an auditable policy record, not cryptographic proof of a person's identity. Team
+review of authorization changes remains mandatory. Ingestion authorization never authorizes embedding,
+redistribution, training, or publication.
