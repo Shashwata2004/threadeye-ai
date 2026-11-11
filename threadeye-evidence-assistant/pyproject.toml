@@ -1,10 +1,17 @@
 [project]
 name = "threadeye-evidence-assistant"
-version = "0.2.0"
-description = "Read-only evidence inventory foundation for ThreadEye AI"
+version = "0.3.0"
+description = "Approval-gated evidence ingestion and isolated vector indexing for ThreadEye AI"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = []
+
+[project.optional-dependencies]
+vector = [
+  "fastembed==0.9.1",
+  "pgvector==0.5.1",
+  "psycopg[binary]==3.3.8",
+]
 
 [project.scripts]
 threadeye-evidence = "threadeye_evidence.__main__:main"

@@ -1,44 +1,32 @@
 # Implementation Status
 
-## Implemented in Prompt 02
+## Implemented
 
-- Independent companion Python project foundation
-- Explicit documentation allowlist manifest
-- Read-only document inventory
-- Streaming SHA-256 content hashing
-- File size and modification-time metadata
-- Canonical path and file safety validation
-- Missing/invalid-document error reporting without content copying
-- Synthetic-fixture unit and security tests
-- Protected ThreadEye file-hash baseline metadata
+Prompt 02 provides the exact allowlist, read-only inventory, SHA-256 hashing, path/symlink/size controls, and
+protected-core baseline. Prompt 03 adds independent content authorization, expected-hash verification, sensitive-value
+redaction, Markdown normalization, deterministic heading-aware chunks, stable IDs, source spans, provenance, and
+synthetic sanitized snapshots.
 
-## Implemented in Prompt 03
+Prompt 04 adds:
 
-- Independent inventory and content-ingestion approval gates
-- Document-specific team authorization and intended-use matching
-- Pre/post-read and manifest SHA-256 verification
-- Conservative sensitive-pattern redaction with private-key fail-closed behavior
-- Deterministic Markdown line-ending, whitespace, paragraph, list and code-fence normalization
-- Heading-hierarchy-aware variable chunking
-- Bounded oversized-section splitting at paragraph, sentence or line boundaries
-- Stable chunk identifiers and content hashes
-- Contiguous normalized source spans with zero overlap and verified complete coverage
-- Provenance metadata for source, authorization, processing version and sanitization state
-- Synthetic CLI dry-run and explicitly requested ignored sanitized snapshots
-- Approval, sanitization, normalization, chunking, provenance and regression tests
+- Versioned embedding-provider interface and deterministic test double.
+- Genuine FastEmbed 0.9.1 CPU inference with `BAAI/bge-small-en-v1.5`, 384 dimensions, cosine distance, and exact
+  model-source revision `aa8f8b060edb00e03bfdd08813a2949946c8ba55`.
+- Finite-value, count, dimension, UTF-8, empty-input, length, and batch validation.
+- Pinned PostgreSQL 17/pgvector 0.8.7 Compose service isolated on loopback.
+- Idempotent, checksum-recorded schema migration and real `vector(384)` storage.
+- Transactional provenance-preserving upsert, duplicate prevention, stale-chunk removal, and model-profile isolation.
+- Exact cosine top-k search with sanitized text, distance/similarity, and source/chunk provenance.
+- Synthetic five-topic corpus and unit, security, regression, genuine-model, and real-database tests.
+- CLI commands: `model-info`, `index`, `index-status`, and `query`.
 
-## Not implemented yet
+## Not implemented
 
-- Embeddings or embedding-model selection
-- PostgreSQL or pgvector
-- Vector retrieval or hybrid search
-- RAG query or answer generation
-- Citation generation or retrieval evaluation
-- MCP server or MCP client integration
-- Ollama or any local LLM
-- Agentic orchestration
-- Companion frontend/UI
-- Public deployment
-- ThreadEye database or production API integration
+- Keyword/BM25 retrieval, hybrid retrieval, reciprocal-rank fusion, or filtering.
+- Reranking or retrieval evaluation baseline.
+- RAG answer generation or LLM-generated citations.
+- MCP server/client, local LLM generation, agent orchestration, companion UI, public deployment.
+- ThreadEye production database/API integration or real-document embedding.
 
-No RAG, MCP, or Local LLM CloudCamp points should be claimed from this foundation alone.
+Vector indexing alone is not a full RAG system. No Naive RAG, hybrid search, reranking, MCP, or Local LLM claim should
+be made from Prompt 04.

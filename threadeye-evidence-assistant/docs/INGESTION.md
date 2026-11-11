@@ -12,7 +12,7 @@ Content is read only after all conditions pass:
 6. The file passes the Prompt 02 path, symlink, type, and size controls.
 
 The six real ThreadEye documents fail condition 3. The separate synthetic manifest authorizes only the fictional
-Prompt 03 fixture. Manifest authorization is reviewable evidence, not a cryptographic signature; team review of
+Prompt 03 and Prompt 04 fixtures. Manifest authorization is reviewable evidence, not a cryptographic signature; team review of
 any real authorization change remains required.
 
 ## Hash verification
@@ -66,7 +66,8 @@ deterministically named JSON snapshot containing sanitized normalized text and c
 ## Limitations
 
 - No real ThreadEye document is approved for ingestion.
-- No embedding, vector index, retrieval, RAG answer, MCP server, or LLM exists.
+- Prompt 04 embedding and vector retrieval accept only verified sanitized synthetic ingestion results.
+- No keyword/hybrid retrieval, RAG answer, MCP server, or LLM exists.
 - Offset spans refer to sanitized normalized text, not byte positions in the original raw file.
 - Regex sanitization requires later defense in depth and human review.
 - Authorization records are policy metadata, not cryptographic signatures.

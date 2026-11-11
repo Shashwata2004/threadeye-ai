@@ -1,63 +1,89 @@
 # ThreadEye Evidence Assistant
 
-This companion project inventories a small, explicitly approved set of ThreadEye documentation without
-changing the ThreadEye application. Prompt 03 adds approval-gated Markdown sanitization, deterministic
-normalization, and heading-aware variable chunking using synthetic fixtures only. The six real ThreadEye
-documents remain blocked from content ingestion.
+This isolated companion inventories explicitly approved ThreadEye documentation and, for fictional fixtures only,
+runs approval-gated sanitization, real local embeddings, PostgreSQL/pgvector indexing, and exact cosine search.
+It does not modify or import the ThreadEye application. All six real ThreadEye documents remain blocked from
+content ingestion and embedding.
 
-RAG answers, embeddings, vector search, MCP, local LLM inference, a UI, and deployment are not implemented.
+Full RAG answers, keyword retrieval, fusion, reranking, MCP, local LLM generation, a UI, and deployment are not
+implemented.
 
-## Requirements
+## Environments
 
-- Python 3.9 or newer
-- A local ThreadEye checkout available as a read-only source
-- No database, network service, Docker container, or third-party Python package
+The inventory and Prompt 03 ingestion commands remain pure Python and work with Python 3.9+. Prompt 04 vector
+features use an isolated Python 3.11 environment:
 
-## Run the inventory
+```bash
+/opt/homebrew/bin/python3.11 -m venv .venv
+.venv/bin/python -m pip install -r requirements-vector.lock
+.venv/bin/python -m pip install --no-deps -e .
+```
 
-From this directory:
+The lock records the exact verified macOS ARM64 environment. The model cache, virtual environment, local database
+credentials, and generated outputs are ignored by Git.
+
+## Existing inventory and ingestion
 
 ```bash
 PYTHONPATH=src python3 -m threadeye_evidence inventory \
-  --source-root .. \
-  --manifest knowledge/manifest.json
-```
+  --source-root .. --manifest knowledge/manifest.json
 
-The command writes JSON metadata to standard output. It does not write an inventory report, copy document
-contents, connect to a database, or make network requests. `--source-root` is operator configuration; callers
-cannot request individual filesystem paths. Only the exact paths approved in the manifest are considered.
-
-## Run the synthetic ingestion demonstration
-
-The default command uses only `examples/synthetic/demo.md` and its separate synthetic authorization manifest:
-
-```bash
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m threadeye_evidence ingest
 ```
 
-It prints safe statistics and chunk metadata without chunk content. To write the deterministic sanitized
-snapshot beneath the ignored `build/sanitized/` directory:
+Inventory is metadata-only. Ingestion requires independent inventory approval, ingestion approval, a documented
+authorization reference, an exact intended-use match, and source hash verification before sanitization.
+
+## Start the isolated vector database
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m threadeye_evidence ingest --write-output
+cp .env.db.example .env.db
+# Replace the local-only password in .env.db.
+docker compose --env-file .env.db up -d --wait
 ```
 
-The ingestion command accepts only an exact manifest entry. It requires inventory approval, future-ingestion
-approval, a documented authorization reference, and an exact intended-use match before reading file contents.
-The real manifest intentionally has no such approvals.
+The pinned `pgvector/pgvector:0.8.7-pg17-bookworm` service uses a dedicated database, user, volume, network,
+1 GB memory limit, one CPU, health check, and only `127.0.0.1:55432`. It never connects to ThreadEye or Supabase.
 
-## Run tests
+Export the CLI connection without printing the password:
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests -v
+set -a; source .env.db; set +a
+export THREADEYE_EVIDENCE_DATABASE_URL="postgresql://${EVIDENCE_DB_USER}:${EVIDENCE_DB_PASSWORD}@127.0.0.1:${EVIDENCE_DB_PORT}/${EVIDENCE_DB_NAME}"
 ```
 
-Tests use synthetic files in operating-system temporary directories. They do not modify or inventory the real
-ThreadEye checkout.
+## Prompt 04 CLI
 
-## Security boundary
+```bash
+# Metadata plus genuine CPU inference verification
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence model-info --verify
 
-Read [the read-only contract](docs/READ_ONLY_CONTRACT.md), [architecture](docs/ARCHITECTURE.md), and
-[threat model](docs/THREAT_MODEL.md) before extending this project. The detailed ingestion, sanitization,
-chunking, provenance, and limitations are in [INGESTION.md](docs/INGESTION.md). Inventory approval is not
-permission to embed, redistribute, train on, publish, or expose a document to an AI system.
+# Approval → sanitization → chunk validation → real embedding → transactional upsert
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence index
+
+# Migration, pgvector, profile, source, and chunk status
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence index-status
+
+# Exact cosine search; results include sanitized text and complete provenance
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence query \
+  "Who reviews flagged defect classifications and records a reason?" --top-k 3
+```
+
+After the first verified download, add `--offline-model` to vector commands. Stop without deleting data using
+`docker compose --env-file .env.db down`; remove only the isolated companion volume with
+`docker compose --env-file .env.db down -v` when its test data is no longer needed.
+
+## Tests
+
+```bash
+# Unit and Prompt 02/03 regressions; integration tests skip unless explicitly enabled
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+
+# Genuine model and real pgvector integration
+THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 \
+  PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+```
+
+Read [the vector implementation](docs/VECTOR_INDEXING.md), [ingestion controls](docs/INGESTION.md),
+[architecture](docs/ARCHITECTURE.md), and [threat model](docs/THREAT_MODEL.md). Inventory approval is not
+permission to embed, redistribute, train on, publish, or expose a real document.

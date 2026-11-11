@@ -1,64 +1,48 @@
 # Architecture
 
-## Current Prompt 03 boundary
+## Prompt 04 boundary
 
 ```text
-Approved ThreadEye Documents
-          |
-          v
-Read-only Path Validation
-          |
-          v
-Inventory Approval
-          |
-          v
-Independent Ingestion Approval + Team Authorization
-          |
-          v
-Hash Verification → Sanitization → Normalization → Heading-aware Chunking
-          |
-          v
-Safe Statistics or Ignored Sanitized Snapshot
+Exact manifest entry
+  → inventory approval + ingestion approval + intended-use authorization
+  → source hash verification
+  → in-memory redaction and Markdown normalization
+  → deterministic heading-aware chunks
+  → sealed provenance validation (no arbitrary source-path input)
+  → pinned BGE CPU embeddings
+  → dimension/finite-value validation
+  → isolated PostgreSQL transaction and pgvector upsert
+  → exact cosine query with provenance
 ```
 
-The companion project has no runtime dependency on ThreadEye application packages. Its only integration
-surface is an operator-selected source root plus exact relative Markdown paths approved in a manifest.
+The companion has no runtime dependency on ThreadEye application packages. Inventory remains metadata-only.
+Vector indexing accepts only an `IngestionResult` produced by the Prompt 03 pipeline, rechecks its hashes,
+authorization, chunk coverage, spans, sanitization state, and a second sanitization pass, then embeds only the
+verified sanitized chunk text.
 
-Inventory remains metadata-only. Content ingestion is a separate gate: the entry must also set
-`future_ingestion_approved`, contain a document-specific team authorization, and match the requested intended
-use. Authorization is checked before source content is read. The six real-document entries remain blocked.
+## Isolation
 
-Authorized synthetic input is hash-verified before and after reading, sanitized in memory, normalized without
-rendering, and partitioned into deterministic heading-aware chunks. Only sanitized content can reach the
-optional ignored snapshot. Dry-run output contains statistics and provenance metadata, not chunk contents.
+- Pure inventory/ingestion still works with Python 3.9 and no third-party packages.
+- Vector functionality uses an ignored Python 3.11 virtual environment and pinned dependency lock.
+- The only model is a pinned 384-dimensional BGE Small ONNX revision, executed on CPU.
+- The Compose project, PostgreSQL database/user, network, volume, and host port are companion-specific.
+- The database URL parser rejects remote hosts, wrong database/user identities, URL parameters, and missing passwords.
+- Migration SQL also refuses any database name except `threadeye_evidence`.
+- No ThreadEye/Supabase configuration, credentials, schemas, networks, or data are used.
 
-## Dependency and deployment isolation
+## Model and corpus versioning
 
-- Runtime code uses only the Python standard library.
-- No ThreadEye module is imported.
-- No environment file is parsed.
-- No database driver or HTTP client is used.
-- No Docker service or deployment configuration is created.
-- The original ThreadEye repository remains independently runnable.
+An embedding profile key hashes provider, model, exact revision, dimension, metric, and encoding. Rows are keyed by
+profile plus stable chunk ID, and every query filters one exact profile. A new revision therefore creates a separate
+representation and cannot silently mix with old vectors. A deterministic corpus version covers source and normalized
+hashes, authorization, processing version, profile, and ordered chunk IDs.
 
-## Future boundary — NOT IMPLEMENTED
+Repeated indexing atomically upserts identical chunks. Changed source content produces new chunk IDs and removes stale
+chunks for that source/profile inside the same short transaction. External model inference happens before the database
+transaction.
 
-```text
-Approved ThreadEye Documents
-          |
-          v
-Read-only Inventory & Validation
-          |
-          v
-Approval-gated Sanitized Ingestion
-          |
-          v
-Deterministic Heading-aware Chunks
-          |
-          v
-Future Embeddings / RAG / MCP / LLM Services  [NOT IMPLEMENTED]
-```
+## Search strategy
 
-Manifest authorization is an auditable policy record, not cryptographic proof of a person's identity. Team
-review of authorization changes remains mandatory. Ingestion authorization never authorizes embedding,
-redistribution, training, or publication.
+Prompt 04 uses exact `<=>` cosine distance with deterministic chunk-ID tie-breaking and a hard top-20 limit. The
+synthetic corpus is too small to justify HNSW; only B-tree metadata indexes are created. No vector-index scan is
+claimed. Prompt 05 will add separate keyword/vector retrieval, fusion, filters, and evaluation.
