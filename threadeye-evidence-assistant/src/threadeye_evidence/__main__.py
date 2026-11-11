@@ -9,6 +9,9 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from threadeye_evidence.answering.abstention import SufficiencyConfig
+from threadeye_evidence.answering.engine import EvidenceAnswerEngine
+from threadeye_evidence.answering.evaluation import evaluate_answers, load_answer_evaluation_dataset
 from threadeye_evidence.config import InventoryConfig
 from threadeye_evidence.corpus.allowlist import load_manifest
 from threadeye_evidence.corpus.chunking import ChunkConfig
@@ -95,6 +98,22 @@ def _retriever(args: argparse.Namespace) -> HybridRetriever:
     return HybridRetriever(RetrievalStore(database), provider)
 
 
+def _sufficiency_config(args: argparse.Namespace) -> SufficiencyConfig:
+    return SufficiencyConfig(
+        version="prompt06-dev-v1",
+        min_semantic_similarity=args.min_semantic_similarity,
+        strong_semantic_similarity=args.strong_semantic_similarity,
+        min_semantic_margin=args.min_semantic_margin,
+    )
+
+
+def _add_sufficiency_options(parser: argparse.ArgumentParser) -> None:
+    defaults = SufficiencyConfig()
+    parser.add_argument("--min-semantic-similarity", type=float, default=defaults.min_semantic_similarity)
+    parser.add_argument("--strong-semantic-similarity", type=float, default=defaults.strong_semantic_similarity)
+    parser.add_argument("--min-semantic-margin", type=float, default=defaults.min_semantic_margin)
+
+
 def _print_search_summary(payload: dict[str, object]) -> None:
     print(f"mode={payload['mode']} results={payload['result_count']} latency_ms={payload['latency_ms']:.3f}")
     print(f"backends={json.dumps(payload['backend_status'], sort_keys=True)}")
@@ -118,6 +137,31 @@ def _print_evaluation_summary(report: dict[str, object]) -> None:
             f"NoResult={metrics['no_result_accuracy']:.3f} "
             f"AvgMs={metrics['average_query_latency_ms']:.3f} "
             f"Failures={metrics['per_query_failure_count']}"
+        )
+
+
+def _print_answer_summary(payload: dict[str, object]) -> None:
+    print(f"status={payload['status']} mode={payload['answer_mode']} latency_ms={payload['latency_ms']:.3f}")
+    if payload["answer"]:
+        print(payload["answer"])
+        for index, citation in enumerate(payload["citations"], start=1):
+            heading = " > ".join(citation["heading_hierarchy"])
+            print(f"[{index}] {citation['source_relative_path']} | {heading} | chunk={citation['chunk_id']}")
+    else:
+        print(f"abstained={payload['abstention_reason']}")
+
+
+def _print_answer_evaluation_summary(report: dict[str, object]) -> None:
+    print(f"dataset={report['evaluation_dataset_version']}")
+    for split, metrics in report["metrics"].items():
+        print(
+            f"{split}: cases={metrics['total_cases']} answerability={metrics['answerability_accuracy']:.3f} "
+            f"correct_abstention={metrics['correct_abstention_rate']:.3f} "
+            f"false_answer={metrics['false_answer_rate']:.3f} false_abstention={metrics['false_abstention_rate']:.3f} "
+            f"citation_validity={metrics['citation_validity']:.3f} citation_precision={metrics['citation_precision']:.3f} "
+            f"source_correctness={metrics['evidence_source_correctness']:.3f} "
+            f"unsupported_claim={metrics['unsupported_claim_rate']:.3f} "
+            f"structured={metrics['structured_response_validity']:.3f} avg_ms={metrics['average_answer_latency_ms']:.3f}"
         )
 
 
@@ -182,6 +226,27 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--format", choices=("json", "summary"), default="summary")
     _add_retrieval_filters(evaluate)
     _add_vector_options(evaluate)
+
+    answer = subparsers.add_parser("answer-evidence", help="answer from authorized evidence or explicitly abstain")
+    answer.add_argument("--question", required=True)
+    answer.add_argument("--mode", choices=[mode.value for mode in RetrievalMode], default="hybrid")
+    answer.add_argument("--top-k", type=int, default=5)
+    answer.add_argument("--candidate-k", type=int, default=20)
+    answer.add_argument("--rrf-k", type=float, default=60.0)
+    answer.add_argument("--keyword-weight", type=float, default=1.0)
+    answer.add_argument("--vector-weight", type=float, default=1.0)
+    answer.add_argument("--format", choices=("json", "summary"), default="summary")
+    _add_retrieval_filters(answer)
+    _add_sufficiency_options(answer)
+    _add_vector_options(answer)
+
+    answer_eval = subparsers.add_parser("evaluate-answers", help="evaluate answerability, abstention, and citations")
+    answer_eval.add_argument("--dataset", type=Path, default=_project_root() / "evaluation/answering-v1.json")
+    answer_eval.add_argument("--split", choices=("development", "held_out", "all"), default="held_out")
+    answer_eval.add_argument("--format", choices=("json", "summary"), default="summary")
+    _add_retrieval_filters(answer_eval)
+    _add_sufficiency_options(answer_eval)
+    _add_vector_options(answer_eval)
     return parser
 
 
@@ -311,6 +376,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                 command=command,
             )
             _print(report) if args.format == "json" else _print_evaluation_summary(report)
+            return 0
+        if args.command == "answer-evidence":
+            engine = EvidenceAnswerEngine(_retriever(args), sufficiency_config=_sufficiency_config(args))
+            response = engine.answer(
+                args.question,
+                filters=_retrieval_filters(args),
+                mode=args.mode,
+                top_k=args.top_k,
+                candidate_k=args.candidate_k,
+                rrf_config=RRFConfig(args.rrf_k, args.keyword_weight, args.vector_weight),
+            )
+            payload = response.to_mapping()
+            _print(payload) if args.format == "json" else _print_answer_summary(payload)
+            return 0
+        if args.command == "evaluate-answers":
+            dataset = load_answer_evaluation_dataset(args.dataset)
+            engine = EvidenceAnswerEngine(_retriever(args), sufficiency_config=_sufficiency_config(args))
+            command = f"threadeye-evidence evaluate-answers --dataset {args.dataset} --split {args.split}"
+            report = evaluate_answers(
+                dataset,
+                engine,
+                _retrieval_filters(args),
+                command=command,
+                selected_split=args.split,
+            )
+            _print(report) if args.format == "json" else _print_answer_evaluation_summary(report)
             return 0
     except (
         SafetyViolation,

@@ -31,6 +31,21 @@
         "approved_by": "project-owner-prompt-04",
         "scope": "synthetic_fixture_embedding_and_local_pgvector_only"
       }
+    },
+    {
+      "path": "adversarial-evidence.md",
+      "purpose": "Synthetic Prompt 06 prompt-injection resistance integration fixture.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "10c0243da003a22f3b21fdf8d028decc2b1b75c14bcb0f9286d11ee1759cd080",
+      "caveats": "Fictional malicious instruction text only; never grants authority or access to any real source.",
+      "team_authorization": {
+        "reference": "PROMPT-06-ADVERSARIAL-FIXTURE",
+        "intended_use": "prompt06_adversarial_answer_test",
+        "approved_by": "project-owner-prompt-06",
+        "scope": "synthetic_prompt_injection_test_only"
+      }
     }
   ]
 }

@@ -15,6 +15,11 @@ Exact manifest entry
   → separate serving authorization (test-only synthetic corpus)
   → PostgreSQL FTS and/or exact cosine retrieval with provenance
   → weighted reciprocal-rank fusion for hybrid mode
+  → Prompt 06 request policy and authorization-scope check
+  → multi-signal evidence sufficiency and abstention
+  → deterministic sentence extraction
+  → exact citation/provenance/claim validation
+  → typed answered or abstained response
 ```
 
 The companion has no runtime dependency on ThreadEye application packages. Inventory remains metadata-only.
@@ -53,3 +58,13 @@ ID, preserve provenance/native scores, break ties by chunk ID, and enforce a har
 The synthetic corpus is too small to justify HNSW. A GIN full-text index exists for growth, but the verified
 representative `EXPLAIN (ANALYZE, BUFFERS)` selected a sequential scan over six authorized chunks. No GIN scan or
 vector-index scan is falsely claimed.
+
+## Answering boundary
+
+The answer engine never changes retrieval authorization and never reads source files. It receives only database rows
+already filtered by corpus, policy, authorization reference and model profile. The response is `answered` only when
+evidence passes the frozen sufficiency configuration and every output sentence is an exact cited excerpt. Otherwise it
+returns a distinct unauthorized, unsupported, insufficient, retrieval-error or citation-failure status.
+
+Retrieved Markdown remains untrusted data. Prompt-like instructions are excluded from evidence selection. This layer
+does not call an LLM, ThreadEye backend, Supabase, scoring engine, review workflow or approval system.

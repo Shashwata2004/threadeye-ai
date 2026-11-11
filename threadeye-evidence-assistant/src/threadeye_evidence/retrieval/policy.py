@@ -33,3 +33,10 @@ SYNTHETIC_EVALUATION_POLICY = RetrievalAccessPolicy(
     "synthetic_test_fixture",
     True,
 )
+
+ADVERSARIAL_EVALUATION_POLICY = RetrievalAccessPolicy(
+    "threadeye-synthetic-adversarial-v1",
+    "prompt06-test-only",
+    "synthetic_security_fixture",
+    True,
+)

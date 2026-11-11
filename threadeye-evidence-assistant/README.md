@@ -2,11 +2,12 @@
 
 This isolated companion inventories explicitly approved ThreadEye documentation and, for fictional fixtures only,
 runs approval-gated sanitization, real local embeddings, PostgreSQL full-text search, pgvector cosine search, and
-weighted reciprocal-rank fusion.
+weighted reciprocal-rank fusion. Prompt 06 adds conservative extractive evidence answers, exact provenance citations,
+and explicit abstention.
 It does not modify or import the ThreadEye application. All six real ThreadEye documents remain blocked from
 content ingestion and embedding.
 
-Full RAG answers, reranking, MCP, local LLM generation, a UI, and deployment are not implemented.
+LLM-generated RAG answers, reranking, MCP, local LLM generation, a UI, and deployment are not implemented.
 
 ## Environments
 
@@ -79,6 +80,16 @@ PYTHONPATH=src .venv/bin/python -m threadeye_evidence search \
 
 # Fixed 35-query benchmark; runs keyword, vector, and hybrid separately
 PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-retrieval --offline-model --format summary
+
+# Deterministic extraction with validated citations, or a structured abstention
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence answer-evidence \
+  --question 'Which supplier lot is recorded for ROLL-NST-204?' --offline-model --format summary
+
+# Calibrate only on development, then evaluate the frozen configuration on held-out cases
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-answers \
+  --split development --offline-model --format summary
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-answers \
+  --split held_out --offline-model --format summary
 ```
 
 After the first verified download, add `--offline-model` to vector commands. Stop without deleting data using
@@ -96,7 +107,8 @@ THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 \
   PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Read [the hybrid retrieval design and benchmark](docs/HYBRID_RETRIEVAL.md),
+Read [the grounded-answering and abstention design](docs/ANSWERING.md),
+[the hybrid retrieval design and benchmark](docs/HYBRID_RETRIEVAL.md),
 [the vector implementation](docs/VECTOR_INDEXING.md), [ingestion controls](docs/INGESTION.md),
 [architecture](docs/ARCHITECTURE.md), and [threat model](docs/THREAT_MODEL.md). Inventory approval is not
 permission to embed, redistribute, train on, publish, or expose a real document.

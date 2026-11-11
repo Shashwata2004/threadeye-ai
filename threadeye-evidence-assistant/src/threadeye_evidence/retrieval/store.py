@@ -205,3 +205,14 @@ class RetrievalStore:
                 """
             ).fetchone()
         return dict(row)
+
+    def authorization_scope_count(self, filters: RetrievalFilters, metadata: EmbeddingMetadata) -> int:
+        """Return only a count; never reveal metadata for a denied or empty scope."""
+
+        scope, parameters = self._scope(filters, metadata.profile_key)
+        with self.database._connect() as connection:
+            row = connection.execute(
+                f"select count(*)::integer as count from evidence_assistant.chunk_embeddings where {scope}",
+                parameters,
+            ).fetchone()
+        return int(row["count"])

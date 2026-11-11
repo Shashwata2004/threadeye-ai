@@ -33,12 +33,26 @@ Prompt 05 adds and verifies:
 - `search` and `evaluate-retrieval` CLI commands with structured JSON and summaries.
 - 100 passing tests with all real-model and isolated-database integration flags enabled.
 
+Prompt 06 adds and verifies:
+
+- Authorized hybrid-retrieval-to-answer orchestration with typed answered/abstention responses.
+- Deterministic extractive answers whose complete text is restricted to validated supporting excerpts.
+- Source, source-hash, chunk, chunk-hash, heading, normalized-span, processing, authorization, corpus and excerpt
+  citation verification.
+- Versioned multi-signal sufficiency using identifiers, lexical support, keyword evidence, cosine similarity and
+  ambiguity margin; RRF is never treated as a probability.
+- Explicit request/evidence safeguards for secrets, prompt injection, production access, contradictory evidence and
+  fabric-verdict/scoring overrides.
+- A fixed 44-case answer dataset with independent development and held-out splits, 22 answerable and 22 negative cases.
+- Genuine database answer, abstention, unauthorized-scope and adversarial-document demonstrations.
+- CLI commands: `answer-evidence` and `evaluate-answers`.
+
 ## Not implemented
 
-- RAG answer generation, grounded answer generation, answer-level citations, or LLM-generated citations.
+- LLM-generated answer generation or LLM-generated citations.
 - Reranking, contextual RAG, graph RAG, Self-RAG, corrective RAG, or agentic RAG.
 - MCP server/client, local LLM generation, agent orchestration, companion UI, public deployment.
 - ThreadEye production database/API integration or real-document embedding.
 
-Hybrid retrieval is not a full RAG system. No answer-generation, reranking, MCP, Local LLM, agent, frontend, or public
-deployment claim should be made from Prompt 05.
+Prompt 06 is a real extractive evidence-answering pipeline, but it is not an LLM-powered RAG generator. No hosted or
+local LLM, reranking, MCP, agent, frontend, or public-deployment claim should be made.
