@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "source_project": "threadeye-ai",
+  "documents": [
+    {
+      "path": "README.md",
+      "purpose": "Product overview, architecture, deployment profiles, setup, and honesty disclosures.",
+      "source_classification": "project_documentation",
+      "inventory_approved": true,
+      "future_ingestion_approved": false,
+      "caveats": "Contains operational command examples and references to secret-bearing environment files, but no secret values; sanitize and re-review before any future ingestion."
+    },
+    {
+      "path": "PROVENANCE.md",
+      "purpose": "Data, model, sample-data, font, and third-party software provenance.",
+      "source_classification": "provenance_record",
+      "inventory_approved": true,
+      "future_ingestion_approved": false,
+      "caveats": "Dataset licensing questions remain unresolved; inventory approval does not authorize redistribution."
+    },
+    {
+      "path": "docs/PLAN.md",
+      "purpose": "Historical architecture, contracts, security design, milestones, and acceptance criteria.",
+      "source_classification": "internal_design_document",
+      "inventory_approved": true,
+      "future_ingestion_approved": false,
+      "caveats": "Large historical plan containing operational and security design details; requires sanitization and team approval before future ingestion or exposure."
+    },
+    {
+      "path": "docs/MILESTONES.md",
+      "purpose": "Implemented operational milestone scope and historical verification summary.",
+      "source_classification": "implementation_record",
+      "inventory_approved": true,
+      "future_ingestion_approved": false,
+      "caveats": "Historical implementation evidence is not proof that the current hosted deployment contains every recorded change."
+    },
+    {
+      "path": "docs/VALIDATION.md",
+      "purpose": "Historical validation results, limits, and follow-up regression records.",
+      "source_classification": "validation_record",
+      "inventory_approved": true,
+      "future_ingestion_approved": false,
+      "caveats": "Contains historical operational identifiers and test claims; redact identifiers and distinguish historical results before future ingestion."
+    },
+    {
+      "path": "ml/DATASETS.md",
+      "purpose": "Dataset sources, licenses, acquisition notes, taxonomy mapping, and split policy.",
+      "source_classification": "dataset_provenance",
+      "inventory_approved": true,
+      "future_ingestion_approved": false,
+      "caveats": "References restricted or unresolved source terms and a git-ignored secret location without values; legal and content review required before ingestion or publication."
+    }
+  ]
+}

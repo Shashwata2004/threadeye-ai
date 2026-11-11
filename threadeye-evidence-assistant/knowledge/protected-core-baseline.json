@@ -1,0 +1,15 @@
+{
+  "recorded_for": "Prompt 02 pre-implementation integrity baseline",
+  "source_branch": "mohammad",
+  "source_commit": "ca6faac0736d71c20143eb389dc255a60ce98077",
+  "source_git_status_short": "",
+  "sha256": {
+    "backend/threadeye/core/scoring/four_point.py": "c4ed4d7e633c961707816d2377440cdcdbc39bd0c80bab0be9f183970756c284",
+    "backend/threadeye/core/providers.py": "293c3509fcfff31726bf4c392e022ad328d95b79381fc78ca4be6d92d1f4ac9a",
+    "backend/threadeye/providers/local_model.py": "f11d1e5bd44f60022e032e506c48c340e1e98741c424d122d340c4ff69b63878",
+    "backend/threadeye/db/audit.py": "afe8080aeb2d44b45394090ceab2a9ec9cefa3b7c6b4463111801b37a7befd7e",
+    "backend/threadeye/security/rbac.py": "02c00191c6f9b363cf51eb212cef1fcda00a024b7a2a352c93c05fc697abaf9f",
+    "backend/pyproject.toml": "176a3601e820a8b719923617c7e3d0681eab63a452034885220cab6bba2b167c",
+    "frontend/package.json": "405f04a8c9d59db1285c056188b369fd990275153f6fd63ae1351ec1fd11840a"
+  }
+}
