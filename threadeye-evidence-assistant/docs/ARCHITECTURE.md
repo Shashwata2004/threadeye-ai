@@ -1,6 +1,6 @@
 # Architecture
 
-## Prompt 05 boundary
+## Prompt 08 boundary
 
 ```text
 Exact manifest entry
@@ -20,6 +20,8 @@ Exact manifest entry
   → deterministic sentence extraction
   → exact citation/provenance/claim validation
   → typed answered or abstained response
+  → fixed MCP tool/resource registry
+  → official MCP v2 protocol over stdio
 ```
 
 The companion has no runtime dependency on ThreadEye application packages. Inventory remains metadata-only.
@@ -36,6 +38,9 @@ verified sanitized chunk text.
 - The database URL parser rejects remote hosts, wrong database/user identities, URL parameters, and missing passwords.
 - Migration SQL also refuses any database name except `threadeye_evidence`.
 - No ThreadEye/Supabase configuration, credentials, schemas, networks, or data are used.
+- The MCP server is independent of the ThreadEye application server and has no HTTP listener or deployment.
+- Its runtime identity is a separate `threadeye_evidence_mcp` role with only connect, schema usage and evidence-table
+  SELECT; read-only transactions and database timeouts are also enforced at connection startup.
 
 ## Model and corpus versioning
 
@@ -68,3 +73,16 @@ returns a distinct unauthorized, unsupported, insufficient, retrieval-error or c
 
 Retrieved Markdown remains untrusted data. Prompt-like instructions are excluded from evidence selection. This layer
 does not call an LLM, ThreadEye backend, Supabase, scoring engine, review workflow or approval system.
+
+## MCP serving boundary
+
+The MCP server is a thin adapter: it reuses `HybridRetriever`, `EvidenceAnswerEngine`, citation validation and
+abstention rather than reimplementing them. Trusted startup configuration fixes the corpus, serving policy,
+authorization reference, document classification, source and embedding profile. Tool arguments can choose only a
+bounded query/question, retrieval mode and top-k; they cannot select or widen authorization.
+
+`MCPServer` owns the four fixed tools and three sanitized resources. Strict middleware rejects unknown tool fields
+before SDK parsing. A four-operation capacity limiter and 10-second deadline wrap worker-thread calls, while the
+database uses an 8-second statement timeout. Stdout is reserved for MCP protocol frames; sanitized diagnostics use
+stderr. The official SDK client starts the server as a child process, negotiates the protocol, invokes tools/resources,
+tests rejection and terminates it when the client context exits.

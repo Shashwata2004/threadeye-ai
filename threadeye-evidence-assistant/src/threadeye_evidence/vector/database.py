@@ -37,7 +37,7 @@ class DatabaseSettings:
     user: str
 
     @classmethod
-    def from_dsn(cls, dsn: str) -> "DatabaseSettings":
+    def from_dsn(cls, dsn: str, *, expected_user: str = EXPECTED_USER) -> "DatabaseSettings":
         if not isinstance(dsn, str) or not dsn.strip():
             raise DatabaseSafetyError("an isolated companion database URL is required")
         parsed = urlsplit(dsn)
@@ -54,7 +54,7 @@ class DatabaseSettings:
         user = unquote(parsed.username or "")
         if host not in ALLOWED_DATABASE_HOSTS:
             raise DatabaseSafetyError("only a loopback database host is allowed")
-        if database != EXPECTED_DATABASE or user != EXPECTED_USER:
+        if database != EXPECTED_DATABASE or user != expected_user:
             raise DatabaseSafetyError("database name and user must match the isolated companion identity")
         if parsed.password is None or not parsed.password:
             raise DatabaseSafetyError("the isolated database password is missing")

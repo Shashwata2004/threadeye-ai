@@ -1,6 +1,6 @@
 [project]
 name = "threadeye-evidence-assistant"
-version = "0.6.0"
+version = "0.7.0"
 description = "Authorized grounded evidence answering for ThreadEye AI"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -12,9 +12,15 @@ vector = [
   "pgvector==0.5.1",
   "psycopg[binary]==3.3.8",
 ]
+mcp = [
+  "mcp==2.3.0",
+]
 
 [project.scripts]
 threadeye-evidence = "threadeye_evidence.__main__:main"
+threadeye-evidence-mcp = "threadeye_evidence.mcp.server:main"
+threadeye-evidence-mcp-verify = "threadeye_evidence.mcp.verify_client:main"
+threadeye-evidence-mcp-db-setup = "threadeye_evidence.mcp.database:setup_main"
 
 [build-system]
 requires = ["setuptools>=68"]

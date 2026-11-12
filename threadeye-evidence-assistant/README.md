@@ -4,11 +4,13 @@ This isolated companion inventories explicitly approved ThreadEye documentation 
 runs approval-gated sanitization, real local embeddings, PostgreSQL full-text search, pgvector cosine search, and
 weighted reciprocal-rank fusion. Prompt 06 adds conservative extractive evidence answers, exact provenance citations,
 and explicit abstention. Prompt 07 adds adversarial fixtures, citation mutation defenses, Unicode/input controls,
-failure isolation, and a reproducible 60-case security evaluation.
+failure isolation, and a reproducible 60-case security evaluation. Prompt 08 adds one official-SDK MCP v2 server over
+stdio, a fixed trusted synthetic-corpus scope, four read-only tools, three sanitized resources, and a dedicated
+least-privilege database identity.
 It does not modify or import the ThreadEye application. All six real ThreadEye documents remain blocked from
 content ingestion and embedding.
 
-LLM-generated RAG answers, reranking, MCP, local LLM generation, a UI, and deployment are not implemented.
+LLM-generated RAG answers, reranking, remote/HTTP MCP, local LLM generation, a UI, and deployment are not implemented.
 
 ## Environments
 
@@ -115,11 +117,46 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 # Genuine model and real pgvector integration
 THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 \
   PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+
+# After exporting the trusted MCP config/cache and read-only MCP database URL above
+THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 THREADEYE_RUN_MCP_TESTS=1 \
+  PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ```
+
+## Read-only MCP server
+
+The MCP process is independently launchable and uses the official `mcp==2.3.0` Python SDK. It exposes only the fixed
+fictional corpus in `config/mcp-synthetic.json`. The client cannot select a corpus, source, policy, authorization
+reference, embedding profile, file, SQL statement, shell command, or network destination.
+
+After the main schema is migrated and the synthetic corpus is indexed, configure a separate local password for the
+MCP role. Pass credentials through environment variables, never command-line arguments:
+
+```bash
+set -a; source .env.db; set +a
+export THREADEYE_EVIDENCE_ADMIN_DATABASE_URL="postgresql://${EVIDENCE_DB_ADMIN_USER}:${EVIDENCE_DB_ADMIN_PASSWORD}@127.0.0.1:${EVIDENCE_DB_PORT}/${EVIDENCE_DB_NAME}"
+export THREADEYE_EVIDENCE_MCP_DATABASE_URL="postgresql://${EVIDENCE_MCP_DB_USER}:${EVIDENCE_MCP_DB_PASSWORD}@127.0.0.1:${EVIDENCE_DB_PORT}/${EVIDENCE_DB_NAME}"
+export THREADEYE_EVIDENCE_MCP_CONFIG="$PWD/config/mcp-synthetic.json"
+export THREADEYE_EVIDENCE_MODEL_CACHE="$PWD/build/model-cache"
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence.mcp.database
+```
+
+Run the stdio server for an MCP launcher, or execute the official-client verification that starts and terminates a
+real subprocess:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence.mcp.server
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence.mcp.verify_client
+```
+
+The server writes MCP frames only to stdout and diagnostics only to stderr. Stdio is a local transport, not caller
+authentication: anyone able to launch the process with the trusted configuration and read-only database credential
+can exercise that deliberately limited synthetic scope. See [MCP server operations and evidence](docs/MCP_SERVER.md).
 
 Read [the grounded-answering and abstention design](docs/ANSWERING.md),
 [the hybrid retrieval design and benchmark](docs/HYBRID_RETRIEVAL.md),
 [the vector implementation](docs/VECTOR_INDEXING.md), [ingestion controls](docs/INGESTION.md),
-[architecture](docs/ARCHITECTURE.md), [security evaluation](docs/SECURITY_EVALUATION.md), and
+[architecture](docs/ARCHITECTURE.md), [MCP server](docs/MCP_SERVER.md),
+[security evaluation](docs/SECURITY_EVALUATION.md), and
 [threat model](docs/THREAT_MODEL.md). Inventory approval is not
 permission to embed, redistribute, train on, publish, or expose a real document.

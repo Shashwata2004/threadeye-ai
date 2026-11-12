@@ -216,3 +216,22 @@ class RetrievalStore:
                 parameters,
             ).fetchone()
         return int(row["count"])
+
+    def list_sources(self, filters: RetrievalFilters, metadata: EmbeddingMetadata) -> list[dict[str, Any]]:
+        """Return bounded non-content metadata for the already authorized scope."""
+
+        scope, parameters = self._scope(filters, metadata.profile_key)
+        with self.database._connect() as connection:
+            rows = connection.execute(
+                f"""
+                select source_relative_path, source_sha256, document_classification,
+                       corpus_version, count(*)::integer as chunk_count
+                from evidence_assistant.chunk_embeddings
+                where {scope}
+                group by source_relative_path, source_sha256, document_classification, corpus_version
+                order by source_relative_path asc
+                limit 20
+                """,
+                parameters,
+            ).fetchall()
+        return [dict(row) for row in rows]

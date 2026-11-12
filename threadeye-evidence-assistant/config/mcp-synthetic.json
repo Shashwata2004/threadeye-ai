@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "corpus_id": "threadeye-synthetic-evidence-v1",
+  "access_policy": "prompt05-test-only",
+  "authorization_reference": "PROMPT-04-SYNTHETIC-VECTOR-FIXTURE",
+  "document_classification": "synthetic_test_fixture",
+  "embedding_profile_key": "dc896e19f1401dd04a95036f020ce3059e9dae728a6f018065707619f681d825",
+  "allowed_source": "technical-evidence.md",
+  "source_description": "Fictional ThreadEye receiving, observation, scoring, evidence-bundle, and supervisor-review training evidence.",
+  "max_query_chars": 1000,
+  "max_top_k": 5,
+  "max_response_bytes": 65536,
+  "tool_timeout_seconds": 10.0,
+  "max_concurrency": 4
+}

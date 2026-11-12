@@ -61,12 +61,29 @@ Prompt 07 adds and verifies:
 - `index-security-fixtures` and `evaluate-security` CLI commands.
 - 139 passing tests with genuine BGE and PostgreSQL/pgvector enabled and no skips.
 
+Prompt 08 adds and verifies:
+
+- Official `mcp==2.3.0` v2 `MCPServer` and `Client` APIs on Python 3.11, with stdio as the only transport.
+- Four fixed, annotated read-only tools for search, extractive answers, source metadata and capability metadata.
+- Three sanitized resources for capabilities, corpus manifest and security policy.
+- Operator-controlled trusted startup authorization fixing one fictional corpus, source, policy, authorization
+  reference, classification and exact embedding profile; client arguments cannot widen this scope.
+- A dedicated `threadeye_evidence_mcp` PostgreSQL role with only the required SELECT access, default read-only
+  transactions and runtime identity/transaction checks.
+- Bounded queries, top-k, response size, concurrency, tool execution, database statements and connection attempts.
+- Strict unknown-argument rejection, safe protocol errors, stderr-only diagnostics and a fixed negative tool surface.
+- A genuine official-client subprocess lifecycle covering initialize/version negotiation, discovery, resource read,
+  successful search/answer, abstention, unauthorized scope rejection, forbidden tool rejection and clean shutdown.
+- 151 passing tests with genuine BGE, PostgreSQL/pgvector and MCP stdio integration enabled, with zero skips; unchanged
+  retrieval/answer datasets remain fully passing and security evaluation remains 30/30 development, 29/30 holdout.
+
 ## Not implemented
 
 - LLM-generated answer generation or LLM-generated citations.
 - Reranking, contextual RAG, graph RAG, Self-RAG, corrective RAG, or agentic RAG.
-- MCP server/client, local LLM generation, agent orchestration, companion UI, public deployment.
+- Remote authenticated/HTTP MCP, local LLM generation, agent orchestration, companion UI, public deployment.
 - ThreadEye production database/API integration or real-document embedding.
 
-Prompt 07 is a hardened extractive evidence-answering pipeline, but it is not an LLM-powered RAG generator. No hosted or
-local LLM, reranking, MCP, agent, frontend, or public-deployment claim should be made.
+Prompt 08 is a hardened extractive evidence-answering pipeline exposed by one real local stdio MCP server, but it is
+not an LLM-powered RAG generator. No hosted/local LLM, reranking, remote MCP, agent, frontend, reuse or public-deployment
+claim should be made.

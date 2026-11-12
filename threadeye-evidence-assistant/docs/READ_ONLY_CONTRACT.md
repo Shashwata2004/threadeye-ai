@@ -1,6 +1,6 @@
 # Read-only Evidence Contract
 
-## Guarantees implemented through Prompt 03
+## Inventory and ingestion guarantees
 
 The companion inventory:
 
@@ -35,7 +35,7 @@ Document text is untrusted data and is never interpreted as executable instructi
 No output from this project is an authoritative fabric-quality decision. Future AI explanations must remain
 subordinate to ThreadEye's saved deterministic score, inspector review, and supervisor decision.
 
-## Future trust boundary
+## MCP read-only serving guarantee
 
 ```text
 Approved ThreadEye Documents
@@ -44,12 +44,20 @@ Approved ThreadEye Documents
 Read-only Inventory & Validation
           |
           v
-Future Sanitized Ingestion       [NOT IMPLEMENTED]
+Authorized Sanitized Ingestion
           |
           v
-Future RAG / MCP / LLM Services  [NOT IMPLEMENTED]
+Read-only Retrieval & Extractive Answers
+          |
+          v
+Local stdio MCP Server
 ```
 
-Future work must separately authorize documents for embedding/indexing, add document-level retrieval access,
-evaluate prompt injection against an actual model, and prove that every future service remains read-only.
-Embeddings, retrieval, RAG, MCP, and LLM services are not implemented.
+Prompt 08 exposes only an independently authorized fictional synthetic source. Server-owned filters cannot be replaced
+by tool arguments. The MCP process uses a dedicated database role with connect, schema usage and SELECT only, and
+forces read-only transactions. Real integration tests prove that update, delete, truncate and DDL attempts fail.
+
+The server has no indexing, filesystem, shell, generic SQL, HTTP, inspection-update, verdict, scoring or audit tools.
+It offers no production access and cannot change ThreadEye data or decisions. Stdio does not authenticate a person;
+the trusted local launcher controls who receives the fixed synthetic permission. Future remote access must add real
+authentication and authorization without weakening this boundary.
