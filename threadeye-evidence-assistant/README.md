@@ -8,10 +8,12 @@ failure isolation, and a reproducible 60-case security evaluation. Prompt 08 add
 stdio, a fixed trusted synthetic-corpus scope, four read-only tools, three sanitized resources, and a dedicated
 least-privilege database identity. Prompt 09 adds an explicitly launched, authenticated localhost Streamable HTTP
 transport with EdDSA access tokens, per-operation scopes, protected-resource metadata, rate limiting and audit events.
+Prompt 10 adds a separate localhost-only judge UI, an operator-controlled browser session, genuine server-side MCP
+calls, safe evidence rendering, responsive layouts, and reproducible search/answer/abstention workflows.
 It does not modify or import the ThreadEye application. All six real ThreadEye documents remain blocked from
 content ingestion and embedding.
 
-LLM-generated RAG answers, reranking, public/remote MCP deployment, local LLM generation, a UI, and deployment are not
+LLM-generated RAG answers, reranking, public/remote MCP deployment, local LLM generation, and deployment are not
 implemented.
 
 ## Environments
@@ -181,11 +183,35 @@ PYTHONPATH=src .venv/bin/python -m threadeye_evidence.mcp.verify_http
 This is a local OAuth resource-server demonstration, not a complete authorization server or interactive OAuth login.
 See [authenticated Streamable HTTP architecture and evidence](docs/MCP_HTTP.md).
 
+## Local judge UI
+
+The independent UI is served only at `http://127.0.0.1:8770`. Its Python backend holds an ephemeral development-only
+signing key, starts the existing authenticated MCP HTTP process, and makes official SDK calls for an authenticated
+local browser session. The browser never receives an MCP bearer token, signing key or database URL.
+
+After preparing the database and exporting the trusted MCP variables above, set a local access code without printing
+it and launch both isolated services:
+
+```bash
+read -s THREADEYE_EVIDENCE_UI_ACCESS_CODE
+export THREADEYE_EVIDENCE_UI_ACCESS_CODE
+export THREADEYE_EVIDENCE_UI_PORT=8770 # optional; loopback-only
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
+  .venv/bin/python -m threadeye_evidence.ui.launcher
+```
+
+Open `http://127.0.0.1:8770`, enter the operator-provided code, and use the three judge-demonstration cards. Press
+Ctrl-C to stop both the UI and its owned MCP subprocess. The access code is a localhost demonstration boundary, not
+production identity management. Plain localhost HTTP prevents a `Secure` cookie; the cookie is still HttpOnly,
+SameSite=Strict, host-only, short-lived and paired with CSRF, Host and Origin validation. See
+[the complete judge demonstration guide](docs/JUDGE_DEMO.md).
+
 Read [the grounded-answering and abstention design](docs/ANSWERING.md),
 [the hybrid retrieval design and benchmark](docs/HYBRID_RETRIEVAL.md),
 [the vector implementation](docs/VECTOR_INDEXING.md), [ingestion controls](docs/INGESTION.md),
 [architecture](docs/ARCHITECTURE.md), [MCP server](docs/MCP_SERVER.md),
 [authenticated MCP HTTP](docs/MCP_HTTP.md),
+[judge UI demonstration](docs/JUDGE_DEMO.md),
 [security evaluation](docs/SECURITY_EVALUATION.md), and
 [threat model](docs/THREAT_MODEL.md). Inventory approval is not
 permission to embed, redistribute, train on, publish, or expose a real document.

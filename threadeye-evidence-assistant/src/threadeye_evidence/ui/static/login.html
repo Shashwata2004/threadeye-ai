@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local access · ThreadEye Evidence Assistant</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-panel" aria-labelledby="login-title">
+      <div class="brand-mark" aria-hidden="true">TE</div>
+      <p class="eyebrow">Synthetic Demonstration</p>
+      <h1 id="login-title">ThreadEye AI<br><span>Evidence Assistant</span></h1>
+      <p class="login-subtitle">Secure, citation-grounded knowledge assistance for textile quality workflows.</p>
+      <div class="security-note">
+        <span class="status-dot status-dot--secure" aria-hidden="true"></span>
+        <div><strong>Local judge access</strong><br><span>This interface is bound to 127.0.0.1 and requires an operator-provided code.</span></div>
+      </div>
+      <form action="/session" method="post" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{csrf_token}}">
+        <input type="text" value="local-judge" autocomplete="username" class="visually-hidden" tabindex="-1" aria-hidden="true" disabled>
+        <label for="access-code">Local access code</label>
+        <input id="access-code" name="access_code" type="password" required minlength="12" maxlength="128" autocomplete="current-password" autofocus>
+        <p class="form-help">The operator sets this code before launch. It is separate from all MCP credentials.</p>
+        <p class="form-error" role="alert">{{error}}</p>
+        <button class="button button--primary button--full" type="submit">Enter secure demonstration</button>
+      </form>
+      <div class="login-labels" aria-label="Demonstration properties">
+        <span>Read-Only Evidence</span><span>Extractive Answering</span><span>Human Verification Recommended</span>
+      </div>
+    </section>
+    <aside class="login-context" aria-label="Demonstration scope">
+      <p class="eyebrow eyebrow--light">Judge demonstration boundary</p>
+      <h2>Evidence that stays traceable.</h2>
+      <p>Search a fictional textile-quality corpus, inspect exact provenance, and see the assistant abstain when support is absent.</p>
+      <ol class="context-steps">
+        <li><span>01</span><div><strong>Authorized retrieval</strong><small>Real BGE and PostgreSQL/pgvector</small></div></li>
+        <li><span>02</span><div><strong>Verified extraction</strong><small>No generative answer synthesis</small></div></li>
+        <li><span>03</span><div><strong>Explicit limitations</strong><small>No production or operational access</small></div></li>
+      </ol>
+    </aside>
+  </main>
+</body>
+</html>

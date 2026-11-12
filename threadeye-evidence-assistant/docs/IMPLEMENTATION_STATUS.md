@@ -94,14 +94,28 @@ Prompt 09 adds and verifies:
 - 162 passing tests with genuine BGE, PostgreSQL/pgvector, stdio and authenticated HTTP enabled, with zero failures or
   skips; unchanged retrieval/answer evaluations remain fully passing and security remains 30/30 plus 29/30 holdout.
 
+Prompt 10 adds and verifies:
+
+- An independent, responsive Starlette plus buildless HTML/CSS/JavaScript judge interface under the companion only.
+- A development-only combined launcher with ephemeral Ed25519 keys, the existing authenticated MCP HTTP server and
+  an official server-side MCP client; no MCP token or signing key reaches browser JavaScript.
+- Operator-code login, bounded/expiring HttpOnly SameSite sessions, CSRF, exact Host/Origin, loopback, body and schema
+  validation, strict CSP and no wildcard CORS.
+- Live MCP overview, fixed keyword/vector/hybrid search, extractive answer states, validated citation inspection,
+  explicit abstention and honest capability/limitation panels.
+- Three genuine judge workflows over the authorized fictional corpus and five real browser screenshots.
+- Desktop 1440×1000 and mobile 390×844 browser verification with no horizontal overflow or console errors.
+- 175 passing tests with genuine BGE, PostgreSQL/pgvector, stdio MCP, authenticated HTTP MCP and UI integration;
+  zero failures and zero skips under all integration flags.
+
 ## Not implemented
 
 - LLM-generated answer generation or LLM-generated citations.
 - Reranking, contextual RAG, graph RAG, Self-RAG, corrective RAG, or agentic RAG.
 - Public/TLS MCP deployment, complete external OAuth onboarding, local LLM generation, agent orchestration,
-  companion UI, distributed rate limiting or public deployment.
+  distributed rate limiting or public deployment.
 - ThreadEye production database/API integration or real-document embedding.
 
-Prompt 09 exposes the same hardened extractive pipeline through real stdio and authenticated local Streamable HTTP,
-but it is not an LLM-powered RAG generator. No hosted/local LLM, reranking, public remote MCP, complete OAuth, agent,
-frontend, cross-project reuse or public-deployment claim should be made.
+Prompt 10 exposes the same hardened extractive pipeline through a secure local judge UI backed by authenticated
+Streamable HTTP, but it is not an LLM-powered RAG generator. No hosted/local LLM, reranking, public remote MCP,
+complete OAuth, agent, production-frontend integration, cross-project reuse or public-deployment claim should be made.

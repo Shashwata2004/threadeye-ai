@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{csrf_token}}">
+  <title>ThreadEye AI — Evidence Assistant</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="ThreadEye Evidence Assistant home">
+        <span class="brand-mark" aria-hidden="true">TE</span>
+        <span><strong>ThreadEye AI</strong><small>Evidence Assistant</small></span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a class="nav-link is-active" href="#overview"><span>01</span>Overview</a>
+        <a class="nav-link" href="#search"><span>02</span>Search evidence</a>
+        <a class="nav-link" href="#ask"><span>03</span>Ask evidence</a>
+        <a class="nav-link" href="#capabilities"><span>04</span>Capabilities</a>
+        <a class="nav-link" href="#workflow"><span>05</span>Original workflow</a>
+      </nav>
+      <div class="sidebar-boundary">
+        <p>DEMONSTRATION BOUNDARY</p>
+        <strong>Synthetic data only</strong>
+        <span>No production records, verdicts, or write operations.</span>
+      </div>
+      <button id="logout-button" class="button button--quiet" type="button">End local session</button>
+    </aside>
+
+    <main id="main-content" class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Judge-ready companion interface</p>
+          <h1>ThreadEye AI — Evidence Assistant</h1>
+        </div>
+        <div id="connection-chip" class="connection-chip is-checking" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span><span>Checking MCP</span>
+        </div>
+      </header>
+
+      <section id="overview" class="section hero-section" aria-labelledby="overview-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Synthetic Demonstration · Read-Only Evidence</p>
+          <h2 id="overview-title">Answers that show their work.</h2>
+          <p class="hero-lede">Secure, citation-grounded knowledge assistance for textile quality workflows. Every successful answer is an exact extract from authorized fictional evidence.</p>
+          <div class="label-row" aria-label="Required safety labels">
+            <span>Synthetic Demonstration</span><span>Read-Only Evidence</span><span>Extractive Answering</span><span>Human Verification Recommended</span>
+          </div>
+        </div>
+        <div class="hero-rail" aria-label="Live system summary">
+          <div><span>MODE</span><strong>Local judge demo</strong></div>
+          <div><span>TRANSPORT</span><strong>Authenticated MCP HTTP</strong></div>
+          <div><span>ANSWER TYPE</span><strong>Deterministic extract</strong></div>
+        </div>
+      </section>
+
+      <section class="status-grid" aria-label="Live status">
+        <article class="metric-card">
+          <span class="metric-icon" aria-hidden="true">↔</span>
+          <div><small>MCP CONNECTION</small><strong id="mcp-status">Checking</strong><p id="mcp-detail">Verifying the real backend and fixed registry.</p></div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon" aria-hidden="true">◎</span>
+          <div><small>AUTHORIZED CORPUS</small><strong id="source-count">—</strong><p>Fictional synthetic source scope</p></div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon" aria-hidden="true">✓</span>
+          <div><small>ACCESS MODE</small><strong>Read only</strong><p id="scope-summary">Waiting for verified scopes.</p></div>
+        </article>
+      </section>
+
+      <section class="demo-strip" aria-labelledby="demos-title">
+        <div>
+          <p class="eyebrow">Three reproducible workflows</p>
+          <h2 id="demos-title">Judge demonstration</h2>
+        </div>
+        <div class="demo-actions">
+          <button class="demo-card" type="button" data-demo="search"><span>01</span><strong>Supported search</strong><small>Real hybrid retrieval</small></button>
+          <button class="demo-card" type="button" data-demo="answer"><span>02</span><strong>Grounded answer</strong><small>Verified exact citation</small></button>
+          <button class="demo-card" type="button" data-demo="abstain"><span>03</span><strong>Safe abstention</strong><small>No fabricated claim</small></button>
+        </div>
+      </section>
+
+      <section id="search" class="section workspace-section" aria-labelledby="search-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">Search evidence</p><h2 id="search-title">Retrieve authorized passages</h2></div>
+          <p>Ranking scores describe retrieval order. RRF is not a probability or calibrated confidence.</p>
+        </div>
+        <form id="search-form" class="query-form">
+          <div class="field field--wide"><label for="search-query">Evidence query</label><textarea id="search-query" maxlength="1000" rows="3" required placeholder="e.g. What makes later evidence changes detectable?"></textarea><small><span id="search-count">0</span>/1,000</small></div>
+          <div class="field"><label for="search-mode">Retrieval mode</label><select id="search-mode"><option value="hybrid">Hybrid</option><option value="keyword">Keyword</option><option value="vector">Vector</option></select></div>
+          <div class="field"><label for="search-top-k">Top results</label><select id="search-top-k"><option value="3">3</option><option value="1">1</option><option value="2">2</option><option value="4">4</option><option value="5">5</option></select></div>
+          <button class="button button--primary" type="submit">Search evidence</button>
+        </form>
+        <div id="search-status" class="result-status" role="status" aria-live="polite">Enter a query or choose the supported-search demo.</div>
+        <div id="search-results" class="result-list" aria-label="Evidence search results"></div>
+      </section>
+
+      <section id="ask" class="section workspace-section" aria-labelledby="ask-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">Ask evidence</p><h2 id="ask-title">Request a grounded extract</h2></div>
+          <p>The assistant answers only when the evidence and citation contract pass. Human Verification Recommended.</p>
+        </div>
+        <form id="ask-form" class="query-form query-form--ask">
+          <div class="field field--wide"><label for="ask-question">Question</label><textarea id="ask-question" maxlength="1000" rows="3" required placeholder="e.g. Which supplier lot is recorded for ROLL-NST-204?"></textarea><small><span id="ask-count">0</span>/1,000</small></div>
+          <div class="field"><label for="ask-mode">Retrieval mode</label><select id="ask-mode"><option value="hybrid">Hybrid</option><option value="keyword">Keyword</option><option value="vector">Vector</option></select></div>
+          <button class="button button--primary" type="submit">Ask evidence</button>
+        </form>
+        <div id="answer-status" class="result-status" role="status" aria-live="polite">Ask an evidence question or choose a guided demo.</div>
+        <div id="answer-result" class="answer-panel" aria-label="Evidence answer"></div>
+      </section>
+
+      <section id="capabilities" class="section" aria-labelledby="capabilities-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">System capabilities</p><h2 id="capabilities-title">Implemented, bounded, and explicit</h2></div>
+        </div>
+        <div class="capability-grid">
+          <article class="capability-card capability-card--supported"><span>SUPPORTED</span><h3>Evidence assistance</h3><ul><li>BGE embeddings</li><li>Keyword/vector hybrid search</li><li>Reciprocal-rank fusion</li><li>Citation verification</li><li>Deterministic extractive answers</li><li>Safe abstention</li><li>Read-only MCP tools</li><li>Authorization controls</li></ul></article>
+          <article class="capability-card capability-card--excluded"><span>NOT IMPLEMENTED</span><h3>Outside this demonstration</h3><ul><li>Generative LLM answering</li><li>Graph or agentic RAG</li><li>Production data integration</li><li>Factory ROI verification</li><li>Public MCP or UI deployment</li><li>Operational roll decisions</li></ul></article>
+          <article class="capability-card"><span>LIVE POLICY</span><h3>Verified runtime boundary</h3><div id="live-policy"><p>Waiting for authenticated MCP capability metadata.</p></div></article>
+        </div>
+      </section>
+
+      <section id="workflow" class="section workflow-section" aria-labelledby="workflow-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">Original ThreadEye product · descriptive only</p><h2 id="workflow-title">Operational fabric workflow</h2></div>
+          <p>This panel explains the original system. The Evidence Assistant does not perform inspection or alter that product.</p>
+        </div>
+        <ol class="workflow" aria-label="Original ThreadEye workflow">
+          <li><span>01</span><strong>Receiving</strong></li><li><span>02</span><strong>Roll registration</strong></li><li><span>03</span><strong>QR traceability</strong></li><li><span>04</span><strong>Inspection</strong></li><li><span>05</span><strong>Human correction</strong></li><li><span>06</span><strong>Four-point scoring</strong></li><li><span>07</span><strong>Supervisor decision</strong></li><li><span>08</span><strong>Bilingual evidence pack</strong></li>
+        </ol>
+        <div class="distinction-grid">
+          <article><span>ORIGINAL LOCAL PLATFORM</span><strong>Real YOLOX-S ONNX CPU detector</strong><p>Used by the separately operated local ThreadEye inspection system.</p></article>
+          <article><span>PUBLIC CLOUD DEMO</span><strong>Simulated detector</strong><p>The hosted demonstration does not claim real cloud YOLOX inference.</p></article>
+          <article><span>THIS COMPANION</span><strong>BGE retrieval + extractive answers</strong><p>Searches fictional evidence. It does not inspect fabric.</p></article>
+        </div>
+      </section>
+
+      <footer><span>ThreadEye AI — Evidence Assistant</span><span>Synthetic-only · localhost-only · read-only</span></footer>
+    </main>
+  </div>
+
+  <dialog id="citation-dialog" aria-labelledby="citation-title">
+    <div class="dialog-header"><div><p class="eyebrow">Validated provenance</p><h2 id="citation-title">Citation inspection</h2></div><button id="citation-close" class="icon-button" type="button" aria-label="Close citation inspection">×</button></div>
+    <dl id="citation-metadata" class="citation-metadata"></dl>
+    <div class="excerpt-box"><span>CITED EXCERPT</span><blockquote id="citation-excerpt"></blockquote></div>
+    <p class="human-note">Human Verification Recommended — offsets refer to sanitized normalized text.</p>
+  </dialog>
+</body>
+</html>

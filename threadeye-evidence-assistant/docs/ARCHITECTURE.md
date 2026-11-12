@@ -1,6 +1,6 @@
 # Architecture
 
-## Prompt 09 boundary
+## Prompt 10 boundary
 
 ```text
 Exact manifest entry
@@ -23,6 +23,8 @@ Exact manifest entry
   → fixed MCP tool/resource registry
   → official MCP v2 protocol over stdio
   → or explicit authenticated SDK Streamable HTTP on loopback
+  → trusted localhost UI backend using the official MCP client
+  → authenticated browser session, CSRF boundary and safe text rendering
 ```
 
 The companion has no runtime dependency on ThreadEye application packages. Inventory remains metadata-only.
@@ -97,3 +99,28 @@ context for that request. No corpus filter or service state comes from token cla
 Protected Resource Metadata is generated with the SDK's RFC 9728 model and handler at the resource-specific well-known
 path. The configured issuer is a fictional offline-test identifier, not an authorization server. HTTP and stdio both
 connect with `threadeye_evidence_mcp`; neither transport can index or mutate evidence.
+
+## Judge UI boundary
+
+The Prompt 10 UI is a Starlette backend-for-frontend with buildless semantic HTML, CSS and JavaScript. The combined
+development launcher generates an Ed25519 keypair in a mode-0600 temporary directory, starts the existing Prompt 09
+MCP HTTP module with only the public key, and retains the private key solely in the UI Python process. The gateway
+issues short-lived, exact-audience tokens and opens an official `mcp.Client` Streamable HTTP connection for each fixed
+operation. It exposes no generic tool, URI, SQL, filesystem or network proxy.
+
+```text
+Browser at 127.0.0.1:8770
+  → Host/Origin/body admission
+  → bounded operator-code session + HttpOnly SameSite cookie + CSRF
+  → fixed overview/search/answer handlers
+  → server-side official MCP SDK client
+  → authenticated 127.0.0.1 MCP HTTP resource server
+  → unchanged retrieval, answer and citation pipeline
+  → unchanged SELECT-only PostgreSQL role
+```
+
+The browser receives only an opaque session identifier and a CSRF token. Sessions are process-local, bounded to 16,
+expire after 15 idle or 30 absolute minutes and are revoked on logout. The app accepts only its exact loopback Host,
+an exact Origin (or explicit browser `Sec-Fetch-Site: same-origin` when Origin is absent), loopback clients, bounded
+bodies and exact request fields. A strict CSP, frame denial, MIME sniffing denial and text-only DOM construction
+protect untrusted evidence rendering. This remains a local demonstration boundary, not production authentication.

@@ -181,3 +181,16 @@ TRUNCATE, schema/temporary DDL, role creation and database creation.
 Prompt 09 demonstrates authenticated local Streamable HTTP and genuine usage by two independently authenticated
 official clients. It does not demonstrate public deployment, TLS, distributed controls, complete OAuth onboarding,
 cross-project reuse, multiple custom MCP servers, a generative LLM, production data or security certification.
+
+## Prompt 10 judge UI consumer
+
+The local judge UI is a real Prompt 09 client, not an alternate retrieval route. Its server-side gateway uses the
+official SDK `Client` and `streamable_http_client`, exact resource audience, short-lived EdDSA access token and all
+three allowlisted scopes. Overview verifies the exact four-tool/three-resource registry, then calls
+`get_evidence_capabilities`, `list_evidence_sources` and the sanitized security-policy resource. Search and answer call
+only `search_evidence` and `answer_evidence_question`. The UI has no fallback to direct Python retrieval or database
+access and does not silently downgrade transport.
+
+The development launcher owns an ephemeral keypair and MCP subprocess. Only the temporary public key is passed to the
+MCP server; the browser never sees either key, a bearer token, a database credential or MCP configuration. This is
+still the offline local issuer model documented above, not production OAuth onboarding.
