@@ -21,8 +21,13 @@ class FakeService:
 
 
 class SlowService(FakeService):
+    def __init__(self, timeout: float = 1.0) -> None:
+        super().__init__(timeout)
+        self.calls = 0
     def search(self, query, mode, top_k):
-        time.sleep(0.2)
+        self.calls += 1
+        if self.calls == 1:
+            time.sleep(0.2)
         return super().search(query, mode, top_k)
 
 
@@ -40,14 +45,22 @@ async def inspect_server() -> dict[str, object]:
     return {"schemas":schemas,"annotations":annotations,"extra_rejected":extra_rejected}
 
 
-async def timeout_server() -> bool:
+async def timeout_server() -> dict[str, bool]:
     server = build_server(SlowService(timeout=0.02))
     async with Client(server, mode="legacy") as client:
         try:
             result = await client.call_tool("search_evidence", {"query":"x","mode":"hybrid","top_k":1})
-            return bool(result.is_error)
+            timed_out = bool(result.is_error)
         except Exception:
-            return True
+            timed_out = True
+        try:
+            second = await client.call_tool("search_evidence", {"query":"x","mode":"hybrid","top_k":1})
+            capacity_denied = bool(second.is_error)
+        except Exception:
+            capacity_denied = True
+        await anyio.sleep(0.22)
+        recovered = await client.call_tool("search_evidence", {"query":"x","mode":"hybrid","top_k":1})
+    return {"timed_out": timed_out, "capacity_denied": capacity_denied, "recovered": not recovered.is_error}
 
 
 class MCPServerUnitTests(unittest.TestCase):
@@ -59,7 +72,10 @@ class MCPServerUnitTests(unittest.TestCase):
         self.assertTrue(report["extra_rejected"])
 
     def test_tool_deadline_fails_safely(self) -> None:
-        self.assertTrue(anyio.run(timeout_server))
+        report = anyio.run(timeout_server)
+        self.assertTrue(report["timed_out"])
+        self.assertTrue(report["capacity_denied"])
+        self.assertTrue(report["recovered"])
 
 
 if __name__ == "__main__":

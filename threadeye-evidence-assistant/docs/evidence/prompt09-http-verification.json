@@ -1,0 +1,102 @@
+{
+  "recorded_date": "2026-11-12",
+  "scope": "fictional synthetic evidence only",
+  "versions": {
+    "python": "3.11.17",
+    "mcp": "2.3.0",
+    "mcp_types": "2.3.0",
+    "server": "0.8.0",
+    "negotiated_protocol": "2025-11-25"
+  },
+  "transport": {
+    "configured_endpoint": "http://127.0.0.1:8765/mcp",
+    "binding": "127.0.0.1",
+    "sdk_streamable_http": true,
+    "stateless": true,
+    "public_deployment": false
+  },
+  "protected_resource_metadata": {
+    "available": true,
+    "resource_specific_audience": true,
+    "scopes": [
+      "evidence:answer",
+      "evidence:metadata:read",
+      "evidence:search"
+    ],
+    "external_authorization_server_verified": false
+  },
+  "client_a": {
+    "independent_official_sdk_client": true,
+    "tools_exact": true,
+    "resources_exact": true,
+    "hybrid_search_source": "technical-evidence.md",
+    "provenance_present": true,
+    "extractive_answer": true,
+    "citation_count": 1,
+    "citation_valid": true,
+    "unsupported_question_abstained": true
+  },
+  "client_b": {
+    "independent_official_sdk_client": true,
+    "metadata_read": true,
+    "search_denied": true,
+    "answer_denied": true,
+    "evidence_leaked": false,
+    "client_a_context_inherited": false
+  },
+  "security": {
+    "missing_or_invalid_tokens": 401,
+    "invalid_host": 421,
+    "invalid_origin": 403,
+    "duplicate_authorization": 400,
+    "oversized_token": 431,
+    "oversized_body": 413,
+    "rate_limit": 429,
+    "rate_limit_recovered": true,
+    "wildcard_cors_absent": true,
+    "role_and_corpus_escalation_rejected": true,
+    "production_access_request_rejected": true,
+    "shutdown_restart_verified": true
+  },
+  "audit_log": {
+    "json_events_present": true,
+    "raw_tokens_absent": true,
+    "private_key_absent": true,
+    "database_password_absent": true,
+    "raw_queries_absent": true,
+    "tamper_proof": false
+  },
+  "database": {
+    "runtime_role": "threadeye_evidence_mcp",
+    "select_allowed": true,
+    "insert_update_delete_truncate_denied": true,
+    "schema_temp_role_database_creation_denied": true,
+    "read_only_transaction": true
+  },
+  "tests": {
+    "passed": 162,
+    "failed": 0,
+    "skipped": 0
+  },
+  "evaluations": {
+    "retrieval_queries": 35,
+    "hybrid_hit_at_1": 0.906,
+    "hybrid_hit_at_3": 1.0,
+    "hybrid_recall_at_5": 1.0,
+    "hybrid_mrr": 0.948,
+    "answer_cases": 44,
+    "answer_exact": 44,
+    "security_development": "30/30",
+    "security_final_holdout": "29/30"
+  },
+  "unsupported_claims": [
+    "public deployment",
+    "complete external OAuth onboarding",
+    "token revocation",
+    "distributed rate limiting",
+    "cross-project reuse",
+    "multiple independently built MCP servers",
+    "generative LLM",
+    "production ThreadEye access"
+  ]
+}

@@ -1,6 +1,6 @@
 # Architecture
 
-## Prompt 08 boundary
+## Prompt 09 boundary
 
 ```text
 Exact manifest entry
@@ -22,6 +22,7 @@ Exact manifest entry
   → typed answered or abstained response
   → fixed MCP tool/resource registry
   → official MCP v2 protocol over stdio
+  → or explicit authenticated SDK Streamable HTTP on loopback
 ```
 
 The companion has no runtime dependency on ThreadEye application packages. Inventory remains metadata-only.
@@ -86,3 +87,13 @@ before SDK parsing. A four-operation capacity limiter and 10-second deadline wra
 database uses an 8-second statement timeout. Stdout is reserved for MCP protocol frames; sanitized diagnostics use
 stderr. The official SDK client starts the server as a child process, negotiates the protocol, invokes tools/resources,
 tests rejection and terminates it when the client context exits.
+
+The Prompt 09 HTTP adapter constructs the same registry with SDK token verification and one additional request-local
+scope middleware. An outer admission layer validates exact loopback Host/Origin, duplicate/oversized headers, methods
+and body size before evidence work. SDK authentication validates every stateless request; a post-auth layer applies
+bounded per-principal/IP limits and immediate concurrency admission. Token-derived identity lives only in the SDK auth
+context for that request. No corpus filter or service state comes from token claims.
+
+Protected Resource Metadata is generated with the SDK's RFC 9728 model and handler at the resource-specific well-known
+path. The configured issuer is a fictional offline-test identifier, not an authorization server. HTTP and stdio both
+connect with `threadeye_evidence_mcp`; neither transport can index or mutate evidence.

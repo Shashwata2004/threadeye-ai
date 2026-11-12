@@ -55,6 +55,7 @@ class MCPReadOnlyDatabaseIntegrationTests(unittest.TestCase):
             "create table evidence_assistant.mcp_forbidden(id integer)",
             "create temporary table mcp_forbidden_temp(id integer)",
             "create role mcp_forbidden_role",
+            "create database mcp_forbidden_database",
         )
         for statement in statements:
             with self.subTest(statement=statement), self.assertRaises(Exception):

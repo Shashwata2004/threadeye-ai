@@ -77,13 +77,31 @@ Prompt 08 adds and verifies:
 - 151 passing tests with genuine BGE, PostgreSQL/pgvector and MCP stdio integration enabled, with zero skips; unchanged
   retrieval/answer datasets remain fully passing and security evaluation remains 30/30 development, 29/30 holdout.
 
+Prompt 09 adds and verifies:
+
+- A separate explicit SDK-native Streamable HTTP entry point bound only to `127.0.0.1`, preserving stdio.
+- EdDSA JWT access-token verification for signature, fixed algorithm/key, token type, trusted issuer, exact resource
+  audience, expiry/optional not-before, principal identity, short lifetime and operator-allowlisted scopes.
+- RFC 9728 protected-resource metadata and RFC 6750 challenges without implementing or claiming an authorization
+  server, public OAuth onboarding, refresh or revocation.
+- Request-local metadata/search/answer scope enforcement over the unchanged four tools and three resources.
+- Stateless authentication on every request and two independent official client identities with no scope inheritance.
+- Exact Host/Origin DNS-rebinding controls, no wildcard CORS, body/token limits, per-principal/IP rate limits, bounded
+  state, immediate concurrency 429, cancellation cleanup and sanitized JSON security events.
+- A bounded underlying-worker semaphore that prevents timed-out abandoned work from accumulating new worker jobs.
+- Genuine localhost demonstrations for hybrid evidence/provenance, extractive citation, abstention, restricted-client
+  denial, authentication/HTTP negatives, rate recovery and process shutdown/restart.
+- 162 passing tests with genuine BGE, PostgreSQL/pgvector, stdio and authenticated HTTP enabled, with zero failures or
+  skips; unchanged retrieval/answer evaluations remain fully passing and security remains 30/30 plus 29/30 holdout.
+
 ## Not implemented
 
 - LLM-generated answer generation or LLM-generated citations.
 - Reranking, contextual RAG, graph RAG, Self-RAG, corrective RAG, or agentic RAG.
-- Remote authenticated/HTTP MCP, local LLM generation, agent orchestration, companion UI, public deployment.
+- Public/TLS MCP deployment, complete external OAuth onboarding, local LLM generation, agent orchestration,
+  companion UI, distributed rate limiting or public deployment.
 - ThreadEye production database/API integration or real-document embedding.
 
-Prompt 08 is a hardened extractive evidence-answering pipeline exposed by one real local stdio MCP server, but it is
-not an LLM-powered RAG generator. No hosted/local LLM, reranking, remote MCP, agent, frontend, reuse or public-deployment
-claim should be made.
+Prompt 09 exposes the same hardened extractive pipeline through real stdio and authenticated local Streamable HTTP,
+but it is not an LLM-powered RAG generator. No hosted/local LLM, reranking, public remote MCP, complete OAuth, agent,
+frontend, cross-project reuse or public-deployment claim should be made.

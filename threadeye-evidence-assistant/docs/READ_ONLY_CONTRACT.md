@@ -50,14 +50,15 @@ Authorized Sanitized Ingestion
 Read-only Retrieval & Extractive Answers
           |
           v
-Local stdio MCP Server
+Local stdio MCP Server or Authenticated Loopback HTTP Adapter
 ```
 
-Prompt 08 exposes only an independently authorized fictional synthetic source. Server-owned filters cannot be replaced
+Prompts 08–09 expose only an independently authorized fictional synthetic source. Server-owned filters cannot be replaced
 by tool arguments. The MCP process uses a dedicated database role with connect, schema usage and SELECT only, and
 forces read-only transactions. Real integration tests prove that update, delete, truncate and DDL attempts fail.
 
-The server has no indexing, filesystem, shell, generic SQL, HTTP, inspection-update, verdict, scoring or audit tools.
-It offers no production access and cannot change ThreadEye data or decisions. Stdio does not authenticate a person;
-the trusted local launcher controls who receives the fixed synthetic permission. Future remote access must add real
-authentication and authorization without weakening this boundary.
+The server has no indexing, filesystem, shell, generic SQL, web-fetch, inspection-update, verdict, scoring or audit
+tools. It offers no production access and cannot change ThreadEye data or decisions. Stdio does not authenticate a
+person; its trusted local launcher controls the fixed synthetic permission. The separate HTTP adapter authenticates
+every stateless request and enforces metadata/search/answer scopes, but remains loopback-only and is not a public
+remote service.

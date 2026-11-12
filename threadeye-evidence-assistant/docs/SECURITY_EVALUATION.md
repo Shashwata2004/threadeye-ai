@@ -101,6 +101,7 @@ dedicated loopback database/user/volume, and all protected hashes match the Prom
 Pattern and heuristic defenses are incomplete. Novel prompt injection, low-rate poisoning, single-script confusables,
 valid domain terminology outside the small anchor set and unusual paraphrases can be missed or falsely rejected.
 Conflicts cause abstention rather than resolution. Citation checks establish exact extractive provenance, not general
-semantic truth. A human must review the 16 supported evaluation answers. There is no public rate limiter, service
-deadline, retry/high-availability layer, generative LLM, reranker, MCP server, local LLM, companion frontend or
-production integration. These synthetic results must not be generalized into a production security guarantee.
+semantic truth. A human must review the 16 supported evaluation answers. Prompts 08–09 subsequently added local MCP
+stdio and authenticated loopback HTTP with deadlines and per-process limits, but there is still no public/distributed
+rate limiter, retry/high-availability layer, generative LLM, reranker, local LLM, companion frontend or production
+integration. These synthetic results must not be generalized into a production security guarantee.

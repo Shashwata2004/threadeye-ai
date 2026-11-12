@@ -5,11 +5,14 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import threading
 from collections.abc import Mapping
 from typing import Any, Literal
 
 import anyio
 from mcp.server import MCPServer
+from mcp.server.auth.provider import TokenVerifier
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.context import CallNext, HandlerResult, ServerRequestContext
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.shared.exceptions import MCPError
@@ -17,6 +20,7 @@ from mcp.types import INVALID_PARAMS, ToolAnnotations
 
 from threadeye_evidence.mcp import MCP_SERVER_VERSION
 from threadeye_evidence.mcp.authorization import AuthorizationConfigurationError
+from threadeye_evidence.mcp.http_authorization import HTTPScopeAuthorizationMiddleware
 from threadeye_evidence.mcp.service import EvidenceMCPService, MCPRequestError, service_from_environment
 
 
@@ -56,9 +60,21 @@ class StrictToolArgumentsMiddleware:
         return await call_next(ctx)
 
 
-def build_server(service: EvidenceMCPService) -> MCPServer:
+def build_server(
+    service: EvidenceMCPService,
+    *,
+    token_verifier: TokenVerifier | None = None,
+    auth: AuthSettings | None = None,
+    enforce_http_scopes: bool = False,
+    audit_logger: logging.Logger | None = None,
+) -> MCPServer:
     """Build the fixed registry; callers cannot add tools dynamically."""
 
+    middleware = [StrictToolArgumentsMiddleware()]
+    if enforce_http_scopes:
+        if token_verifier is None or auth is None or audit_logger is None:
+            raise ValueError("HTTP scope enforcement requires authentication and audit logging")
+        middleware.insert(0, HTTPScopeAuthorizationMiddleware(audit_logger))
     mcp = MCPServer(
         "threadeye-evidence",
         title="ThreadEye Evidence MCP Server",
@@ -68,19 +84,30 @@ def build_server(service: EvidenceMCPService) -> MCPServer:
             "change scores, modify inspections, or access production ThreadEye systems."
         ),
         version=MCP_SERVER_VERSION,
+        token_verifier=token_verifier,
+        auth=auth,
         log_level="ERROR",
         subscriptions=False,
-        middleware=[StrictToolArgumentsMiddleware()],
+        middleware=middleware,
     )
-    limiter = anyio.CapacityLimiter(service.authorization.max_concurrency)
+    worker_slots = threading.BoundedSemaphore(service.authorization.max_concurrency)
+
+    async def run_bounded(function, *args):
+        if not worker_slots.acquire(blocking=False):
+            raise ToolError("evidence operation capacity is exhausted")
+
+        def execute():
+            try:
+                return function(*args)
+            finally:
+                worker_slots.release()
+
+        return await anyio.to_thread.run_sync(execute, abandon_on_cancel=True)
 
     async def run_tool(function, *args):
         try:
-            async with limiter:
-                with anyio.fail_after(service.authorization.tool_timeout_seconds):
-                    return await anyio.to_thread.run_sync(
-                        lambda: function(*args), abandon_on_cancel=True
-                    )
+            with anyio.fail_after(service.authorization.tool_timeout_seconds):
+                return await run_bounded(function, *args)
         except TimeoutError as exc:
             raise ToolError("evidence tool execution exceeded the configured deadline") from exc
         except MCPRequestError as exc:
@@ -93,9 +120,8 @@ def build_server(service: EvidenceMCPService) -> MCPServer:
 
     async def run_resource(function):
         try:
-            async with limiter:
-                with anyio.fail_after(service.authorization.tool_timeout_seconds):
-                    payload = await anyio.to_thread.run_sync(function, abandon_on_cancel=True)
+            with anyio.fail_after(service.authorization.tool_timeout_seconds):
+                payload = await run_bounded(function)
             return json.dumps(payload, ensure_ascii=False, sort_keys=True)
         except TimeoutError as exc:
             raise ResourceError("evidence resource execution exceeded the configured deadline") from exc

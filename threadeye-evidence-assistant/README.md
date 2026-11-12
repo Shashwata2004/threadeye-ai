@@ -6,11 +6,13 @@ weighted reciprocal-rank fusion. Prompt 06 adds conservative extractive evidence
 and explicit abstention. Prompt 07 adds adversarial fixtures, citation mutation defenses, Unicode/input controls,
 failure isolation, and a reproducible 60-case security evaluation. Prompt 08 adds one official-SDK MCP v2 server over
 stdio, a fixed trusted synthetic-corpus scope, four read-only tools, three sanitized resources, and a dedicated
-least-privilege database identity.
+least-privilege database identity. Prompt 09 adds an explicitly launched, authenticated localhost Streamable HTTP
+transport with EdDSA access tokens, per-operation scopes, protected-resource metadata, rate limiting and audit events.
 It does not modify or import the ThreadEye application. All six real ThreadEye documents remain blocked from
 content ingestion and embedding.
 
-LLM-generated RAG answers, reranking, remote/HTTP MCP, local LLM generation, a UI, and deployment are not implemented.
+LLM-generated RAG answers, reranking, public/remote MCP deployment, local LLM generation, a UI, and deployment are not
+implemented.
 
 ## Environments
 
@@ -121,6 +123,10 @@ THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 \
 # After exporting the trusted MCP config/cache and read-only MCP database URL above
 THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 THREADEYE_RUN_MCP_TESTS=1 \
   PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+
+# Full Prompt 09 run, including two real authenticated localhost HTTP clients
+THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 THREADEYE_RUN_MCP_TESTS=1 \
+  THREADEYE_RUN_HTTP_TESTS=1 PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ```
 
 ## Read-only MCP server
@@ -153,10 +159,33 @@ The server writes MCP frames only to stdout and diagnostics only to stderr. Stdi
 authentication: anyone able to launch the process with the trusted configuration and read-only database credential
 can exercise that deliberately limited synthetic scope. See [MCP server operations and evidence](docs/MCP_SERVER.md).
 
+## Authenticated localhost MCP HTTP
+
+Prompt 09 preserves stdio and adds a separate explicit launcher at `http://127.0.0.1:8765/mcp`. It requires the same
+read-only service configuration plus `config/mcp-http.json` and an operator-owned Ed25519 public key:
+
+```bash
+export THREADEYE_EVIDENCE_HTTP_CONFIG="$PWD/config/mcp-http.json"
+export THREADEYE_EVIDENCE_HTTP_PUBLIC_KEY="/absolute/path/to/ed25519-public-key.pem"
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence.mcp.http_server
+```
+
+The server never receives a private signing key and does not issue tokens. For the reproducible test-only flow, this
+command generates an ephemeral signing key and short-lived synthetic tokens, starts the real HTTP subprocess, invokes
+two official SDK clients with different scopes, runs negative tests, and shuts it down:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence.mcp.verify_http
+```
+
+This is a local OAuth resource-server demonstration, not a complete authorization server or interactive OAuth login.
+See [authenticated Streamable HTTP architecture and evidence](docs/MCP_HTTP.md).
+
 Read [the grounded-answering and abstention design](docs/ANSWERING.md),
 [the hybrid retrieval design and benchmark](docs/HYBRID_RETRIEVAL.md),
 [the vector implementation](docs/VECTOR_INDEXING.md), [ingestion controls](docs/INGESTION.md),
 [architecture](docs/ARCHITECTURE.md), [MCP server](docs/MCP_SERVER.md),
+[authenticated MCP HTTP](docs/MCP_HTTP.md),
 [security evaluation](docs/SECURITY_EVALUATION.md), and
 [threat model](docs/THREAT_MODEL.md). Inventory approval is not
 permission to embed, redistribute, train on, publish, or expose a real document.

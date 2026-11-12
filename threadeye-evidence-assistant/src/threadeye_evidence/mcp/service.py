@@ -137,7 +137,8 @@ class EvidenceMCPService:
     def capabilities(self) -> dict[str, Any]:
         return self._bounded({
             "server": "ThreadEye Evidence MCP Server",
-            "transport": "stdio",
+            "transport": "launcher-selected stdio or authenticated local streamable-http",
+            "transports": ["stdio", "streamable-http"],
             "read_only": True,
             "retrieval_modes": [mode.value for mode in RetrievalMode],
             "answer_mode": "extractive",
@@ -149,7 +150,7 @@ class EvidenceMCPService:
             "limitations": [
                 "No LLM generation, operational verdict, scoring change, filesystem tool, SQL tool, or shell tool.",
                 "No production ThreadEye, Supabase, buyer, inspection-image, report, or user access.",
-                "stdio is local transport, not cryptographic caller authentication.",
+                "stdio is local transport, not cryptographic caller authentication; HTTP requires a validated token.",
             ],
             "authorization": self.authorization.public_mapping(),
         })

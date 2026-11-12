@@ -64,7 +64,7 @@ async def verify_stdio() -> dict[str, Any]:
         params,
         mode="legacy",
         read_timeout_seconds=15.0,
-        client_info=Implementation(name="threadeye-evidence-verifier", version="0.7.0"),
+        client_info=Implementation(name="threadeye-evidence-verifier", version="0.8.0"),
     ) as client:
         report["initialization"] = {
             "protocol_version": str(client.protocol_version),

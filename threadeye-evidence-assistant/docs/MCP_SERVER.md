@@ -2,10 +2,11 @@
 
 ## Verified implementation
 
-Prompt 08 adds one independently launchable MCP server using the
+Prompt 08 added one independently launchable MCP server using the
 [official Model Context Protocol Python SDK](https://github.com/modelcontextprotocol/python-sdk), pinned to
-`mcp==2.3.0` on Python 3.11.17. It uses the v2 `MCPServer` and `Client` APIs and only stdio transport. There is no HTTP
-listener, remote authentication, deployment, background daemon, production integration, or LLM generation.
+`mcp==2.3.0` on Python 3.11.17. It uses the v2 `MCPServer` and `Client` APIs. Prompt 09 preserves this stdio launcher
+and adds a separately launched authenticated localhost Streamable HTTP adapter described in [MCP_HTTP.md](MCP_HTTP.md).
+Neither launcher provides public deployment, production integration or LLM generation.
 
 ```text
 Authorized local MCP launcher
@@ -18,8 +19,8 @@ Authorized local MCP launcher
 ```
 
 Stdio is transport isolation, not cryptographic authentication. Anyone who can launch this process with its trusted
-configuration, model cache, and database credential can exercise the limited permissions they confer. Prompt 09, not
-this implementation, is the place for authenticated remote Streamable HTTP access.
+configuration, model cache, and database credential can exercise the limited permissions they confer. The HTTP
+launcher authenticates every request, but remains loopback-only and is not a public remote service.
 
 ## Fixed registry
 
@@ -157,5 +158,6 @@ The project truthfully demonstrates one custom MCP server **built** with an offi
 client over stdio. It demonstrates authorized keyword/vector/hybrid retrieval, deterministic extractive answering,
 citation validation, abstention and read-only database enforcement on fictional evidence.
 
-It does not demonstrate a second server, cross-project reuse, remote/HTTP transport, authenticated remote users,
-agents, generative RAG, production ThreadEye data, operational decisions, deployment or reuse bonus eligibility.
+The combined project now demonstrates the same server through stdio and authenticated local Streamable HTTP. It does
+not demonstrate a second independently built server, cross-project reuse, public remote users, agents, generative RAG,
+production ThreadEye data, operational decisions, deployment or reuse bonus eligibility.
