@@ -10,6 +10,9 @@ least-privilege database identity. Prompt 09 adds an explicitly launched, authen
 transport with EdDSA access tokens, per-operation scopes, protected-resource metadata, rate limiting and audit events.
 Prompt 10 adds a separate localhost-only judge UI, an operator-controlled browser session, genuine server-side MCP
 calls, safe evidence rendering, responsive layouts, and reproducible search/answer/abstention workflows.
+Prompt 11 adds a release QA package, an independently pre-labeled ten-case synthetic holdout, a reproducible real
+browser regression, clean-install verification, original-product regression evidence, and companion-only fixes found
+during testing. The first holdout run was 5/10 and the examined post-fix rerun was 8/10; both are preserved honestly.
 It does not modify or import the ThreadEye application. All six real ThreadEye documents remain blocked from
 content ingestion and embedding.
 
@@ -128,7 +131,11 @@ THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 THREADEYE_RUN_MCP_TESTS=1 \
 
 # Full Prompt 09 run, including two real authenticated localhost HTTP clients
 THREADEYE_RUN_MODEL_TESTS=1 THREADEYE_RUN_DB_TESTS=1 THREADEYE_RUN_MCP_TESTS=1 \
-  THREADEYE_RUN_HTTP_TESTS=1 PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+  THREADEYE_RUN_HTTP_TESTS=1 THREADEYE_RUN_UI_TESTS=1 \
+  PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+
+# Independent QA holdout (do not tune thresholds against this examined dataset)
+PYTHONPATH=src .venv/bin/python -m threadeye_evidence evaluate-qa-holdout --offline-model --format summary
 ```
 
 ## Read-only MCP server
@@ -213,5 +220,5 @@ Read [the grounded-answering and abstention design](docs/ANSWERING.md),
 [authenticated MCP HTTP](docs/MCP_HTTP.md),
 [judge UI demonstration](docs/JUDGE_DEMO.md),
 [security evaluation](docs/SECURITY_EVALUATION.md), and
-[threat model](docs/THREAT_MODEL.md). Inventory approval is not
+[final release QA](docs/FINAL_QA.md), and [threat model](docs/THREAT_MODEL.md). Inventory approval is not
 permission to embed, redistribute, train on, publish, or expose a real document.

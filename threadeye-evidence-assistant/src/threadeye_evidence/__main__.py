@@ -26,6 +26,7 @@ from threadeye_evidence.retrieval.fusion import RRFConfig
 from threadeye_evidence.retrieval.models import RetrievalFilters, RetrievalMode, RetrievalValidationError
 from threadeye_evidence.retrieval.policy import SECURITY_EVALUATION_POLICY, SYNTHETIC_EVALUATION_POLICY
 from threadeye_evidence.retrieval.store import RetrievalStore
+from threadeye_evidence.qa.evaluation import evaluate_qa_holdout, load_qa_holdout
 from threadeye_evidence.security.evaluation import evaluate_security, load_security_dataset
 from threadeye_evidence.vector.database import DatabaseSafetyError, DatabaseSettings, EvidenceDatabase
 from threadeye_evidence.vector.embeddings import EmbeddingValidationError, FastEmbedProvider
@@ -181,6 +182,22 @@ def _print_security_evaluation_summary(report: dict[str, object]) -> None:
         )
 
 
+def _print_qa_evaluation_summary(report: dict[str, object]) -> None:
+    metrics = report["metrics"]
+    exact = metrics["exact_expected_outcome"]
+    false_answers = metrics["false_answer_rate"]
+    false_abstentions = metrics["false_abstention_rate"]
+    citations = metrics["citation_validity"]
+    print(f"dataset={report['evaluation_dataset_version']} cases={metrics['cases']}")
+    print(
+        f"exact={exact['numerator']}/{exact['denominator']} "
+        f"false_answers={false_answers['numerator']}/{false_answers['denominator']} "
+        f"false_abstentions={false_abstentions['numerator']}/{false_abstentions['denominator']} "
+        f"citation_validity={citations['numerator']}/{citations['denominator']} "
+        f"avg_ms={metrics['average_latency_ms']:.3f} runtime_failures={metrics['runtime_failures']}"
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="ThreadEye isolated evidence inventory and retrieval")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -279,6 +296,13 @@ def build_parser() -> argparse.ArgumentParser:
     _add_retrieval_filters(security_eval)
     _add_sufficiency_options(security_eval)
     _add_vector_options(security_eval)
+
+    qa_eval = subparsers.add_parser("evaluate-qa-holdout", help="run the fixed independent Prompt 11 QA holdout")
+    qa_eval.add_argument("--dataset", type=Path, default=_project_root() / "evaluation/qa-holdout-v1.json")
+    qa_eval.add_argument("--format", choices=("json", "summary"), default="summary")
+    _add_retrieval_filters(qa_eval)
+    _add_sufficiency_options(qa_eval)
+    _add_vector_options(qa_eval)
     return parser
 
 
@@ -469,6 +493,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 dataset, engine, _retrieval_filters(args), selected_split=args.split, command=command,
             )
             _print(report) if args.format == "json" else _print_security_evaluation_summary(report)
+            return 0
+        if args.command == "evaluate-qa-holdout":
+            historical = (
+                _project_root() / "evaluation/retrieval-v1.json",
+                _project_root() / "evaluation/answering-v1.json",
+                _project_root() / "evaluation/security-v1.json",
+            )
+            dataset = load_qa_holdout(args.dataset, historical_paths=historical)
+            engine = EvidenceAnswerEngine(_retriever(args), sufficiency_config=_sufficiency_config(args))
+            command = f"threadeye-evidence evaluate-qa-holdout --dataset {args.dataset}"
+            report = evaluate_qa_holdout(dataset, engine, _retrieval_filters(args), command=command)
+            _print(report) if args.format == "json" else _print_qa_evaluation_summary(report)
             return 0
     except (
         SafetyViolation,

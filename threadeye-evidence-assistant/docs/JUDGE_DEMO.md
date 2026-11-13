@@ -111,8 +111,10 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src \
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-The verified final run is 175 passed, zero failed and zero skipped. It preserves real BGE, PostgreSQL/pgvector,
-stdio MCP, authenticated HTTP MCP, dedicated read-only database-role and previous evaluation coverage.
+The Prompt 10 verified run was 175 passed, zero failed and zero skipped. It preserves real BGE, PostgreSQL/pgvector,
+stdio MCP, authenticated HTTP MCP, dedicated read-only database-role and previous evaluation coverage. Prompt 11's
+release-candidate rerun is 180 passed, zero failed and zero skipped; see `FINAL_QA.md` for the new holdout's separate
+5/10 first-run and 8/10 post-fix results rather than treating test success as semantic accuracy.
 
 ## Troubleshooting
 

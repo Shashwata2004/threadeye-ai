@@ -69,19 +69,20 @@ class LocalBoundaryMiddleware:
             rejection = (421, "invalid_host")
         elif self.config.enforce_loopback_client and client_host not in {"127.0.0.1", "::1"}:
             rejection = (403, "loopback_required")
-        elif scope.get("method") in {"POST", "PUT", "PATCH", "DELETE"}:
-            exact_origin = origins == [self.config.origin]
-            browser_same_origin = not origins and fetch_sites == ["same-origin"]
-            if not exact_origin and not browser_same_origin:
-                rejection = (403, "invalid_origin")
-        elif len(lengths) > 1:
-            rejection = (400, "duplicate_content_length")
-        elif lengths:
-            try:
-                if int(lengths[0]) > MAX_BODY_BYTES:
-                    rejection = (413, "request_body_too_large")
-            except (TypeError, ValueError):
-                rejection = (400, "invalid_content_length")
+        else:
+            if scope.get("method") in {"POST", "PUT", "PATCH", "DELETE"}:
+                exact_origin = origins == [self.config.origin]
+                browser_same_origin = not origins and fetch_sites == ["same-origin"]
+                if not exact_origin and not browser_same_origin:
+                    rejection = (403, "invalid_origin")
+            if rejection is None and len(lengths) > 1:
+                rejection = (400, "duplicate_content_length")
+            elif rejection is None and lengths:
+                try:
+                    if int(lengths[0]) > MAX_BODY_BYTES:
+                        rejection = (413, "request_body_too_large")
+                except (TypeError, ValueError):
+                    rejection = (400, "invalid_content_length")
         if rejection:
             response = JSONResponse({"state": "VALIDATION FAILURE", "error": rejection[1]}, status_code=rejection[0])
             await self._send(response, scope, receive, send)

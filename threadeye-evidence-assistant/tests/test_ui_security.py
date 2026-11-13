@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 import subprocess
@@ -152,6 +153,13 @@ class UIAppTests(unittest.TestCase):
             response = self.client.post("/api/search", json=body, headers=headers)
             self.assertEqual(response.status_code, 400, body)
             self.assertEqual(response.json()["state"], "VALIDATION FAILURE")
+        oversized = self.client.post(
+            "/api/search",
+            content=json.dumps({"query": "x" * 9_000, "mode": "hybrid", "top_k": 1}),
+            headers={**headers, "Content-Type": "application/json"},
+        )
+        self.assertEqual(oversized.status_code, 413)
+        self.assertEqual(oversized.json()["error"], "request_body_too_large")
 
     def test_search_and_safe_abstention(self) -> None:
         csrf = self.login()

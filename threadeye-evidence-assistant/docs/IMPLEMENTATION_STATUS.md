@@ -108,6 +108,22 @@ Prompt 10 adds and verifies:
 - 175 passing tests with genuine BGE, PostgreSQL/pgvector, stdio MCP, authenticated HTTP MCP and UI integration;
   zero failures and zero skips under all integration flags.
 
+Prompt 11 adds and verifies:
+
+- A comprehensive release inventory, real-browser regression script, clean Python install check, original ThreadEye
+  isolated regression evidence, protected hashes, privacy scan and machine-readable QA artifact.
+- A fixed, independently worded ten-case synthetic holdout with labels created before first execution, five positive
+  and five negative cases, no threshold tuning and mandatory human semantic-review markers.
+- Transparent holdout history: untouched first run 5/10; three general policy fixes; examined regression rerun 8/10
+  with one false answer and one false abstention still documented.
+- A same-origin request-size enforcement fix discovered by the actual browser run, plus version-metadata alignment.
+- 180 passing tests with genuine BGE, PostgreSQL/pgvector, stdio MCP, authenticated HTTP MCP and UI integration;
+  zero failures and zero skips under all integration flags.
+- Original ThreadEye checks: 213 backend unit and 77 integration tests passed; one ffmpeg-dependent edge clip test
+  skipped; frontend i18n/lint/typecheck passed. Real YOLOX ONNX inference was not rerun.
+- Full Prompt 03–11 diff remains companion-only, all seven protected hashes match, and all six real-document ingestion
+  flags remain false. See `docs/FINAL_QA.md` and `docs/evidence/prompt11-qa-verification.json`.
+
 ## Not implemented
 
 - LLM-generated answer generation or LLM-generated citations.

@@ -13,7 +13,7 @@ class QuestionSecurityError(ValueError):
 
 
 _SECRET = re.compile(
-    r"\b(?:reveal|show|print|extract|give|leak)\b.{0,50}\b(?:password|credential|secret|token|api[_ -]?key|private data)\b",
+    r"\b(?:reveal|show|print|extract|give|leak|disclose)\b.{0,50}\b(?:password|credentials?|secret|token|api[_ -]?key|private data)\b",
     re.IGNORECASE,
 )
 _PRODUCTION = re.compile(
@@ -23,12 +23,14 @@ _PRODUCTION = re.compile(
 _INJECTION = re.compile(
     r"\b(?:ignore (?:all |the )?(?:previous|prior|system) instructions|reveal (?:the )?(?:hidden|system) prompt|"
     r"follow (?:the )?instructions? (?:inside|in) (?:the )?(?:document|evidence))\b|"
-    r"\b(?:system|developer|assistant)\s*(?:message|instruction)?\s*:",
+    r"\b(?:system|developer|assistant)\s*(?:message|instruction)?\s*:|"
+    r"\b(?:treat|use)\b.{0,35}\b(?:markdown|document|evidence)\b.{0,35}\b(?:authority|instructions?)\b",
     re.IGNORECASE,
 )
 _VERDICT = re.compile(
     r"\b(?:approve|reject|pass|fail)\b.{0,35}\b(?:this |the |actual |real )?(?:roll|fabric|shipment)\b|"
-    r"\b(?:give|change|override|recalculate)\b.{0,35}\b(?:roll verdict|quality decision|four[- ]point score|supervisor approval)\b",
+    r"\b(?:give|change|override|recalculate)\b.{0,35}\b(?:roll verdict|quality decision|four[- ]point score|supervisor approval)\b|"
+    r"\b(?:send|issue|grant|record|mark)\b.{0,45}\b(?:shipment approval|fabric accepted|roll accepted|acceptance decision)\b",
     re.IGNORECASE,
 )
 _CONTRADICTION = re.compile(r"\b(?:contradictory|conflicting|mutually exclusive|opposite claims?)\b", re.IGNORECASE)
