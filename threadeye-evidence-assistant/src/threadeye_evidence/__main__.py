@@ -102,7 +102,7 @@ def _retriever(args: argparse.Namespace) -> HybridRetriever:
 
 def _sufficiency_config(args: argparse.Namespace) -> SufficiencyConfig:
     return SufficiencyConfig(
-        version="prompt06-dev-v1",
+        version="prompt11r-v1",
         min_semantic_similarity=args.min_semantic_similarity,
         strong_semantic_similarity=args.strong_semantic_similarity,
         min_semantic_margin=args.min_semantic_margin,

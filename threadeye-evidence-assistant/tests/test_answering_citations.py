@@ -111,6 +111,25 @@ class CitationValidationTests(unittest.TestCase):
         with self.assertRaises(CitationValidationError):
             self.validate(answer=self.excerpt + " An unsupported extra claim.")
 
+    def test_heading_overlap_cannot_make_unrelated_excerpt_relevant(self) -> None:
+        unrelated = evidence(text="This document is synthetic.")
+        unrelated = replace(unrelated, candidate=replace(
+            unrelated.candidate,
+            heading_hierarchy=("Fictional Mill Evidence Packet",),
+            cosine_similarity=0.91,
+        ))
+        citation = citation_from_excerpt(unrelated, "This document is synthetic.")
+        with self.assertRaises(CitationValidationError):
+            validate_citations(
+                "What spindle speed does the fictional weaving machine use?",
+                citation.excerpt,
+                [citation],
+                [unrelated],
+                self.filters,
+                "profile",
+                self.config,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

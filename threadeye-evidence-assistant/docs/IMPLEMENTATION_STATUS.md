@@ -124,6 +124,23 @@ Prompt 11 adds and verifies:
 - Full Prompt 03–11 diff remains companion-only, all seven protected hashes match, and all six real-document ingestion
   flags remain false. See `docs/FINAL_QA.md` and `docs/evidence/prompt11-qa-verification.json`.
 
+Prompt 11R adds and verifies:
+
+- Statement-level semantic-support checks that do not treat headings or valid provenance as factual entailment.
+- Explicit inference-relationship and requested numeric/percentage value checks, with identifiers excluded from value
+  detection.
+- Safe distinction between informational capability-boundary questions and operational verdict commands.
+- A preregistered, hashed 24-case reliability evaluation with separate 12-case development and fresh-holdout splits,
+  while preserving all four historical datasets unchanged.
+- Honest first fresh result preservation: 10/12 with one false answer and one false abstention; both defects received
+  general fixes, and the examined post-fix regression passed 12/12 with zero unsupported claims.
+- Known Prompt 11 regression improved to 9/10 with zero false answers; one conservative false abstention remains rather
+  than lowering the frozen similarity floor.
+- 190 passing tests with genuine BGE, PostgreSQL/pgvector, stdio MCP, authenticated HTTP MCP, read-only permissions and
+  judge UI integration enabled; zero failures and zero skips under all integration flags.
+- Companion-only diff, seven protected hashes unchanged, and all six real-document ingestion flags still false. See
+  `docs/ANSWER_RELIABILITY_REVIEW.md` and `docs/evidence/prompt11r-answer-reliability-results.json`.
+
 ## Not implemented
 
 - LLM-generated answer generation or LLM-generated citations.

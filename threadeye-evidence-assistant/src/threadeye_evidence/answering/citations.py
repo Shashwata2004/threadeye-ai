@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
-from threadeye_evidence.answering.abstention import SufficiencyConfig, content_tokens
+from threadeye_evidence.answering.abstention import SufficiencyConfig, statement_overlap
 from threadeye_evidence.answering.models import EvidenceCitation
 from threadeye_evidence.retrieval.models import RankedEvidence, RetrievalFilters
 
@@ -59,7 +59,6 @@ def validate_citations(
     if answer != " ".join(citation.excerpt for citation in citations):
         raise CitationValidationError("extractive answers may contain only the ordered cited excerpts")
     indexed: Mapping[str, RankedEvidence] = {item.candidate.chunk_id: item for item in evidence}
-    question_tokens = content_tokens(question)
     for citation in citations:
         ranked = indexed.get(citation.chunk_id)
         if ranked is None:
@@ -110,8 +109,7 @@ def validate_citations(
             raise CitationValidationError("citation excerpt does not match its normalized sanitized span")
         if citation.excerpt not in answer:
             raise CitationValidationError("the cited excerpt does not directly support any extractive answer text")
-        overlap = len(question_tokens & content_tokens(citation.excerpt + " " + " ".join(citation.heading_hierarchy)))
-        similarity = candidate.cosine_similarity or -1.0
-        if overlap < config.min_lexical_overlap and similarity < config.strong_semantic_similarity:
-            raise CitationValidationError("citation does not meet claim-relevance requirements")
+        overlap = statement_overlap(question, citation.excerpt)
+        if overlap < config.min_statement_overlap:
+            raise CitationValidationError("citation excerpt has no explicit relationship to the question")
     return CitationValidationReport(True, len(citations))

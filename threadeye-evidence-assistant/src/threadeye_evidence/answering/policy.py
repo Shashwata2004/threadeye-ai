@@ -33,6 +33,10 @@ _VERDICT = re.compile(
     r"\b(?:send|issue|grant|record|mark)\b.{0,45}\b(?:shipment approval|fabric accepted|roll accepted|acceptance decision)\b",
     re.IGNORECASE,
 )
+_CAPABILITY_BOUNDARY_QUESTION = re.compile(
+    r"^\s*(?:can|could|does|is)\s+(?:automated retrieval|the evidence assistant|the assistant|the retrieval system)\b.{0,120}\?\s*$",
+    re.IGNORECASE,
+)
 _CONTRADICTION = re.compile(r"\b(?:contradictory|conflicting|mutually exclusive|opposite claims?)\b", re.IGNORECASE)
 _EVIDENCE_INJECTION = re.compile(
     r"\b(?:ignore (?:all |the )?(?:previous|prior|system) instructions|reveal credentials|"
@@ -53,7 +57,7 @@ def rejected_request_reason(question: str) -> str | None:
         return AbstentionReason.PRODUCTION_ACCESS_REQUEST.value
     if _INJECTION.search(question):
         return AbstentionReason.PROMPT_INJECTION_REQUEST.value
-    if _VERDICT.search(question):
+    if _VERDICT.search(question) and not _CAPABILITY_BOUNDARY_QUESTION.search(question):
         return AbstentionReason.VERDICT_OVERRIDE_REQUEST.value
     if _CONTRADICTION.search(question):
         return AbstentionReason.CONTRADICTORY_EVIDENCE.value

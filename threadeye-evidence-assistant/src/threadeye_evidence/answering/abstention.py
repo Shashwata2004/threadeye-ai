@@ -13,26 +13,103 @@ from threadeye_evidence.retrieval.models import RankedEvidence
 
 _TOKEN = re.compile(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*")
 _IDENTIFIER = re.compile(r"\b[A-Z]{2,}(?:-[A-Z0-9]+)+\b")
+_SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
 _STOPWORDS = frozenset(
     "a an and are as at be before by can did do does for from how i in is it of on or that the this to was what when where which who why with".split()
 )
 _DOMAIN_ANCHORS = frozenset(
     "fabric roll textile defect hole stain slub yarn edge scoring penalty inspected supplier supervisor classification observation evidence quarantine reviewer approval".split()
 )
+_INFERENCE_RELATIONS = frozenset(("prove", "proves", "demonstrate", "demonstrates", "establish", "establishes", "imply", "implies", "guarantee", "guarantees"))
+_PERCENTAGE_REQUEST = re.compile(r"\b(?:percentage|percent)\b", re.IGNORECASE)
+_NUMERIC_REQUEST = re.compile(r"\b(?:numeric|numerical|number|count|quantity|how many)\b", re.IGNORECASE)
+_PERCENTAGE_VALUE = re.compile(r"(?:\b\d+(?:\.\d+)?\s*%|\b(?:percent|percentage)\b)", re.IGNORECASE)
+_NUMERIC_VALUE = re.compile(
+    r"\b(?:\d+(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten)\b",
+    re.IGNORECASE,
+)
+
+
+def _normalized_lexeme(token: str) -> str:
+    """Apply small, deterministic inflection normalization without semantic guessing."""
+    value = token.lower()
+    if "-" in value or any(character.isdigit() for character in value):
+        return value
+    if len(value) > 4 and value.endswith("ies"):
+        return value[:-3] + "y"
+    if len(value) > 4 and value.endswith("es") and value[-3] in "sxz":
+        return value[:-2]
+    if len(value) > 3 and value.endswith("s") and not value.endswith("ss"):
+        return value[:-1]
+    return value
 
 
 def content_tokens(text: str) -> set[str]:
-    return {token.lower() for token in _TOKEN.findall(text) if token.lower() not in _STOPWORDS and len(token) > 1}
+    return {
+        _normalized_lexeme(token)
+        for token in _TOKEN.findall(text)
+        if token.lower() not in _STOPWORDS and len(token) > 1
+    }
+
+
+def statement_overlap(question: str, text: str) -> int:
+    """Return the strongest question overlap in one answer-bearing statement.
+
+    Headings are intentionally excluded. They are useful for retrieval but cannot,
+    by themselves, prove that an extracted factual statement answers a question.
+    """
+    query_tokens = content_tokens(question)
+    overlaps = []
+    for raw in _SENTENCE.split(text):
+        statement = raw.strip()
+        if not statement or statement.startswith("#"):
+            continue
+        overlaps.append(len(query_tokens & content_tokens(statement)))
+    return max(overlaps, default=0)
+
+
+def inference_relationship_supported(question: str, text: str) -> bool:
+    """Require both sides of an explicit inference claim in one statement."""
+    ordered = [
+        _normalized_lexeme(token)
+        for token in _TOKEN.findall(question)
+        if token.lower() not in _STOPWORDS and len(token) > 1
+    ]
+    marker_index = next((index for index, token in enumerate(ordered) if token in _INFERENCE_RELATIONS), None)
+    if marker_index is None:
+        return True
+    left = set(ordered[:marker_index])
+    right = set(ordered[marker_index + 1:])
+    if not left or not right:
+        return False
+    for raw in _SENTENCE.split(text):
+        statement = raw.strip()
+        if statement and not statement.startswith("#"):
+            tokens = content_tokens(statement)
+            if tokens & left and tokens & right:
+                return True
+    return False
+
+
+def requested_value_type_supported(question: str, text: str) -> bool:
+    """Fail closed when a requested typed value is absent from the evidence."""
+    without_identifiers = _IDENTIFIER.sub("", text)
+    if _PERCENTAGE_REQUEST.search(question):
+        return bool(_PERCENTAGE_VALUE.search(without_identifiers))
+    if _NUMERIC_REQUEST.search(question):
+        return bool(_NUMERIC_VALUE.search(without_identifiers))
+    return True
 
 
 @dataclass(frozen=True)
 class SufficiencyConfig:
-    version: str = "prompt06-dev-v1"
+    version: str = "prompt11r-v1"
     min_question_tokens: int = 2
     min_semantic_similarity: float = 0.62
     strong_semantic_similarity: float = 0.70
     min_semantic_margin: float = 0.015
     min_lexical_overlap: int = 1
+    min_statement_overlap: int = 1
     max_supporting_chunks: int = 2
 
     def __post_init__(self) -> None:
@@ -48,6 +125,8 @@ class SufficiencyConfig:
             raise ValueError("min_semantic_margin must be from 0 through 0.25")
         if not 1 <= self.min_lexical_overlap <= 10:
             raise ValueError("min_lexical_overlap must be from 1 through 10")
+        if not 1 <= self.min_statement_overlap <= 10:
+            raise ValueError("min_statement_overlap must be from 1 through 10")
         if not 1 <= self.max_supporting_chunks <= 3:
             raise ValueError("max_supporting_chunks must be from 1 through 3")
 
@@ -111,10 +190,16 @@ def assess_sufficiency(
     second_similarity = max(other_similarities) if other_similarities else None
     margin = similarity - second_similarity if similarity is not None and second_similarity is not None else None
 
-    semantic_supported = similarity is not None and similarity >= config.min_semantic_similarity and (
-        overlap >= config.min_lexical_overlap
-        or similarity >= config.strong_semantic_similarity
+    answer_statement_overlap = statement_overlap(question, candidate.sanitized_text)
+    statement_relationship_supported = answer_statement_overlap >= config.min_statement_overlap
+    inference_supported = inference_relationship_supported(question, candidate.sanitized_text)
+    value_type_supported = requested_value_type_supported(question, candidate.sanitized_text)
+    semantic_supported = (
+        similarity is not None
+        and similarity >= config.min_semantic_similarity
+        and statement_relationship_supported
     )
+    lexical_relationship_supported = answer_statement_overlap >= config.min_statement_overlap
     query_domain = query_tokens & _DOMAIN_ANCHORS
     evidence_domain = evidence_tokens & _DOMAIN_ANCHORS
     domain_consistent = not query_domain or bool(query_domain & evidence_domain)
@@ -125,14 +210,52 @@ def assess_sufficiency(
             (),
             {"config_version": config.version, "query_domain_anchors": sorted(query_domain)},
         )
+    if not inference_supported:
+        return SufficiencyDecision(
+            False,
+            AbstentionReason.INSUFFICIENT_RELEVANCE.value,
+            (),
+            {
+                "config_version": config.version,
+                "answer_statement_overlap": answer_statement_overlap,
+                "statement_relationship_supported": statement_relationship_supported,
+                "inference_relationship_supported": False,
+            },
+        )
+    if not value_type_supported:
+        return SufficiencyDecision(
+            False,
+            AbstentionReason.INSUFFICIENT_RELEVANCE.value,
+            (),
+            {
+                "config_version": config.version,
+                "answer_statement_overlap": answer_statement_overlap,
+                "statement_relationship_supported": statement_relationship_supported,
+                "inference_relationship_supported": inference_supported,
+                "requested_value_type_supported": False,
+            },
+        )
     unambiguous = keyword_match or exact_identifier or overlap >= 2 or margin is None or margin >= config.min_semantic_margin
-    sufficient = (exact_identifier or keyword_match or semantic_supported) and unambiguous
+    exact_identifier_supported = exact_identifier and answer_statement_overlap >= config.min_lexical_overlap
+    keyword_supported = keyword_match and statement_relationship_supported
+    sufficient = (
+        exact_identifier_supported
+        or keyword_supported
+        or semantic_supported
+    ) and unambiguous
     signals = {
         "config_version": config.version,
         "query_token_count": len(query_tokens),
         "lexical_overlap": overlap,
+        "answer_statement_overlap": answer_statement_overlap,
+        "statement_relationship_supported": statement_relationship_supported,
+        "inference_relationship_supported": inference_supported,
+        "requested_value_type_supported": value_type_supported,
+        "lexical_relationship_supported": lexical_relationship_supported,
         "exact_identifier": exact_identifier,
+        "exact_identifier_supported": exact_identifier_supported,
         "keyword_match": keyword_match,
+        "keyword_supported": keyword_supported,
         "cosine_similarity": similarity,
         "semantic_margin": margin,
         "semantic_supported": semantic_supported,
