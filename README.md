@@ -16,8 +16,10 @@ International AI Builders Congress 2026 · *Idea to Unicorn* · IndustrySphere A
 > [the pilot protocol](docs/impact/PILOT_PROTOCOL.md) explains how to measure human and business impact.
 
 **Status:** the core flow plus operational verification, cutting approvals, dashboard KPIs, admin editing,
-benchmark history and reviewed-label export are implemented locally. See [docs/MILESTONES.md](docs/MILESTONES.md)
-for the current scope and checks; the original schedule is in [docs/PLAN.md](docs/PLAN.md).
+benchmark history and reviewed-label export are implemented locally. The repository also includes an isolated,
+read-only Evidence Assistant for technical-evidence retrieval and judge review. See
+[docs/MILESTONES.md](docs/MILESTONES.md) for the current scope and checks; the original schedule is in
+[docs/PLAN.md](docs/PLAN.md).
 
 - **Live inspection:** scan a roll, the simulated camera plays, defect boxes move with the fabric, a yard
   tape, speed and running/stopped state, a live points meter; the inspector confirms, rejects (with a
@@ -154,6 +156,23 @@ flowchart LR
 - **Swappable AI:** every detector implements `DetectorProvider` (`backend/threadeye/core/providers.py`).
   Only the simulated provider may read the answer key, and import-linter enforces it.
 
+## Evidence Assistant
+
+`threadeye-evidence-assistant/` is a separate technical-review companion. It does not import the inspection
+runtime, access factory data or alter inspection decisions. Its approved corpus is fictional and isolated by
+design.
+
+It provides heading-aware ingestion, local BGE embeddings, PostgreSQL/pgvector keyword and vector retrieval
+with weighted reciprocal-rank fusion, deterministic extractive answers, validated citations and explicit
+abstention. One read-only MCP server exposes four tools over stdio and authenticated localhost Streamable HTTP;
+a local judge UI demonstrates the same controlled evidence path.
+
+The current verification record covers 190 passing tests, real stdio and HTTP MCP calls, and a real
+Chrome/Playwright judge flow. Detailed results and limitations are in
+[the companion README](threadeye-evidence-assistant/README.md),
+[technical evidence](threadeye-evidence-assistant/docs/cloudcamp/TECHNICAL_EVIDENCE.md), and the
+[judge demo guide](threadeye-evidence-assistant/docs/cloudcamp/JUDGE_DEMO.md).
+
 ## Repository
 
 | Path | What |
@@ -165,10 +184,14 @@ flowchart LR
 | `data/sample_roll/` | Simulated sample roll (CSV/JSON in git; the video only after the licence check) |
 | `infra/` | Caddy proxy config |
 | `scripts/` | Offline check, micro-fixture generator |
+| `threadeye-evidence-assistant/` | Isolated synthetic-evidence retrieval, read-only MCP server, local judge UI, tests and CloudCamp evidence pack |
 
 ## Disclosure files
 
 [PROVENANCE.md](PROVENANCE.md) (data & AI) · [TOOLING.md](TOOLING.md) (tools, IDEs, MCP) · [PROMPTS.md](PROMPTS.md) (prompt library)
+
+The Evidence Assistant's submission-facing verification is collected in the
+[CloudCamp evidence pack](threadeye-evidence-assistant/docs/cloudcamp/README.md).
 
 ## Licence
 
