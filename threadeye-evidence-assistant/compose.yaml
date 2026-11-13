@@ -1,0 +1,37 @@
+name: threadeye-evidence-assistant
+
+services:
+  evidence-db:
+    image: pgvector/pgvector:0.8.7-pg17-bookworm
+    environment:
+      POSTGRES_DB: ${EVIDENCE_DB_NAME:?Set EVIDENCE_DB_NAME in .env.db}
+      POSTGRES_USER: ${EVIDENCE_DB_ADMIN_USER:?Set EVIDENCE_DB_ADMIN_USER in .env.db}
+      POSTGRES_PASSWORD: ${EVIDENCE_DB_ADMIN_PASSWORD:?Set EVIDENCE_DB_ADMIN_PASSWORD in .env.db}
+      EVIDENCE_DB_USER: ${EVIDENCE_DB_USER:?Set EVIDENCE_DB_USER in .env.db}
+      EVIDENCE_DB_PASSWORD: ${EVIDENCE_DB_PASSWORD:?Set EVIDENCE_DB_PASSWORD in .env.db}
+      EVIDENCE_MCP_DB_USER: ${EVIDENCE_MCP_DB_USER:?Set EVIDENCE_MCP_DB_USER in .env.db}
+      EVIDENCE_MCP_DB_PASSWORD: ${EVIDENCE_MCP_DB_PASSWORD:?Set EVIDENCE_MCP_DB_PASSWORD in .env.db}
+    ports:
+      - "127.0.0.1:${EVIDENCE_DB_PORT:-55432}:5432"
+    volumes:
+      - evidence-pgdata:/var/lib/postgresql/data
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$EVIDENCE_DB_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: "no"
+    mem_limit: 1g
+    cpus: 1.0
+    networks:
+      - evidence-internal
+
+volumes:
+  evidence-pgdata:
+    name: threadeye-evidence-assistant-pgdata
+
+networks:
+  evidence-internal:
+    name: threadeye-evidence-assistant-network

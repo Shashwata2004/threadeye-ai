@@ -1,0 +1,125 @@
+{
+  "artifact_version": "threadeye-prompt11r-results-v1",
+  "recorded_at": "2026-11-13",
+  "dataset": {
+    "path": "evaluation/answer-reliability-v1.json",
+    "version": "threadeye-answer-reliability-v1",
+    "sha256": "91eb6b0b58b0c2b82607cd8dfdf525ba70cbba74c39ad211ed62336c3773338b",
+    "cases": 24,
+    "development_cases": 12,
+    "fresh_holdout_cases": 12,
+    "labels_created_before_execution": true,
+    "threshold_tuning_permitted": false,
+    "independent_human_label_review": false
+  },
+  "historical_dataset_sha256": {
+    "evaluation/retrieval-v1.json": "39eb28be9fd2910f433360b720e05b49465b44cc9ee05b4269d24b23ff435df8",
+    "evaluation/answering-v1.json": "1391613a108830e5c540a776dd0d0c3c478332e9cefb1e2473785a18ed470643",
+    "evaluation/security-v1.json": "3481f9805091c031ba364cf17e3fcedac197b1d6dbf48d1fc220438d88fe5fbb",
+    "evaluation/qa-holdout-v1.json": "8ee8907a4c57fae22467d23ef1d3a36ec46180d70fe8bb238fee7d8ad8f016ea"
+  },
+  "known_qa_final_regression": {
+    "timestamp": "2026-11-13T06:01:39.177612+00:00",
+    "cases": 10,
+    "exact_expected_outcome": {"numerator": 9, "denominator": 10},
+    "false_answer_rate": {"numerator": 0, "denominator": 5},
+    "false_abstention_rate": {"numerator": 1, "denominator": 5},
+    "citation_validity": {"numerator": 4, "denominator": 4},
+    "source_section_correctness": {"numerator": 4, "denominator": 4},
+    "unsupported_claims": 0,
+    "remaining_case": {
+      "case_id": "QA11-P03",
+      "status": "insufficient_evidence",
+      "reason": "insufficient_relevance",
+      "tradeoff": "Retained because 0.60225866 similarity remains below the unchanged 0.62 floor."
+    }
+  },
+  "development_regression": {
+    "designation": "EXAMINED_DEVELOPMENT_REGRESSION",
+    "timestamp": "2026-11-13T06:01:40.397114+00:00",
+    "corrective_code_sha256": "f93d70f45e8eec0ad61ae4a1cf1e7d51c9b7da61a4b0b237adf1fd21047618a2",
+    "metrics": {
+      "overall_answerability_accuracy": {"numerator": 12, "denominator": 12},
+      "correct_abstention_rate": {"numerator": 6, "denominator": 6},
+      "false_answer_rate": {"numerator": 0, "denominator": 6},
+      "false_abstention_rate": {"numerator": 0, "denominator": 6},
+      "citation_validity": {"numerator": 6, "denominator": 6},
+      "semantic_evidence_support_correctness": {"numerator": 12, "denominator": 12},
+      "authorization_violation_rate": {"numerator": 0, "denominator": 12},
+      "unsupported_claim_rate": {"numerator": 0, "denominator": 12},
+      "positive_answer_coverage": {"numerator": 6, "denominator": 6},
+      "runtime_failures": 0
+    }
+  },
+  "fresh_holdout_primary_first_run": {
+    "designation": "PRIMARY_FIRST_RUN_UNTOUCHED",
+    "timestamp": "2026-11-13T05:56:17.035014+00:00",
+    "corrective_code_sha256": "a594dae4aaf47ddd20140b7ea79825ab10d00ca9223cd6604a7e2e56fbfa24ae",
+    "metrics": {
+      "overall_answerability_accuracy": {"numerator": 10, "denominator": 12},
+      "correct_abstention_rate": {"numerator": 5, "denominator": 6},
+      "false_answer_rate": {"numerator": 1, "denominator": 6},
+      "false_abstention_rate": {"numerator": 1, "denominator": 6},
+      "citation_validity": {"numerator": 6, "denominator": 6},
+      "semantic_evidence_support_correctness": {"numerator": 10, "denominator": 12},
+      "authorization_violation_rate": {"numerator": 0, "denominator": 12},
+      "unsupported_claim_rate": {"numerator": 1, "denominator": 12},
+      "positive_answer_coverage": {"numerator": 5, "denominator": 6},
+      "runtime_failures": 0
+    },
+    "failures": [
+      {
+        "case_id": "REL1-H-N03",
+        "expected": "insufficient_evidence/insufficient_relevance",
+        "actual": "answered",
+        "answer": "Fictional defect code DEF-HOLE-04 identifies the hole example. Each observation includes a defect label, location, confidence note, and image reference.",
+        "citation_integrity_valid": true,
+        "semantic_evidence_support_correct": false,
+        "root_cause": "An exact identifier plus a confidence-note mention was mistaken for the requested numerical percentage, although no percentage value existed."
+      },
+      {
+        "case_id": "REL1-H-P05",
+        "expected": "answered",
+        "actual": "unsupported_request/verdict_override_request",
+        "root_cause": "A third-person capability-boundary question was mistaken for an operational verdict command."
+      }
+    ]
+  },
+  "fresh_holdout_examined_regression": {
+    "designation": "EXAMINED_POST_FIX_REGRESSION_NOT_UNTOUCHED",
+    "timestamp": "2026-11-13T06:01:40.924781+00:00",
+    "corrective_code_sha256": "f93d70f45e8eec0ad61ae4a1cf1e7d51c9b7da61a4b0b237adf1fd21047618a2",
+    "metrics": {
+      "overall_answerability_accuracy": {"numerator": 12, "denominator": 12},
+      "correct_abstention_rate": {"numerator": 6, "denominator": 6},
+      "false_answer_rate": {"numerator": 0, "denominator": 6},
+      "false_abstention_rate": {"numerator": 0, "denominator": 6},
+      "citation_validity": {"numerator": 6, "denominator": 6},
+      "semantic_evidence_support_correctness": {"numerator": 12, "denominator": 12},
+      "authorization_violation_rate": {"numerator": 0, "denominator": 12},
+      "unsupported_claim_rate": {"numerator": 0, "denominator": 12},
+      "positive_answer_coverage": {"numerator": 6, "denominator": 6},
+      "runtime_failures": 0
+    }
+  },
+  "full_suite": {
+    "command_flags": [
+      "THREADEYE_RUN_MODEL_TESTS=1",
+      "THREADEYE_RUN_DB_TESTS=1",
+      "THREADEYE_RUN_MCP_TESTS=1",
+      "THREADEYE_RUN_HTTP_TESTS=1",
+      "THREADEYE_RUN_UI_TESTS=1"
+    ],
+    "passed": 190,
+    "failed": 0,
+    "skipped": 0,
+    "test_seconds": 10.870,
+    "official_mcp_clients_exercised": true,
+    "judge_ui_integration_exercised": true
+  },
+  "interpretation_limits": [
+    "The primary fresh result is 10/12 and remains preserved; the 12/12 rerun is examined, not untouched.",
+    "The dataset is small, synthetic, automatically authored, and lacks independent human label review.",
+    "These results do not estimate factory-production accuracy or prove a zero future error rate."
+  ]
+}

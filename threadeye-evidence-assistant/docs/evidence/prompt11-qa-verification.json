@@ -1,0 +1,250 @@
+{
+  "recorded_date": "2026-11-12",
+  "decision": "release-candidate verification passed with documented semantic-relevance limitations",
+  "scope": "fictional synthetic evidence only",
+  "git": {
+    "branch": "feature/threadeye-evidence-assistant",
+    "starting_head": "cd3cde7f475772df451bd31ed3dfe93215c45c01",
+    "prompt02_baseline": "a0c7141",
+    "prompt02_is_ancestor": true,
+    "full_changed_path_count": 144,
+    "full_changed_path_inventory": "docs/evidence/prompt11-full-diff-paths.txt",
+    "full_diff_outside_companion": [],
+    "pushed": false,
+    "merged": false,
+    "pull_request_opened": false,
+    "deployed": false
+  },
+  "environment": {
+    "operating_system": "macOS 27.2.1 (26B131)",
+    "python": "3.11.17",
+    "node": "26.10.0",
+    "docker": "29.9.2",
+    "postgresql": "17.11",
+    "pgvector_server": "0.8.7",
+    "fastembed": "0.9.1",
+    "onnxruntime": "1.31.1",
+    "psycopg": "3.3.8",
+    "pgvector_client": "0.5.1",
+    "mcp": "2.3.0",
+    "starlette": "1.10.0",
+    "uvicorn": "0.54.0",
+    "cryptography": "50.0.2",
+    "pyjwt": "2.15.1",
+    "playwright": "1.63.0",
+    "chrome": "157.0.8103.39"
+  },
+  "regression": {
+    "starting_prompt10_baseline": {
+      "passed": 175,
+      "failed": 0,
+      "skipped": 0,
+      "test_runtime_seconds": 9.152,
+      "wall_runtime_seconds": 9.95
+    },
+    "final_all_flags": {
+      "passed": 180,
+      "failed": 0,
+      "skipped": 0,
+      "test_runtime_seconds": 9.999,
+      "wall_runtime_seconds": 10.92,
+      "genuine_bge": true,
+      "genuine_postgresql_pgvector": true,
+      "stdio_mcp": true,
+      "authenticated_http_mcp": true,
+      "ui_mcp_flow": true
+    },
+    "original_threadeye": {
+      "backend_unit": {"passed": 213, "failed": 0, "skipped": 0, "runtime_seconds": 29.04},
+      "backend_integration": {
+        "passed": 77,
+        "failed": 0,
+        "skipped": 1,
+        "runtime_seconds": 45.38,
+        "skip_reason": "ffmpeg is required for the edge clip export test"
+      },
+      "frontend_check": {
+        "i18n_keys_each_locale": 338,
+        "lint": "passed",
+        "typecheck": "passed",
+        "wall_runtime_seconds": 17.37
+      },
+      "real_yolox_model_execution_retested": false
+    }
+  },
+  "evaluations": {
+    "retrieval_v1": {
+      "queries": 35,
+      "hybrid_hit_at_1": 0.906,
+      "hybrid_hit_at_3": 1.0,
+      "hybrid_recall_at_5": 1.0,
+      "hybrid_mrr": 0.948,
+      "hybrid_average_latency_ms": 36.701
+    },
+    "answering_v1_held_out": {
+      "cases": 24,
+      "answerability_accuracy": 1.0,
+      "correct_abstention_rate": 1.0,
+      "false_answer_rate": 0.0,
+      "false_abstention_rate": 0.0,
+      "citation_validity": 1.0,
+      "citation_precision": 1.0,
+      "average_latency_ms": 54.591
+    },
+    "security_v1": {
+      "historical_files_modified": false,
+      "development": {"exact": "30/30", "attack_success": "0/2", "failure_correct": "7/7"},
+      "final_holdout": {"exact": "29/30", "attack_success": "0/2", "failure_correct": "7/7"},
+      "holdout_integrity_note": "The final holdout was previously examined: its first run was 27/30 and a post-general-fix rerun was 29/30. It is a regression benchmark, not an untouched independent estimate."
+    },
+    "prompt11_qa_holdout": {
+      "dataset": "threadeye-prompt11-qa-holdout-v1",
+      "cases": 10,
+      "positive_cases": 5,
+      "negative_cases": 5,
+      "labels_created_before_first_execution": true,
+      "threshold_tuning_permitted": false,
+      "historical_benchmarks_modified": false,
+      "first_independent_execution": {
+        "exact": "5/10",
+        "false_answers": "3/5",
+        "false_abstentions": "1/5",
+        "citation_validity": "7/7",
+        "runtime_failures": 0
+      },
+      "general_policy_fixes_after_review": [
+        "credential-disclosure wording",
+        "noun-form shipment approval request",
+        "embedded Markdown authority request"
+      ],
+      "examined_regression_rerun": {
+        "exact": "8/10",
+        "false_answers": "1/5",
+        "false_abstentions": "1/5",
+        "citation_validity": "5/5",
+        "runtime_failures": 0
+      },
+      "remaining_misses": [
+        {"case_id": "QA11-P03", "result": "false abstention", "reason": "insufficient_relevance"},
+        {"case_id": "QA11-N01", "result": "false answer", "risk": "valid extractive citation from the wrong semantic section"}
+      ],
+      "human_semantic_review": "required and not represented as automated factual correctness"
+    }
+  },
+  "mcp": {
+    "protocol": "2025-11-25",
+    "stdio_official_client": true,
+    "http_official_clients": 2,
+    "tools": [
+      "answer_evidence_question",
+      "get_evidence_capabilities",
+      "list_evidence_sources",
+      "search_evidence"
+    ],
+    "resources": [
+      "threadeye://evidence/capabilities",
+      "threadeye://evidence/corpus-manifest",
+      "threadeye://evidence/security-policy"
+    ],
+    "registry_exact": true,
+    "restricted_client_search_denied": true,
+    "restricted_client_answer_denied": true,
+    "expired_wrong_issuer_wrong_audience_wrong_scope_denied": true,
+    "rate_limit": {"limited_status": 429, "recovered_status": 200},
+    "shutdown_restart_verified": true,
+    "complete_external_oauth_interoperability": false
+  },
+  "database": {
+    "runtime_role": "threadeye_evidence_mcp",
+    "select_allowed": true,
+    "transaction_read_only": true,
+    "role_flags": {"superuser": false, "create_database": false, "create_role": false, "inherit": false},
+    "denied": ["INSERT", "UPDATE", "DELETE", "TRUNCATE", "schema DDL", "temporary-table DDL", "CREATE ROLE", "CREATE DATABASE"]
+  },
+  "browser": {
+    "runner": "Google Chrome via existing Playwright",
+    "viewports": ["1440x1000", "390x844"],
+    "actual_mcp_http_backend": true,
+    "login_and_overview_ms": 376,
+    "search_interaction_ms": 1699,
+    "answer_interaction_ms": 1605,
+    "browser_script_runtime_ms": 8197,
+    "desktop_horizontal_overflow": false,
+    "mobile_horizontal_overflow": false,
+    "console_errors_during_success_paths": 0,
+    "expected_negative_http_console_entries": 3,
+    "local_storage_keys": 0,
+    "session_storage_keys": 0,
+    "session_cookie_http_only": true,
+    "session_cookie_same_site": "Strict",
+    "invalid_login_denied": true,
+    "csrf_denied": true,
+    "oversized_body_denied": true,
+    "logout_invalidated_session": true
+  },
+  "screenshots": {
+    "prompt11-abstention-desktop.png": "bf54e454f58d7569741b6ad968f7b2a9b580b50f84643220340b8cc6db80895f",
+    "prompt11-citation-desktop.png": "d0e15e4944651e1a29fce8e26dc517813453829ba3dbd0a7d66000d5c645ccfb",
+    "prompt11-invalid-login.png": "201ef575366272c4b046b1a8f5d38746454fbc068218822529043fb616c7454d",
+    "prompt11-overview-desktop.png": "cb652f7dc0e915101f2a20d2f8b5fb1c4d737b2f34df8d757bd02841683a24b0",
+    "prompt11-overview-mobile.png": "a3e1c0fe1f79f3e3a79e94486054d29c7f78015b66e5e027ff2714220ddd5ad4",
+    "prompt11-search-desktop.png": "0134bc355cfd3042842c640334ed20a780a9a676bbabeae236a40c7fa855ae84"
+  },
+  "clean_environment": {
+    "new_python_venv": true,
+    "pinned_lock_install": "passed",
+    "package_install": "passed",
+    "cli_import_and_help": "passed",
+    "focused_tests": {"passed": 23, "failed": 0, "skipped": 0},
+    "database_container_recreated": false,
+    "qualification": "The clean Python environment used the already-running isolated PostgreSQL container and pre-existing offline model cache."
+  },
+  "defects_fixed": [
+    "same-origin UI POSTs now enforce the 8 KiB request-size boundary",
+    "general unsafe-request policy recognizes three newly observed wording families",
+    "runtime package version now matches pyproject metadata"
+  ],
+  "protected_core_hashes": {
+    "backend/threadeye/core/scoring/four_point.py": "c4ed4d7e633c961707816d2377440cdcdbc39bd0c80bab0be9f183970756c284",
+    "backend/threadeye/core/providers.py": "293c3509fcfff31726bf4c392e022ad328d95b79381fc78ca4be6d92d1f4ac9a",
+    "backend/threadeye/providers/local_model.py": "f11d1e5bd44f60022e032e506c48c340e1e98741c424d122d340c4ff69b63878",
+    "backend/threadeye/db/audit.py": "afe8080aeb2d44b45394090ceab2a9ec9cefa3b7c6b4463111801b37a7befd7e",
+    "backend/threadeye/security/rbac.py": "02c00191c6f9b363cf51eb212cef1fcda00a024b7a2a352c93c05fc697abaf9f",
+    "backend/pyproject.toml": "176a3601e820a8b719923617c7e3d0681eab63a452034885220cab6bba2b167c",
+    "frontend/package.json": "405f04a8c9d59db1285c056188b369fd990275153f6fd63ae1351ec1fd11840a"
+  },
+  "real_document_approval": {
+    "document_count": 6,
+    "all_future_ingestion_approved_false": true,
+    "real_documents_indexed": false,
+    "serving_corpus": "authorized fictional synthetic fixtures only"
+  },
+  "privacy": {
+    "absolute_user_paths_found": 0,
+    "credential_shaped_token_findings": 0,
+    "private_key_markers": "two intentional fictional unit-test strings only",
+    "dsn_findings": "placeholders and fictional test fixtures only",
+    "tracked_model_or_cache_artifacts": 0,
+    "ignored_local_env_and_cache_confirmed": true,
+    "active_mcp_or_ui_listeners_after_qa": 0
+  },
+  "unsupported_claims": [
+    "generative LLM-RAG",
+    "local generative LLM",
+    "multiple custom MCP servers",
+    "independent cross-project MCP reuse",
+    "graph or agentic RAG",
+    "public production deployment",
+    "real factory ROI",
+    "comprehensive prompt-injection resistance",
+    "production factory accuracy"
+  ],
+  "residual_risks": [
+    "The new QA holdout retains one false answer and one false abstention after general non-threshold fixes.",
+    "The historical security holdout has been repeatedly examined and is not an untouched estimate.",
+    "A timed-out native worker may continue until its lower-level operation returns; process isolation is not implemented.",
+    "Local HTTP sessions are not TLS, OAuth onboarding, distributed identity, or public deployment controls.",
+    "Real YOLOX model inference was not rerun in Prompt 11.",
+    "The original edge clip-export test was skipped because ffmpeg is absent."
+  ]
+}

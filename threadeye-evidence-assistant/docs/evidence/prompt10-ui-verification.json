@@ -1,0 +1,156 @@
+{
+  "recorded_date": "2026-11-12",
+  "scope": "fictional synthetic evidence only",
+  "versions": {
+    "python": "3.11.17",
+    "mcp": "2.3.0",
+    "mcp_server": "0.8.0",
+    "ui": "0.9.0",
+    "starlette": "1.10.0",
+    "uvicorn": "0.54.0",
+    "playwright": "1.63.0"
+  },
+  "architecture": {
+    "ui_binding": "127.0.0.1:8770",
+    "public_deployment": false,
+    "backend_for_frontend": "Starlette",
+    "browser_assets": "buildless semantic HTML/CSS/JavaScript",
+    "query_path": [
+      "authenticated local browser session",
+      "fixed UI backend handler",
+      "official MCP SDK client",
+      "authenticated Streamable HTTP",
+      "fixed read-only MCP registry",
+      "existing retrieval/answer/citation pipeline",
+      "authorized synthetic PostgreSQL/pgvector"
+    ],
+    "direct_retrieval_bypass": false,
+    "direct_database_bypass": false
+  },
+  "browser_security": {
+    "operator_access_code_required": true,
+    "session_cookie_http_only": true,
+    "session_cookie_same_site": "Strict",
+    "session_cookie_secure": false,
+    "secure_cookie_limit_reason": "plain HTTP localhost demonstration",
+    "csrf_verified": true,
+    "host_and_origin_verified": true,
+    "loopback_client_verified": true,
+    "wildcard_cors_absent": true,
+    "strict_csp": true,
+    "browser_local_storage_keys": [],
+    "mcp_token_in_browser": false,
+    "private_signing_key_in_browser": false,
+    "untrusted_content_rendering": "DOM textContent only"
+  },
+  "supported_search_demo": {
+    "query": "content hash sanitized observation",
+    "mode": "hybrid",
+    "top_k": 3,
+    "result_count": 3,
+    "top_result": {
+      "source_identifier": "technical-evidence.md",
+      "chunk_id": "e1569f1c868b8657f838f33e",
+      "retrieval_methods": [
+        "keyword",
+        "vector"
+      ],
+      "keyword_rank": 1,
+      "vector_rank": 1,
+      "rrf_score": 0.03278688524590164
+    },
+    "rrf_claimed_as_probability": false
+  },
+  "grounded_answer_demo": {
+    "question": "Which supplier lot is recorded for ROLL-NST-204?",
+    "ui_state": "ANSWERED",
+    "service_status": "answered",
+    "answer": "In the fictional receiving workflow, an operator records roll identifier ROLL-NST-204, declared length, fabric construction, supplier lot LOT-FX-17, and arrival timestamp.",
+    "answer_mode": "extractive",
+    "citation_count": 1,
+    "citation_valid": true,
+    "citation": {
+      "source_identifier": "technical-evidence.md",
+      "chunk_id": "f53285a64a29b46ed7e52aad",
+      "heading": [
+        "Fictional Mill Evidence Packet",
+        "Fabric Receiving"
+      ],
+      "normalized_start": 242,
+      "normalized_end": 413,
+      "processing_version": "threadeye-chunk-v1",
+      "authorization_reference": "PROMPT-04-SYNTHETIC-VECTOR-FIXTURE"
+    }
+  },
+  "abstention_demo": {
+    "question": "What is tomorrow's weather in Dhaka?",
+    "ui_state": "ABSTAINED",
+    "service_status": "insufficient_evidence",
+    "reason": "insufficient_relevance",
+    "answer": null,
+    "citation_count": 0
+  },
+  "browser": {
+    "runtime": "installed Google Chrome driven by existing Playwright",
+    "desktop_viewport": "1440x1000",
+    "mobile_viewport": "390x844",
+    "desktop_connected": true,
+    "mobile_connected": true,
+    "desktop_horizontal_overflow": false,
+    "mobile_horizontal_overflow": false,
+    "console_errors": [],
+    "search_result_cards": 3,
+    "citation_dialog_visible": true,
+    "answer_state_visible": "ANSWERED",
+    "abstention_state_visible": "ABSTAINED"
+  },
+  "screenshots": {
+    "prompt10-overview-desktop.png": "3510d96eaf030c058bfb0c49ea526a9905e095694770f0bed978b45a1c73d43f",
+    "prompt10-search-desktop.png": "b2f1c65596a8ac5f6d818a7419a22c0caa4376a7abebadcf1a9548b5d3cadfdd",
+    "prompt10-citation-desktop.png": "173c8350a5a3cc1bdf7582662678168a1a3d2b99164bd4c2f798993c0d365587",
+    "prompt10-abstention-desktop.png": "d80407d61f7a45679522720b31f37936d50510383dfddf04e9b4261dad44e50d",
+    "prompt10-overview-mobile.png": "a3e1c0fe1f79f3e3a79e94486054d29c7f78015b66e5e027ff2714220ddd5ad4"
+  },
+  "tests": {
+    "passed": 175,
+    "failed": 0,
+    "skipped": 0,
+    "elapsed_seconds": 9.344,
+    "genuine_bge": true,
+    "genuine_postgresql_pgvector": true,
+    "stdio_mcp": true,
+    "authenticated_http_mcp": true,
+    "genuine_ui_mcp_flow": true
+  },
+  "protected_core_hashes": {
+    "backend/threadeye/core/scoring/four_point.py": "c4ed4d7e633c961707816d2377440cdcdbc39bd0c80bab0be9f183970756c284",
+    "backend/threadeye/core/providers.py": "293c3509fcfff31726bf4c392e022ad328d95b79381fc78ca4be6d92d1f4ac9a",
+    "backend/threadeye/providers/local_model.py": "f11d1e5bd44f60022e032e506c48c340e1e98741c424d122d340c4ff69b63878",
+    "backend/threadeye/db/audit.py": "afe8080aeb2d44b45394090ceab2a9ec9cefa3b7c6b4463111801b37a7befd7e",
+    "backend/threadeye/security/rbac.py": "02c00191c6f9b363cf51eb212cef1fcda00a024b7a2a352c93c05fc697abaf9f",
+    "backend/pyproject.toml": "176a3601e820a8b719923617c7e3d0681eab63a452034885220cab6bba2b167c",
+    "frontend/package.json": "405f04a8c9d59db1285c056188b369fd990275153f6fd63ae1351ec1fd11840a"
+  },
+  "real_document_ingestion_flags": {
+    "document_count": 6,
+    "all_future_ingestion_approved": false,
+    "all_remain_denied": true
+  },
+  "evaluations_preserved": {
+    "retrieval_queries": 35,
+    "hybrid_hit_at_1": 0.906,
+    "hybrid_mrr": 0.948,
+    "answer_cases": "44/44",
+    "security_development": "30/30",
+    "security_final_holdout": "29/30"
+  },
+  "limitations": [
+    "local demonstration session control, not production identity management",
+    "plain HTTP localhost, not TLS or public deployment",
+    "offline test issuer, not complete OAuth onboarding",
+    "no generative LLM answering",
+    "no production data or operational write access",
+    "no live fabric inspection",
+    "no verified factory ROI"
+  ]
+}

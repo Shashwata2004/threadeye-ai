@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-11-13",
+  "scope": "Prompt 12 local verification and evidence packaging",
+  "git": {
+    "branch": "feature/threadeye-evidence-assistant",
+    "starting_head": "ac24ed91ef5232ea07371ec6b7b82720d3062e0e",
+    "starting_subject": "fix(evidence): improve answer reliability after final QA",
+    "main_tip": "ca6faac0736d71c20143eb389dc255a60ce98077",
+    "mohammad_tip": "a0c71415d3daa172b44aef643031def2d16844df",
+    "main_merge_base": "ca6faac0736d71c20143eb389dc255a60ce98077",
+    "mohammad_merge_base": "a0c71415d3daa172b44aef643031def2d16844df",
+    "remote_feature_branch_published": false,
+    "push_performed": false,
+    "pull_request_created": false,
+    "merge_or_rebase_performed": false
+  },
+  "official_sources": [
+    {
+      "url": "https://cloudcampbd.com/events/ai-builders-congress/policies/submission",
+      "status": 200,
+      "accessed": "2026-11-13",
+      "reported_version": "1.1",
+      "reported_publish_date": "2026-05-12"
+    },
+    {
+      "url": "https://cloudcampbd.com/events/ai-builders-congress/policies/ai-usage",
+      "status": 200,
+      "accessed": "2026-11-13",
+      "reported_version": "1.1",
+      "reported_publish_date": "2026-05-12"
+    }
+  ],
+  "external_links": {
+    "product_web": {"url": "https://threadeye-web.vercel.app", "http_status": 200, "workflow_verified": false},
+    "api_health": {"url": "https://threadeye-api.vercel.app/health", "http_status": 200, "workflow_verified": false},
+    "github": {"url": "https://github.com/Shashwata2004/threadeye-ai", "unauthenticated_http_status": 404},
+    "youtube": {"status": "missing"},
+    "figma": {"status": "missing"},
+    "evidence_assistant_public_url": {"status": "not_deployed", "local_url": "http://127.0.0.1:8770"}
+  },
+  "companion_suite": {
+    "tests_run": 190,
+    "passed": 190,
+    "failed": 0,
+    "skipped": 0,
+    "test_seconds": 10.919,
+    "genuine_flags": [
+      "THREADEYE_RUN_MODEL_TESTS",
+      "THREADEYE_RUN_DB_TESTS",
+      "THREADEYE_RUN_MCP_TESTS",
+      "THREADEYE_RUN_HTTP_TESTS",
+      "THREADEYE_RUN_UI_TESTS"
+    ],
+    "integrations": ["BGE CPU", "PostgreSQL/pgvector", "hybrid retrieval", "MCP stdio", "authenticated MCP HTTP", "read-only database role", "judge UI"]
+  },
+  "browser": {
+    "status": "passed",
+    "engine": "installed Google Chrome",
+    "driver": "Playwright 1.63.0",
+    "viewports": ["1440x1000", "390x844"],
+    "verified": ["login", "overview", "hybrid search", "supported answer", "citation inspection", "safe abstention", "unauthorized denial", "CSRF denial", "body-size denial", "logout", "clean child shutdown"],
+    "browser_storage_key_count": 0,
+    "session_cookie": "host-only HttpOnly SameSite=Strict",
+    "unexpected_success_console_errors": 0,
+    "expected_negative_http_console_entries": 3
+  },
+  "evaluations": {
+    "retrieval_v1": {"cases": 35, "hybrid_hit_at_1": 0.906, "hybrid_hit_at_3": 1.0, "hybrid_hit_at_5": 1.0, "hybrid_recall_at_5": 1.0, "hybrid_mrr": 0.948, "failures": 0},
+    "answers_development": {"cases": 20, "answerability_accuracy": 1.0, "false_answers": 0, "false_abstentions": 0, "citation_validity": 1.0},
+    "answers_held_out": {"cases": 24, "answerability_accuracy": 1.0, "false_answers": 0, "false_abstentions": 0, "citation_validity": 1.0},
+    "security_development": {"exact": "30/30", "attack_successes": "0/2", "injected_failures_correct": "7/7"},
+    "security_final_examined": {"exact": "29/30", "attack_successes": "0/2", "injected_failures_correct": "7/7"},
+    "qa_known": {"exact": "9/10", "false_answers": "0/5", "false_abstentions": "1/5", "citations": "4/4"},
+    "reliability_development_examined": {"exact": "12/12", "false_answers": 0, "false_abstentions": 0, "citations": "6/6"},
+    "reliability_fresh_history": {"first_run": "10/12", "post_fix_examined": "12/12"},
+    "prompt11_history": {"first_run": "5/10", "post_fix_examined": "8/10"}
+  },
+  "protected_core": {
+    "matched": 7,
+    "total": 7,
+    "files": {
+      "backend/threadeye/core/scoring/four_point.py": "c4ed4d7e633c961707816d2377440cdcdbc39bd0c80bab0be9f183970756c284",
+      "backend/threadeye/core/providers.py": "293c3509fcfff31726bf4c392e022ad328d95b79381fc78ca4be6d92d1f4ac9a",
+      "backend/threadeye/providers/local_model.py": "f11d1e5bd44f60022e032e506c48c340e1e98741c424d122d340c4ff69b63878",
+      "backend/threadeye/db/audit.py": "afe8080aeb2d44b45394090ceab2a9ec9cefa3b7c6b4463111801b37a7befd7e",
+      "backend/threadeye/security/rbac.py": "02c00191c6f9b363cf51eb212cef1fcda00a024b7a2a352c93c05fc697abaf9f",
+      "backend/pyproject.toml": "176a3601e820a8b719923617c7e3d0681eab63a452034885220cab6bba2b167c",
+      "frontend/package.json": "405f04a8c9d59db1285c056188b369fd990275153f6fd63ae1351ec1fd11840a"
+    }
+  },
+  "real_document_approvals": {"total": 6, "future_ingestion_approved_true": 0, "future_ingestion_approved_false": 6},
+  "boundaries": {
+    "production_supabase_accessed": false,
+    "real_documents_ingested": false,
+    "original_yolox_rerun_in_prompt12": false,
+    "companion_deployed": false,
+    "official_form_modified_or_submitted": false,
+    "general_reliability_claim_supported": false,
+    "independent_human_label_review_completed": false
+  }
+}

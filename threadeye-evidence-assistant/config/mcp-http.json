@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "host": "127.0.0.1",
+  "port": 8765,
+  "path": "/mcp",
+  "resource_url": "http://127.0.0.1:8765/mcp",
+  "issuer_url": "https://threadeye.local.test/issuer",
+  "allowed_algorithm": "EdDSA",
+  "required_token_type": "at+jwt",
+  "key_id": "threadeye-local-test-key-v1",
+  "token_ttl_seconds": 300,
+  "max_token_chars": 8192,
+  "principal_scopes": {
+    "threadeye-evidence-client": [
+      "evidence:metadata:read",
+      "evidence:search",
+      "evidence:answer"
+    ],
+    "threadeye-metadata-client": [
+      "evidence:metadata:read"
+    ]
+  },
+  "allowed_origins": [
+    "http://127.0.0.1:8765"
+  ],
+  "rate_window_seconds": 60.0,
+  "principal_request_limit": 60,
+  "ip_request_limit": 120,
+  "max_rate_limit_entries": 1024,
+  "max_http_concurrency": 4,
+  "max_http_body_bytes": 65536
+}

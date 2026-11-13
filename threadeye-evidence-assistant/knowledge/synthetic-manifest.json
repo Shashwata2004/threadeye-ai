@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "source_project": "threadeye-evidence-assistant-synthetic-fixtures",
+  "documents": [
+    {
+      "path": "demo.md",
+      "purpose": "Synthetic Prompt 03 sanitization and heading-aware chunking demonstration.",
+      "source_classification": "synthetic_test_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "b0dfa9ad1da0e6bda46a42cb8a43bcc234438323c2bbb6dc80c97a0b1cede679",
+      "caveats": "Fictional content only; authorization does not apply to any real ThreadEye document.",
+      "team_authorization": {
+        "reference": "PROMPT-03-SYNTHETIC-FIXTURE",
+        "intended_use": "prompt03_synthetic_demo",
+        "approved_by": "project-owner-workflow-update",
+        "scope": "synthetic_fixture_only"
+      }
+    },
+    {
+      "path": "technical-evidence.md",
+      "purpose": "Synthetic Prompt 04 real-embedding and pgvector retrieval verification corpus.",
+      "source_classification": "synthetic_test_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "e8c74eaf5454e00635af32fe9c08d3c56d90e5a19b37bec61d600e08c7c3406d",
+      "caveats": "Fictional content only; authorization does not apply to ThreadEye production data or real project documents.",
+      "team_authorization": {
+        "reference": "PROMPT-04-SYNTHETIC-VECTOR-FIXTURE",
+        "intended_use": "prompt04_synthetic_vector_index",
+        "approved_by": "project-owner-prompt-04",
+        "scope": "synthetic_fixture_embedding_and_local_pgvector_only"
+      }
+    },
+    {
+      "path": "adversarial-evidence.md",
+      "purpose": "Synthetic Prompt 06 prompt-injection resistance integration fixture.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "10c0243da003a22f3b21fdf8d028decc2b1b75c14bcb0f9286d11ee1759cd080",
+      "caveats": "Fictional malicious instruction text only; never grants authority or access to any real source.",
+      "team_authorization": {
+        "reference": "PROMPT-06-ADVERSARIAL-FIXTURE",
+        "intended_use": "prompt06_adversarial_answer_test",
+        "approved_by": "project-owner-prompt-06",
+        "scope": "synthetic_prompt_injection_test_only"
+      }
+    },
+    {
+      "path": "security-instructions.md",
+      "purpose": "Prompt 07 fictional direct and indirect prompt-injection security cases.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "25879423184e7a96d942cec484450dcdbec92eb759cc840238a678fde88361aa",
+      "caveats": "Contains only fictional malicious instructions and fake paths.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    },
+    {
+      "path": "security-conflicts.md",
+      "purpose": "Prompt 07 fictional conflicting-evidence case.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "fe4b137cdc33573ed58261470748d2a8b7a676b06eb8bd2249b9810501661565",
+      "caveats": "Contains no real inspection claim and has no operational authority.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    },
+    {
+      "path": "security-keyword-poison.md",
+      "purpose": "Prompt 07 fictional keyword-stuffing retrieval-poison case.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "4e4d8e32769a006f9be889dd7bd76c28ef2ab2625c7baef41a8baf9929061fa4",
+      "caveats": "Repeated terms are test data and contain no true supplier or inspection fact.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    },
+    {
+      "path": "security-semantic-decoy.md",
+      "purpose": "Prompt 07 fictional semantically similar but domain-unrelated case.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "16b828dc03e42c15598b906cdf714cdec70e163fe591770994945cd1a98714e8",
+      "caveats": "Software-message analogy only; not textile evidence.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    },
+    {
+      "path": "security-citation-spoof.md",
+      "purpose": "Prompt 07 fictional fake citation and metadata case.",
+      "source_classification": "synthetic_security_fixture",
+      "inventory_approved": true,
+      "future_ingestion_approved": true,
+      "expected_sha256": "ef46b739c7b7dc1f04e3ca57545374b5f8ed95d6031bb4746155bf0c0f427013",
+      "caveats": "All hashes, paths and citations inside are intentionally fake.",
+      "team_authorization": {"reference":"PROMPT-07-SECURITY-FIXTURES","intended_use":"prompt07_security_evaluation","approved_by":"project-owner-prompt-07","scope":"synthetic_adversarial_evaluation_only"}
+    }
+  ]
+}
