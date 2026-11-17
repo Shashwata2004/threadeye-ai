@@ -4,8 +4,8 @@
 #
 #   ./scripts/run_demo.sh   →   http://localhost:3000
 #
-# The first run installs what is missing (Python packages, Node modules) and downloads what git does
-# not carry: the sample roll's video and the trained model (from Supabase, see `make cloud-upload-model`).
+# The first run installs Python/Node packages. Demo videos and the stable model are bundled in Git;
+# Supabase asset fetching is a compatibility fallback for older/incomplete checkouts.
 # Needs: .env.cloud (ask Shashwata: it holds the database password), uv, Node.js with pnpm.
 set -euo pipefail
 
@@ -33,7 +33,13 @@ if [ ! -d frontend/node_modules ]; then
   (cd frontend && pnpm install --frozen-lockfile)
 fi
 
-echo "fetching the roll video and the trained model"
-(set -a && . "./$ENV_FILE" && set +a && cd backend && .venv/bin/threadeye fetch-demo-assets --data ../data --model-dir "$MODEL_DIR")
+if python3 scripts/check_demo_assets.py; then
+  echo "using the bundled demo videos and stable trained model"
+else
+  echo "fetching missing assets from Supabase (older/incomplete checkout)"
+  (set -a && . "./$ENV_FILE" && set +a && cd backend && .venv/bin/threadeye fetch-demo-assets --data ../data --model-dir "$MODEL_DIR")
+  # The downloader verifies stored hashes and preserves a validated local activation. Such a model
+  # can legitimately differ from the bundled baseline; do not overwrite or reject that activation.
+fi
 
 DEMO_MODEL_DIR="$MODEL_DIR" exec ./scripts/run_cloud.sh

@@ -1,0 +1,5 @@
+# Preserve exact asset bytes (including model cards) across teammate platforms.
+/data/*/roll_video.mp4 -text -diff
+/data/model/threadeye_s.onnx -text -diff
+/data/model/model_info.json -text
+/data/model/test_report.json -text

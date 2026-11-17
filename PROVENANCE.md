@@ -15,10 +15,14 @@ marked "sample data"; no fabricated metrics.
 | Dataset | Origin | Licence | Where | Status |
 |---|---|---|---|---|
 | AITEX Fabric Image Database | AITEX (Spain); "A Public Fabric Database for Defect Detection Methods and Results", *Autex Research Journal* | **To be verified** (PLAN.md Q2: may derived video be redistributed publicly?) | Read by `tools/simulator/` (`--source aitex`); not in this repo | Open question |
-| Simulated sample roll | Our simulator (`tools/simulator/make_roll_video.py`, realistic mode, AITEX fabric 02, seed 11): 13.1 yd, 8 defects, 17 non-defect distractions; expected 10 points, 46.45, FAIL | Derived; same as above | `data/sample_roll/`: CSV/JSON and preview in git, `roll_video.mp4` kept out of git until Q2 is answered (SHA-256 in `SHA256SUMS`) | **SIMULATED** |
+| Simulated sample roll | Our simulator (`tools/simulator/make_roll_video.py`, realistic mode, AITEX fabric 02, seed 11): 13.1 yd, 8 defects, 17 non-defect distractions; expected 10 points, 46.45, FAIL | Derived; same unresolved source question as above | `data/sample_roll/`: bundled metadata, preview and video; verified by `data/demo-assets.json` | **SIMULATED** |
 | Current line-scan roll | AITEX fabric 02, seed 11, 7 known faults; source group excluded from training | Derived; AITEX redistribution question above remains open | `data/linescan_roll/`, evaluation manifest and hashes | **SIMULATED**, repeatedly used development/regression fixture; not a fresh blind test |
 | CI browser-test roll | Rendered in CI by the same simulator in `synthetic` mode (code-drawn fabric, no dataset), 5 m, seed 3 | Ours | `data/ci_roll/` (generated, not committed) | **SIMULATED** |
 | Micro-fixture roll | Synthetic CSV/JSON written by `scripts/make_micro_fixture.py` (no images) | Ours | `backend/tests/fixtures/micro_roll/` | **SYNTHETIC test data** |
+
+The named team demo videos and the current stable model are now included for reproducible teammate
+checkouts. This packaging change does not resolve Q2 or change third-party source terms. Original dataset
+collections, ad-hoc generated videos and unsuccessful training candidates are not bundled.
 
 ## Sample data
 | Data | Status |

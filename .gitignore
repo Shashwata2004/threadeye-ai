@@ -31,15 +31,23 @@ storage/
 data/generated/
 data/ci_roll/
 data/external/
-data/model/
+data/model/*
+!data/model/threadeye_s.onnx
+!data/model/model_info.json
+!data/model/test_report.json
 data/training_checkpoints/
 backend/out/
 build/
 .vercel/
 *.log
 
-# Large simulator outputs: commit only after the licence check (PLAN.md Q2)
+# Bundled team demo assets are tracked; ad-hoc simulator outputs remain local.
 data/*/*.mp4
+!data/sample_roll/roll_video.mp4
+!data/linescan_roll/roll_video.mp4
+!data/demo_basic_roll/roll_video.mp4
+!data/demo_mixed_roll/roll_video.mp4
+!data/demo_challenge_roll/roll_video.mp4
 
 # OS / editors
 .DS_Store

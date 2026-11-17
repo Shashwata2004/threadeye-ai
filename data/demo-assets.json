@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "description": "Bundled simulated demo videos and current stable YOLOX-S model; source terms are recorded in PROVENANCE.md and ml/DATASETS.md.",
+  "files": [
+    {
+      "path": "data/sample_roll/roll_video.mp4",
+      "bytes": 18963915,
+      "sha256": "c356e21da212b4501988eacdfc8957c951f1f5de7d537f0bc8f1769eb13a8c9f"
+    },
+    {
+      "path": "data/linescan_roll/roll_video.mp4",
+      "bytes": 33578650,
+      "sha256": "66b368a2eb763c61bb02852f3a9a816f2bfc7d4572dad583a006cbd6d6ae58c1"
+    },
+    {
+      "path": "data/demo_basic_roll/roll_video.mp4",
+      "bytes": 29291603,
+      "sha256": "61290972adbb6faa9ac8fc5446326bd9ae6289796523a812357aebf64c3dfa51"
+    },
+    {
+      "path": "data/demo_mixed_roll/roll_video.mp4",
+      "bytes": 31983162,
+      "sha256": "8c73450fc5c792acd67c48d52b0ca045119d4db65667602b249e76f1f8a7eccc"
+    },
+    {
+      "path": "data/demo_challenge_roll/roll_video.mp4",
+      "bytes": 50726029,
+      "sha256": "6ddab2885ab2c6398028fdb52d7d1eeec7274e94b8014894df0e0445e22e279a"
+    },
+    {
+      "path": "data/model/threadeye_s.onnx",
+      "bytes": 35794978,
+      "sha256": "02de7b97544dc5483b7da95972141c329b0fbc8c1bb495246d03165c4a796037"
+    },
+    {
+      "path": "data/model/model_info.json",
+      "bytes": 5965,
+      "sha256": "acd356cdb10e8713ce2d927bd97299b88498b41383cae977607d710aff11ee9b"
+    },
+    {
+      "path": "data/model/test_report.json",
+      "bytes": 3608,
+      "sha256": "47e90a8707ed028148c13634ced7a04c86c6e01d0d03c5ffebbf8e82a1952f08"
+    }
+  ]
+}

@@ -56,11 +56,32 @@ make spike-pdf        # Bangla PDF shaping check → backend/out/spike_bangla.pd
 make help             # all commands
 ```
 
+### Teammate quick start: videos and trained model included
+
+A normal clone includes the four app demo videos, the historical test sample video, and the stable
+YOLOX-S ONNX model in `data/model/` (about 200 MB of bundled assets). Git LFS, a separate model download,
+and Supabase credentials are not required for the local Docker demo.
+
+With Docker and Docker Compose installed, run from the repository root:
+
+```bash
+make assets-check
+make env
+THREADEYE_DETECTOR_PROVIDER=local_model make up
+```
+
+Open **http://localhost:8080** and sign in with a demo role such as `inspector`. The default local
+password is in `.env.example`; `make env` copies that file only when `.env` does not already exist.
+This uses a local PostgreSQL database. `make demo` is the separate shared-Supabase workflow and still
+needs the team's `.env.cloud` for database access; it uses the bundled videos/model when their hashes match.
+
+Ad-hoc generated videos, candidate models, training checkpoints and private environment files stay ignored.
+Dataset provenance and unresolved source licence questions remain documented in [PROVENANCE.md](PROVENANCE.md).
+
 ### Inspect a roll
 
-The live screen plays the simulated sample roll as the camera. Its video is not in git (AITEX licence
-check, PLAN.md Q2): get `roll_video.mp4` from the team and put it in `data/sample_roll/`
-(`sha256sum -c SHA256SUMS` there checks it). Then:
+The live screen plays a bundled simulated roll as the camera. `make assets-check` verifies all five
+bundled videos and the stable model against `data/demo-assets.json`. Then:
 
 1. `store` registers a delivery and its rolls (**Deliveries & rolls**) and prints the QR labels.
 2. `inspector` opens **Inspect a roll**, scans or types the roll code, picks the simulated roll and the
@@ -181,7 +202,9 @@ Chrome/Playwright judge flow. Detailed results and limitations are in
 | `frontend/` | Next.js 16 + TypeScript, next-intl (bn/en), TanStack Query, MSW mocks, Playwright golden path (`e2e/`) |
 | `docs/` | Plan, API contract (`docs/api/openapi.json`), ADRs, ethics, realtime, data contracts |
 | `tools/simulator/` | The team's roll simulator, vendored as-is |
-| `data/sample_roll/` | Simulated sample roll (CSV/JSON in git; the video only after the licence check) |
+| `data/sample_roll/` | Historical simulated test sample, including its video (hidden from the app's roll list) |
+| `data/linescan_roll/`, `data/demo_*_roll/` | Four bundled simulated app videos and their metadata |
+| `data/model/` | Bundled stable ONNX model and its model/test cards |
 | `infra/` | Caddy proxy config |
 | `scripts/` | Offline check, micro-fixture generator |
 | `threadeye-evidence-assistant/` | Isolated synthetic-evidence retrieval, read-only MCP server, local judge UI, tests and CloudCamp evidence pack |

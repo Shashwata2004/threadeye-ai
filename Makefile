@@ -30,7 +30,10 @@ TEST_DATABASE_URL ?= postgresql+psycopg://threadeye:threadeye@localhost:$(TEST_D
 help: ## list commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk -F ':.*?## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: impact
+.PHONY: impact assets-check
+assets-check: ## verify bundled demo video/model hashes (no database, credentials or Python packages)
+	python3 scripts/check_demo_assets.py
+
 impact: ## measured local-model replay → docs/impact (needs backend onnx extra and demo assets)
 	backend/.venv/bin/python scripts/measure_impact.py --out docs/impact
 
