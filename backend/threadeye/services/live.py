@@ -96,7 +96,10 @@ def _take(insp: Inspection) -> Runner | None:
 def _give_back(insp: Inspection, runner: Runner) -> None:
     with _cache_lock:
         _cache[insp.id] = _Entry(insp.last_seq, insp.checkpoint_frame, runner)
-        while len(_cache) > CACHE_SIZE:
+        # Each model runner owns an ONNX session. Keep warm serverless instances within
+        # their memory budget; evicted runners rebuild from persisted events.
+        limit = 1 if get_settings().is_serverless else CACHE_SIZE
+        while len(_cache) > limit:
             _cache.popitem(last=False)
 
 
@@ -151,7 +154,7 @@ def build_runner(db: Session, insp: Inspection) -> Runner:
         raise InspectionError(
             409, f"this inspection's detector is not available any more ({exc}); abort it and inspect the roll again"
         ) from exc
-    if snap["info"].get("requires_image"):
+    if snap["info"].get("requires_image") and not get_settings().is_serverless:
         # The model works through the coming frames in the background, so a request waits on the database
         # only (PrefetchingDetector); the detections are the same.
         runner.provider = PrefetchingDetector(provider, lambda: datasets.video_source(info), runner.plan.frames)
@@ -216,7 +219,14 @@ def _local_model_config() -> dict[str, Any]:
             409, "no trained model installed: set THREADEYE_MODEL_DIR to the folder with threadeye_s.onnx"
         )
     model = models[0]
-    return {"model_path": str(model), "info_path": str(model.with_name("model_info.json")), "sha256": _sha256(model)}
+    config: dict[str, Any] = {
+        "model_path": str(model),
+        "info_path": str(model.with_name("model_info.json")),
+        "sha256": _sha256(model),
+    }
+    if get_settings().is_serverless:
+        config["threads"] = 1
+    return config
 
 
 @lru_cache(maxsize=4)
@@ -562,6 +572,10 @@ def advance(
     insp.driver_expires_at = now() + timedelta(seconds=LEASE_SECONDS)
     runner = runner or runner_for(db, insp)
     photos = [_decode_capture(c) for c in captures]
+    if get_settings().is_serverless and runner.provider.info.requires_image:
+        # Functions may be frozen after a response. Run bounded inference in the request,
+        # rather than depending on the laptop's background prefetch thread.
+        until_frame = min(until_frame, runner.checkpoint + MIN_STEP_FRAMES)
     if isinstance(runner.provider, PrefetchingDetector) and not wait_for_detector:
         # Hand back what the model has finished instead of waiting for the rest: the next request takes it.
         until_frame = min(until_frame, max(runner.provider.ready_until, runner.checkpoint + MIN_STEP_FRAMES))

@@ -3,8 +3,7 @@
 # Supabase database (ap-northeast-1).
 #
 #   threadeye-api  FastAPI (Vercel's FastAPI support, app.py). Built from build/vercel-api/: the backend package,
-#                  the simulated rolls' CSV/JSON (no video: that is served from Supabase, see
-#                  `make cloud-upload-video`) and pinned requirements.
+#                  the stable trained model, demo videos and pinned ONNX CPU dependencies.
 #   threadeye-web  Next.js. It forwards /api and /health to threadeye-api (API_ORIGIN), so the browser
 #                  talks to one origin and the login cookie stays first-party.
 #
@@ -21,7 +20,7 @@ WEB_PROJECT="${WEB_PROJECT:-threadeye-web}"
 WHAT="${1:-all}"
 
 python3 scripts/check_cloud_env.py "$ENV_FILE"
-command -v vercel >/dev/null || { echo "Vercel CLI missing: npm i -g vercel" >&2; exit 1; }
+[ "$WHAT" = build ] || command -v vercel >/dev/null || { echo "Vercel CLI missing: npm i -g vercel" >&2; exit 1; }
 
 set -a
 # shellcheck disable=SC1090
@@ -31,8 +30,7 @@ set +a
 # Set (or replace) a production env var without printing its value.
 set_env() {
   local dir="$1" name="$2" value="$3"
-  (cd "$dir" && vercel env rm "$name" production --yes >/dev/null 2>&1 || true)
-  (cd "$dir" && printf '%s' "$value" | vercel env add "$name" production >/dev/null)
+  (cd "$dir" && printf '%s' "$value" | vercel env add "$name" --environment production --force --yes >/dev/null)
   echo "  env $name set"
 }
 
@@ -47,8 +45,9 @@ build_api() {
   local out="$ROOT/build/vercel-api" UV
   UV="$(command -v uv || true)"
   [ -n "$UV" ] || { echo "uv missing (needed to pin the Python requirements)" >&2; exit 1; }
-  rm -rf "$out/api" "$out/app.py" "$out/threadeye" "$out/datasets"
-  mkdir -p "$out/datasets"
+  rm -rf "$out/api" "$out/app.py" "$out/threadeye" "$out/datasets" "$out/model"
+  mkdir -p "$out/datasets" "$out/model"
+  cp "$ROOT/data/model/threadeye_s.onnx" "$ROOT/data/model/model_info.json" "$ROOT/data/model/test_report.json" "$out/model/"
   rsync -a --exclude '__pycache__' "$ROOT/backend/threadeye" "$out/"
   # Only the rolls that are in git (local test rolls such as data/ci_roll stay out).
   for meta in $(git -C "$ROOT" ls-files 'data/*/roll_meta.json'); do
@@ -57,15 +56,26 @@ build_api() {
     name="$(basename "$d")"
     mkdir -p "$out/datasets/$name"
     cp "$d"/*.csv "$d"/roll_meta.json "$out/datasets/$name/"
+    # Inference reads the camera pixels locally; the answer key is not used by local_model.
+    [ -f "$d/roll_video.mp4" ] && cp "$d/roll_video.mp4" "$out/datasets/$name/"
     [ -f "$d/evaluation_manifest.json" ] && cp "$d/evaluation_manifest.json" "$out/datasets/$name/"
     [ -f "$d/HIDDEN" ] && cp "$d/HIDDEN" "$out/datasets/$name/"
   done
-  (cd "$ROOT/backend" && "$UV" export --frozen --no-dev --no-hashes --no-emit-project --no-header \
+  (cd "$ROOT/backend" && "$UV" export --frozen --extra onnx --no-dev --no-hashes --no-emit-project --no-header \
     | grep -v '^ *#' > "$out/requirements.txt")
   echo "tzdata" >> "$out/requirements.txt"  # Asia/Dhaka for report times; the function image may lack it
   # Vercel's FastAPI support finds `app` in app.py and routes every path to it, unchanged.
   cat > "$out/app.py" <<'PY'
-"""Vercel entry point: the whole FastAPI app as one Python function (cloud_demo profile)."""
+"""Vercel entry point: API and trained ONNX inference in one Python function."""
+
+import os
+from pathlib import Path
+
+root = Path(__file__).resolve().parent
+os.environ["THREADEYE_MODEL_DIR"] = str(root / "model")
+os.environ["THREADEYE_DATASETS_DIR"] = str(root / "datasets")
+os.environ.setdefault("THREADEYE_DETECTOR_PROVIDER", "local_model")
+os.environ["THREADEYE_GIT_SHA"] = (root / "build_revision.txt").read_text().strip()
 
 from threadeye.api.app import app
 
@@ -74,10 +84,26 @@ PY
   cat > "$out/vercel.json" <<'JSON'
 {
   "regions": ["hnd1"],
-  "framework": "fastapi"
+  "framework": "fastapi",
+  "functions": {"app.py": {"maxDuration": 300}}
 }
 JSON
-  printf '.vercel\n' > "$out/.vercelignore"
+  printf '.vercel\n.env*\n.venv\n__pycache__\n' > "$out/.vercelignore"
+  python3 - "$out" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+digest = hashlib.sha256()
+for path in sorted((root / "threadeye").rglob("*.py")):
+    digest.update(str(path.relative_to(root)).encode())
+    digest.update(path.read_bytes())
+digest.update((root / "app.py").read_bytes())
+digest.update((root / "requirements.txt").read_bytes())
+digest.update((root / "model/threadeye_s.onnx").read_bytes())
+(root / "build_revision.txt").write_text("vercel-model-" + digest.hexdigest()[:12] + "\n")
+PY
   echo "built $out ($(du -sh "$out" | cut -f1))"
 }
 
@@ -86,6 +112,8 @@ deploy_api() {
   local dir="$ROOT/build/vercel-api" web_url
   (cd "$dir" && vercel link --yes --project "$API_PROJECT" >/dev/null)
   web_url="${WEB_URL:-$(prod_url "$ROOT/frontend" "$WEB_PROJECT" || true)}"
+  set_env "$dir" THREADEYE_DETECTOR_PROVIDER local_model
+  set_env "$dir" VERCEL_SUPPORT_LARGE_FUNCTIONS 1
   if [ -n "${SET_ENV:-}" ] || [ ! -f "$dir/.env-set" ]; then
     set_env "$dir" THREADEYE_DEPLOY_PROFILE cloud_demo
     set_env "$dir" THREADEYE_DATABASE_URL "$THREADEYE_DATABASE_URL"
@@ -94,7 +122,12 @@ deploy_api() {
     [ -n "$web_url" ] && set_env "$dir" THREADEYE_ALLOWED_ORIGINS "$web_url"
     touch "$dir/.env-set"
   fi
-  (cd "$dir" && vercel deploy --prod --yes)
+  if [ "${STAGED:-0}" = 1 ]; then
+    # Build with production configuration, but verify inference before moving the public alias.
+    (cd "$dir" && vercel deploy --prod --skip-domain --yes)
+  else
+    (cd "$dir" && vercel deploy --prod --yes)
+  fi
 }
 
 deploy_web() {
@@ -111,5 +144,6 @@ case "$WHAT" in
   api) deploy_api ;;
   web) deploy_web ;;
   all) deploy_api && deploy_web ;;
-  *) echo "usage: $0 [api|web|all]" >&2; exit 2 ;;
+  build) build_api ;;
+  *) echo "usage: $0 [api|web|all|build]" >&2; exit 2 ;;
 esac

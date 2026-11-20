@@ -146,6 +146,16 @@ make cloud-upload-video        # once: the sample roll's video into Supabase (se
 ./scripts/deploy_vercel.sh     # build and deploy both projects (Vercel CLI logged in, uv, .env.cloud)
 ```
 
+The API deployment bundles the stable ONNX model, its CPU runtime and the demo videos. It uses
+Vercel Fluid Compute with Large Functions enabled and a 300-second request limit. Inference runs
+in small request-bound batches; it does not depend on a background thread continuing after a
+response. The fabric videos are simulated; `local_model` performs real trained-model detection.
+
+Use `STAGED=1 ./scripts/deploy_vercel.sh api` to build without moving the production alias. An admin
+can call `POST /api/v1/model/runtime-check` on that deployment to run the installed model on a
+bundled frame and verify its SHA-256 and raw detections before promotion. Activate `local_model`
+in Admin → Detectors after deploying; existing inspections retain their original provider.
+
 ## Architecture
 
 ```mermaid

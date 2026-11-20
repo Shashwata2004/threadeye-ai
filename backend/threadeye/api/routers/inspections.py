@@ -71,6 +71,7 @@ from threadeye.reports.roll_report import build_roll_report
 from threadeye.security.rbac import Perm
 from threadeye.services import datasets, evidence, live, receiving, storage
 from threadeye.services.inspection_store import append_events, events_after
+from threadeye.settings import get_settings
 
 router = APIRouter(tags=["inspections"])
 defects_router = APIRouter(tags=["defects"])
@@ -325,7 +326,7 @@ def list_datasets(db: Session = Depends(get_db)) -> list[DatasetOut]:
         200: {"content": {"video/webm": {}, "video/mp4": {}}, "description": "Roll video"},
         206: {"description": "Part of the roll video (Range requests)"},
     },
-    description="The roll video. Range requests are supported; from Supabase it comes in pieces of at most 3 MB.",
+    description="The roll video. Range requests are supported; serverless responses are capped at 3 MB.",
 )
 def dataset_video(
     dataset_id: str, range_header: str | None = Header(None, alias="Range"), db: Session = Depends(get_db)
@@ -335,10 +336,11 @@ def dataset_video(
     except datasets.DatasetNotFound as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such roll") from exc
     cache = {"Cache-Control": "private, max-age=3600"}
-    if info.video_path is not None:
+    local_video = info.video_path
+    if local_video is not None and not get_settings().is_serverless:
         return FileResponse(info.video_path, media_type=info.video_type, headers=cache)
     key = storage.video_key(info.id)
-    total = storage.blob_size(db, key)
+    total = local_video.stat().st_size if local_video is not None else storage.blob_size(db, key)
     if not total:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "this roll has no video")
     start, end = 0, total - 1
@@ -351,11 +353,16 @@ def dataset_video(
     if start >= total:
         return Response(status_code=416, headers={"Content-Range": f"bytes */{total}"})
     end = min(end, total - 1, start + VIDEO_CHUNK - 1)
-    data = storage.read_range(db, key, start, end - start + 1)
+    if local_video is not None:
+        with local_video.open("rb") as video:
+            video.seek(start)
+            data = video.read(end - start + 1)
+    else:
+        data = storage.read_range(db, key, start, end - start + 1)
     return Response(
         data,
         status_code=206,
-        media_type="video/mp4",
+        media_type=info.video_type or "video/mp4",
         headers={**cache, "Accept-Ranges": "bytes", "Content-Range": f"bytes {start}-{end}/{total}"},
     )
 

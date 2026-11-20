@@ -545,6 +545,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/model/runtime-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Model Runtime Check
+         * @description Run the installed model on one bundled camera frame without changing any inspection.
+         *
+         *     A deployment can be verified before activating it. This checks real inference, not just
+         *     the model card, package imports or the configured banner.
+         */
+        post: operations["model_runtime_check_api_v1_model_runtime_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit": {
         parameters: {
             query?: never;
@@ -890,7 +913,7 @@ export interface paths {
         };
         /**
          * Dataset Video
-         * @description The roll video. Range requests are supported; from Supabase it comes in pieces of at most 3 MB.
+         * @description The roll video. Range requests are supported; serverless responses are capped at 3 MB.
          */
         get: operations["dataset_video_api_v1_datasets__dataset_id__video_get"];
         put?: never;
@@ -4503,6 +4526,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    model_runtime_check_api_v1_model_runtime_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };

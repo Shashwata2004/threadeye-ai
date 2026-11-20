@@ -1487,6 +1487,30 @@
         }
       }
     },
+    "/api/v1/model/runtime-check": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Model Runtime Check",
+        "description": "Run the installed model on one bundled camera frame without changing any inspection.\n\nA deployment can be verified before activating it. This checks real inference, not just\nthe model card, package imports or the configured banner.",
+        "operationId": "model_runtime_check_api_v1_model_runtime_check_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Model Runtime Check Api V1 Model Runtime Check Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit": {
       "get": {
         "tags": [
@@ -2395,7 +2419,7 @@
           "datasets"
         ],
         "summary": "Dataset Video",
-        "description": "The roll video. Range requests are supported; from Supabase it comes in pieces of at most 3 MB.",
+        "description": "The roll video. Range requests are supported; serverless responses are capped at 3 MB.",
         "operationId": "dataset_video_api_v1_datasets__dataset_id__video_get",
         "parameters": [
           {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,9 +20,9 @@ from threadeye.api.schemas.system import (
 from threadeye.db.audit import verify_chain
 from threadeye.db.models import AuditLog, ComponentHeartbeat, User
 from threadeye.db.session import get_db, ping
-from threadeye.providers.registry import REGISTRY, ProviderSpec
+from threadeye.providers.registry import REGISTRY, ProviderSpec, create_provider
 from threadeye.security.rbac import Perm
-from threadeye.services import model_card
+from threadeye.services import datasets, live, model_card
 from threadeye.services.provider_config import current_provider
 from threadeye.settings import get_settings
 
@@ -75,6 +76,46 @@ def model_evaluation(_: User = Depends(current_user)) -> dict[str, Any]:
     if ev is None:
         raise HTTPException(404, "no evaluated model yet")
     return ev
+
+
+@router.post("/model/runtime-check")
+def model_runtime_check(_: User = Depends(require(Perm.PROVIDERS_MANAGE))) -> dict[str, Any]:
+    """Run the installed model on one bundled camera frame without changing any inspection.
+
+    A deployment can be verified before activating it. This checks real inference, not just
+    the model card, package imports or the configured banner.
+    """
+    source = None
+    provider = None
+    started = perf_counter()
+    try:
+        config = live._local_model_config()
+        source = datasets.video_source(datasets.get_dataset("linescan_roll"))
+        provider = create_provider("local_model", config)
+        provider.prepare(source.open())
+        frame = next(source.read(12, 13, lambda _: True))
+        result = provider.detect(frame)
+        if result.error:
+            raise RuntimeError(result.error)
+        return {
+            "provider_id": provider.info.provider_id,
+            "is_simulated": provider.info.is_simulated,
+            "model_sha256": config["sha256"],
+            "dataset_id": "linescan_roll",
+            "input_is_simulated": True,
+            "frame": 12,
+            "elapsed_seconds": round(perf_counter() - started, 3),
+            "detections": [
+                {"class": d.cls, "bbox_px": d.bbox_px, "explanation": d.explanation} for d in result.detections
+            ],
+        }
+    except (RuntimeError, OSError, ValueError, live.InspectionError) as exc:
+        raise HTTPException(503, f"model runtime check failed: {exc}") from exc
+    finally:
+        if source is not None:
+            source.close()
+        if provider is not None:
+            provider.close()
 
 
 @router.get("/audit", response_model=list[AuditEntryOut], tags=["audit"])

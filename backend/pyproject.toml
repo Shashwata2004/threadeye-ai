@@ -5,7 +5,7 @@ description = "ThreadEye AI: fabric inspection assistant (backend, API, worker, 
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
-# Core dependencies must stay cloud-safe (Vercel Python bundle): no OpenCV/numpy here.
+# Keep the base small; CPU-model deployments also install the onnx extra below.
 dependencies = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Edge-only: video decoding and future local inference (installed in the worker image from M1).
+# Video decoding for edge and model-enabled cloud deployments.
 vision = ["numpy>=2.0", "opencv-python-headless>=4.10"]
 # The trained detector (providers/local_model.py): ONNX Runtime on the CPU, plus the vision extra.
 onnx = ["onnxruntime>=1.18", "numpy>=2.0", "opencv-python-headless>=4.10"]

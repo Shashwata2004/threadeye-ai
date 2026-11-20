@@ -98,8 +98,6 @@ def select_provider(
     body: ProviderIn, actor: User = Depends(require(Perm.PROVIDERS_MANAGE)), db: Session = Depends(get_db)
 ) -> dict[str, str]:
     if body.provider_id == "local_model":
-        if get_settings().is_serverless:
-            raise HTTPException(409, "the real model runs on the edge laptop")
         try:
             live._local_model_config()
         except live.InspectionError as exc:
