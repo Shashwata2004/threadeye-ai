@@ -338,7 +338,7 @@ def dataset_video(
     cache = {"Cache-Control": "private, max-age=3600"}
     local_video = info.video_path
     if local_video is not None and not get_settings().is_serverless:
-        return FileResponse(info.video_path, media_type=info.video_type, headers=cache)
+        return FileResponse(local_video, media_type=info.video_type, headers=cache)
     key = storage.video_key(info.id)
     total = local_video.stat().st_size if local_video is not None else storage.blob_size(db, key)
     if not total:
