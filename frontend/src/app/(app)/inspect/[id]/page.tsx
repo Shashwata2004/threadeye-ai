@@ -1,5 +1,6 @@
 "use client";
 
+import { useBi } from "@/components/screenKit";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -46,6 +47,7 @@ const AHEAD_MAX_S = 20;
 const START_AHEAD_S = 8;
 
 export default function LiveInspectionPage() {
+  const bi = useBi();
   const { id } = useParams<{ id: string }>();
   const t = useTranslations();
   const router = useRouter();
@@ -71,6 +73,8 @@ export default function LiveInspectionPage() {
   const capturesRef = useRef<Capture[]>([]);
   const nextSampleRef = useRef(0);
   const drivingRef = useRef(false);
+  const bufferingRef = useRef(false);
+  const [buffering, setBuffering] = useState(false);
   /** Start/resume pressed, the server has not answered yet. */
   const startingRef = useRef(false);
   const [liveBoxes, setLiveBoxes] = useState<ReadonlyMap<string, LiveBox>>(new Map());
@@ -174,6 +178,8 @@ export default function LiveInspectionPage() {
 
   const stopDriving = useCallback(() => {
     drivingRef.current = false;
+    bufferingRef.current = false;
+    setBuffering(false);
     setDriving(false);
     videoRef.current?.pause();
   }, []);
@@ -211,6 +217,11 @@ export default function LiveInspectionPage() {
         checkpointRef.current = data.checkpoint_frame;
         setCheckpoint(data.checkpoint_frame);
         applyEvents(data.events);
+        if (bufferingRef.current && drivingRef.current && (data.checkpoint_frame > frameRef.current + 2 || data.checkpoint_frame === track.frame_count - 1)) {
+          bufferingRef.current = false;
+          setBuffering(false);
+          await videoRef.current?.playFrom(frameRef.current, rateRef.current);
+        }
         if (captures.length) void queryClient.invalidateQueries({ queryKey: ["defects", id] }); // new photos
         setError(null);
       } else if (response.status === 409) {
@@ -250,6 +261,14 @@ export default function LiveInspectionPage() {
 
   const onFrame = useCallback(
     (f: number) => {
+      if (drivingRef.current && checkpointRef.current >= 0 && f > checkpointRef.current) {
+        bufferingRef.current = true;
+        setBuffering(true);
+        videoRef.current?.pause();
+        videoRef.current?.seek(checkpointRef.current);
+        frameRef.current = checkpointRef.current;
+        return;
+      }
       frameRef.current = f;
       if (!drivingRef.current || !track) return;
       // Evidence photos: at each frame of the sampling plan, and whenever the fabric has moved 40 % of a
@@ -306,6 +325,8 @@ export default function LiveInspectionPage() {
     checkpointRef.current = data.checkpoint_frame;
     setCheckpoint(data.checkpoint_frame);
     applyEvents(data.events);
+    bufferingRef.current = false;
+    setBuffering(false);
     drivingRef.current = true;
     setDriving(true);
     setEnded(false);
@@ -659,6 +680,7 @@ export default function LiveInspectionPage() {
 
   return (
     <div className="space-y-3">
+      {buffering && <p role="status" className="rounded border border-amber-500 p-3">{bi("Buffering AI results — keeping boxes aligned with the video.", "AI-এর ফল আসছে — ভিডিওর সঙ্গে বক্স মিলিয়ে নেওয়া হচ্ছে।")}</p>}
       <VerificationWarning machineId={insp.machine_id}/>
       <MeasurementPanel inspection={insp}/>
       <div className="flex flex-wrap items-center justify-between gap-2">

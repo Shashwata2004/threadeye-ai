@@ -62,7 +62,7 @@ def test_real_model_on_serverless_after_cold_requests(client: TestClient, monkey
         response = client.post(path + "/advance", json=body)
         assert response.status_code == 200, response.text
         checkpoint = response.json()["checkpoint_frame"]
-        assert previous < checkpoint <= previous + live.MIN_STEP_FRAMES
+        assert previous < checkpoint <= previous + live.SERVERLESS_STEP_FRAMES
         assert not any(isinstance(e.runner.provider, PrefetchingDetector) for e in live._cache.values())
         previous = checkpoint
         live.clear_cache()  # Simulate a different/fresh function instance on the next request.

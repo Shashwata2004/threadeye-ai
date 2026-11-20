@@ -57,6 +57,7 @@ from threadeye.settings import get_settings
 
 LEASE_SECONDS = 30
 MIN_STEP_FRAMES = 3
+SERVERLESS_STEP_FRAMES = 12  # Amortize remote database/network overhead without unbounded requests.
 """A request to a detector still working through the frames waits for at least this many (about 1 s)."""
 OPEN = ("created", "running", "paused", "interrupted")
 CACHE_SIZE = 16
@@ -575,7 +576,7 @@ def advance(
     if get_settings().is_serverless and runner.provider.info.requires_image:
         # Functions may be frozen after a response. Run bounded inference in the request,
         # rather than depending on the laptop's background prefetch thread.
-        until_frame = min(until_frame, runner.checkpoint + MIN_STEP_FRAMES)
+        until_frame = min(until_frame, runner.checkpoint + SERVERLESS_STEP_FRAMES)
     if isinstance(runner.provider, PrefetchingDetector) and not wait_for_detector:
         # Hand back what the model has finished instead of waiting for the rest: the next request takes it.
         until_frame = min(until_frame, max(runner.provider.ready_until, runner.checkpoint + MIN_STEP_FRAMES))

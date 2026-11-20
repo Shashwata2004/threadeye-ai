@@ -73,6 +73,58 @@ export interface paths {
         patch: operations["patch_me_api_v1_auth_me_patch"];
         trace?: never;
     };
+    "/api/v1/documentation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public */
+        get: operations["public_api_v1_documentation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documentation/admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Read */
+        get: operations["admin_read_api_v1_documentation_admin_get"];
+        /** Save */
+        put: operations["save_api_v1_documentation_admin_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documentation/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview */
+        get: operations["preview_api_v1_documentation_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -1804,6 +1856,158 @@ export interface components {
             /** Enabled */
             enabled: boolean;
         };
+        /** DocsApiEntry */
+        DocsApiEntry: {
+            /** Path */
+            path: string;
+            /** Methods */
+            methods: string[];
+            /** Access */
+            access: string;
+        };
+        /** DocsConfig */
+        DocsConfig: {
+            /**
+             * Revision
+             * @default 0
+             */
+            revision: number;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Starts At */
+            starts_at?: string | null;
+            /** Ends At */
+            ends_at?: string | null;
+            /**
+             * Project Name
+             * @default ThreadEye AI
+             */
+            project_name: string;
+            /**
+             * Team Name
+             * @default DU_Synapse
+             */
+            team_name: string;
+            tagline: components["schemas"]["DocsText"];
+            /** Repository Url */
+            repository_url: string;
+            /** App Url */
+            app_url: string;
+            /** Video Url */
+            video_url?: string | null;
+            /**
+             * Show Live
+             * @default true
+             */
+            show_live: boolean;
+            /**
+             * Show Apis
+             * @default true
+             */
+            show_apis: boolean;
+            /**
+             * Show Team
+             * @default true
+             */
+            show_team: boolean;
+            /** Sections */
+            sections: components["schemas"]["DocsSection"][];
+            /** Members */
+            members?: components["schemas"]["DocsMember"][];
+        };
+        /** DocsDocument */
+        DocsDocument: {
+            content: components["schemas"]["DocsConfig"];
+            live?: components["schemas"]["DocsLive"] | null;
+            /** Apis */
+            apis?: components["schemas"]["DocsApiEntry"][];
+        };
+        /** DocsLive */
+        DocsLive: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Version */
+            version: string;
+            /** Profile */
+            profile: string;
+            /**
+             * Database
+             * @default ok
+             * @constant
+             */
+            database: "ok";
+            /** Worker Alive */
+            worker_alive: boolean;
+            /** Active Provider */
+            active_provider: string;
+            /** Detector Is Simulated */
+            detector_is_simulated: boolean;
+            /** Registered Rolls */
+            registered_rolls: number;
+            /** Inspections */
+            inspections: number;
+            /** Finalized Inspections */
+            finalized_inspections: number;
+            /** Simulated Video Inspections */
+            simulated_video_inspections: number;
+            /** Active Users */
+            active_users: number;
+            /** Audit Events */
+            audit_events: number;
+            /** Verdicts */
+            verdicts: {
+                [key: string]: number;
+            };
+            /** Runtime */
+            runtime: {
+                [key: string]: string;
+            };
+            /** Evaluation */
+            evaluation?: {
+                [key: string]: number | string | null;
+            } | null;
+        };
+        /** DocsMember */
+        DocsMember: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            role: components["schemas"]["DocsText"];
+            /** Email */
+            email: string;
+            /** Image Data */
+            image_data?: string | null;
+        };
+        /** DocsSection */
+        DocsSection: {
+            /** Id */
+            id: string;
+            title: components["schemas"]["DocsText"];
+            body: components["schemas"]["DocsText"];
+            /**
+             * Visible
+             * @default true
+             */
+            visible: boolean;
+            /** Diagram */
+            diagram?: ("architecture" | "inspection") | null;
+            /** Steps */
+            steps?: components["schemas"]["DocsText"][];
+        };
+        /** DocsText */
+        DocsText: {
+            /** En */
+            en: string;
+            /** Bn */
+            bn: string;
+        };
         /** EvaluationIn */
         EvaluationIn: {
             /** Dataset Ids */
@@ -3524,6 +3728,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_api_v1_documentation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsDocument"];
+                };
+            };
+        };
+    };
+    admin_read_api_v1_documentation_admin_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsConfig"];
+                };
+            };
+        };
+    };
+    save_api_v1_documentation_admin_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsConfig"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsConfig"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_documentation_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsDocument"];
                 };
             };
         };

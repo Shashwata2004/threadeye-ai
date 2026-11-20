@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from threadeye import __version__
 from threadeye.api import errors
 from threadeye.api.middleware import OriginCheckMiddleware, RequestIdMiddleware
-from threadeye.api.routers import auth, health, inspections, operations, receiving, system, users
+from threadeye.api.routers import auth, docs, health, inspections, operations, receiving, system, users
 from threadeye.settings import get_settings
 
 API_PREFIX = "/api/v1"
@@ -44,7 +44,7 @@ def create_app() -> FastAPI:
             CORSMiddleware,
             allow_origins=s.allowed_origin_list,
             allow_credentials=True,
-            allow_methods=["GET", "POST", "PATCH", "DELETE"],
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
             allow_headers=["Content-Type", "Idempotency-Key", "Last-Event-ID", "X-Request-ID"],
         )
     app.add_middleware(RequestIdMiddleware)
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     v1 = APIRouter(prefix=API_PREFIX)
     for r in (
         auth.router,
+        docs.router,
         users.router,
         operations.router,
         system.router,

@@ -169,3 +169,44 @@ explicitly excluded by the owner.
 | PostgreSQL | 16.4 | Database |
 | Playwright + Google Chrome | see `frontend/pnpm-lock.yaml` | End-to-end golden path in a real browser (M2); Chrome because it plays the simulator's H.264 video |
 | ffmpeg | distro package | The simulator's H.264 encoding (CI renders its own short roll) |
+
+## Live documentation module — 2026-11-21
+
+The public `/docs` page combines editable English/Bangla project sections,
+architecture/data-flow views, DU_Synapse team contacts and the supplied YouTube
+presentation. `/admin/docs` (also linked from Admin) manages content, portraits,
+section visibility, publication and optional start/end times. Photos are resized
+in-browser and validated/reencoded to a maximum 256px JPEG on the server.
+
+Configuration lives in the existing PostgreSQL settings table. Revision checks
+prevent lost edits, and saves append a content-hash audit entry. The public data
+endpoint is `/api/v1/documentation`; FastAPI's `/api/v1/docs` remains its separate
+API reference. Public responses use no-store caching and fail closed outside the
+publication window. Hidden sections and disabled team data are removed from the
+public payload. Admin preview remains permission-protected.
+
+The live panel refreshes aggregate account, roll, inspection and audit counts,
+configured detector and runtime status every 15 seconds. API inventory is generated
+from registered routes. Narrative is labeled authored content; configuration is
+not proof of a live inference run and demo totals are not factory impact.
+
+Initial publication is OFF. Sign in as admin, open Admin → Public documentation,
+review the content and timezone-aware schedule, enable Publicly available and
+save. No separate database migration is required.
+
+Validation: 17 distinct backend tests passed across documentation/schema,
+publication/permission gates and the RBAC matrix. Fourteen browser tests passed
+across public docs editing/unpublishing/mobile diagrams, permissions and existing
+visualizations. Frontend checks, production build, targeted backend Ruff/mypy and
+the generated OpenAPI contract check passed. Tests used disposable PostgreSQL
+and isolated browser fixtures.
+
+## Cloud playback alignment — 2026-11-21
+
+Serverless inference now processes at most 12 frames per request (previously 3),
+reducing database/network round trips for the same frame coverage. Work remains
+bounded inside each request. During inspection, playback waits at the processed
+checkpoint if results lag and resumes after a small lead is restored; review
+replay is unaffected. This preserves detector identity and sampling. Cloud CPU
+and network limits can still require buffering; no laptop-equivalent throughput
+is claimed without a hosted timing measurement.

@@ -158,6 +158,108 @@
         }
       }
     },
+    "/api/v1/documentation": {
+      "get": {
+        "tags": [
+          "documentation"
+        ],
+        "summary": "Public",
+        "operationId": "public_api_v1_documentation_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documentation/admin": {
+      "get": {
+        "tags": [
+          "documentation"
+        ],
+        "summary": "Admin Read",
+        "operationId": "admin_read_api_v1_documentation_admin_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsConfig"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documentation"
+        ],
+        "summary": "Save",
+        "operationId": "save_api_v1_documentation_admin_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documentation/preview": {
+      "get": {
+        "tags": [
+          "documentation"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_api_v1_documentation_preview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users": {
       "get": {
         "tags": [
@@ -5007,6 +5109,413 @@
           "enabled"
         ],
         "title": "DemoScheduleIn"
+      },
+      "DocsApiEntry": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "methods": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Methods"
+          },
+          "access": {
+            "type": "string",
+            "title": "Access"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "methods",
+          "access"
+        ],
+        "title": "DocsApiEntry"
+      },
+      "DocsConfig": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Revision",
+            "default": 0
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "project_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Project Name",
+            "default": "ThreadEye AI"
+          },
+          "team_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Team Name",
+            "default": "DU_Synapse"
+          },
+          "tagline": {
+            "$ref": "#/components/schemas/DocsText"
+          },
+          "repository_url": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Repository Url"
+          },
+          "app_url": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "App Url"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
+          "show_live": {
+            "type": "boolean",
+            "title": "Show Live",
+            "default": true
+          },
+          "show_apis": {
+            "type": "boolean",
+            "title": "Show Apis",
+            "default": true
+          },
+          "show_team": {
+            "type": "boolean",
+            "title": "Show Team",
+            "default": true
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/DocsSection"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Sections"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/DocsMember"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Members"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tagline",
+          "repository_url",
+          "app_url",
+          "sections"
+        ],
+        "title": "DocsConfig"
+      },
+      "DocsDocument": {
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/DocsConfig"
+          },
+          "live": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocsLive"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "apis": {
+            "items": {
+              "$ref": "#/components/schemas/DocsApiEntry"
+            },
+            "type": "array",
+            "title": "Apis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "DocsDocument"
+      },
+      "DocsLive": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "profile": {
+            "type": "string",
+            "title": "Profile"
+          },
+          "database": {
+            "type": "string",
+            "const": "ok",
+            "title": "Database",
+            "default": "ok"
+          },
+          "worker_alive": {
+            "type": "boolean",
+            "title": "Worker Alive"
+          },
+          "active_provider": {
+            "type": "string",
+            "title": "Active Provider"
+          },
+          "detector_is_simulated": {
+            "type": "boolean",
+            "title": "Detector Is Simulated"
+          },
+          "registered_rolls": {
+            "type": "integer",
+            "title": "Registered Rolls"
+          },
+          "inspections": {
+            "type": "integer",
+            "title": "Inspections"
+          },
+          "finalized_inspections": {
+            "type": "integer",
+            "title": "Finalized Inspections"
+          },
+          "simulated_video_inspections": {
+            "type": "integer",
+            "title": "Simulated Video Inspections"
+          },
+          "active_users": {
+            "type": "integer",
+            "title": "Active Users"
+          },
+          "audit_events": {
+            "type": "integer",
+            "title": "Audit Events"
+          },
+          "verdicts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Verdicts"
+          },
+          "runtime": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Runtime"
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "version",
+          "profile",
+          "worker_alive",
+          "active_provider",
+          "detector_is_simulated",
+          "registered_rolls",
+          "inspections",
+          "finalized_inspections",
+          "simulated_video_inspections",
+          "active_users",
+          "audit_events",
+          "verdicts",
+          "runtime"
+        ],
+        "title": "DocsLive"
+      },
+      "DocsMember": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,39}$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/DocsText"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+            "title": "Email"
+          },
+          "image_data": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 85000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "role",
+          "email"
+        ],
+        "title": "DocsMember"
+      },
+      "DocsSection": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,39}$",
+            "title": "Id"
+          },
+          "title": {
+            "$ref": "#/components/schemas/DocsText"
+          },
+          "body": {
+            "$ref": "#/components/schemas/DocsText"
+          },
+          "visible": {
+            "type": "boolean",
+            "title": "Visible",
+            "default": true
+          },
+          "diagram": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "architecture",
+                  "inspection"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagram"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/DocsText"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "body"
+        ],
+        "title": "DocsSection"
+      },
+      "DocsText": {
+        "properties": {
+          "en": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "En"
+          },
+          "bn": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "Bn"
+          }
+        },
+        "type": "object",
+        "required": [
+          "en",
+          "bn"
+        ],
+        "title": "DocsText"
       },
       "EvaluationIn": {
         "properties": {

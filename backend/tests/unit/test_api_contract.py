@@ -13,7 +13,7 @@ from threadeye.api.introspect import iter_api_routes
 from threadeye.api.schemas.events import EventEnvelope, EventType
 
 OPENAPI_FILE = Path(__file__).resolve().parents[3] / "docs" / "api" / "openapi.json"
-PUBLIC = {("POST", "/api/v1/auth/login"), ("GET", "/health")}
+PUBLIC = {("POST", "/api/v1/auth/login"), ("GET", "/health"), ("GET", "/api/v1/documentation")}
 
 
 def test_openapi_snapshot_is_current() -> None:
@@ -23,7 +23,7 @@ def test_openapi_snapshot_is_current() -> None:
     assert generated == committed, "OpenAPI drift: run `make openapi` and commit the result"
 
 
-def test_every_route_except_login_and_health_requires_a_session() -> None:
+def test_every_route_except_explicit_public_endpoints_requires_a_session() -> None:
     routes = list(iter_api_routes(create_app()))
     assert len(routes) >= 45, "route discovery broke (FastAPI internals changed?)"
     unguarded = [

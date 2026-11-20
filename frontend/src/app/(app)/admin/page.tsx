@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMe, useProviders, useMasterData } from "@/lib/api/hooks";
@@ -89,6 +90,7 @@ export default function AdminPage() {
   return <div className={`${screenRoot} space-y-4`}>
     <PageHeader title={bi("Administration", "অ্যাডমিন")} sample={false}
       subtitle={bi("Server-backed users, machines and versioned buyer rules.", "ব্যবহারকারী, মেশিন ও বায়ারের নিয়ম সার্ভারে সংরক্ষণ করুন।")}/>
+    {hasPerm(me, "settings.manage") && <Link href="/admin/docs" className="inline-block rounded border border-slate-300 px-4 py-2 font-semibold text-brand-teal">Public documentation / docs →</Link>}
     <nav className="flex flex-wrap gap-2">{[
       ["users", bi("Users", "ব্যবহারকারী")], ["machines", bi("Machines", "মেশিন")],
       ["profiles", bi("Buyer rules", "বায়ারের নিয়ম")], ["detectors", bi("Detectors", "শনাক্তকারী")],
