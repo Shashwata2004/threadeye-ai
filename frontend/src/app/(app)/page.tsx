@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { useMe, useSystemStatus, useProviders } from "@/lib/api/hooks";
 import { hasPerm } from "@/lib/api/client";
 import { request, type Dashboard } from "@/lib/api/operations";
 import { Card, CardTitle, KpiCard, PageHeader, screenRoot, useBi } from "@/components/screenKit";
 import { ProviderBadge, SampleBadge } from "@/components/badges";
+
+const VerdictDonut = dynamic(() => import("@/components/charts/VerdictDonut"), { ssr: false });
 
 export default function DashboardPage() {
   const bi = useBi();
@@ -42,6 +45,9 @@ export default function DashboardPage() {
           sub={bi(`${data?.reviewed_detections ?? 0} reviewed flags; not test-set false-positive rate`,
             `${data?.reviewed_detections ?? 0}টি পর্যালোচিত সতর্কতা; test-set false-positive rate নয়`)}/>
       </section>
+      {data && <Card><CardTitle>{bi("Roll verdict distribution", "রোলের ফলাফলের অনুপাত")}</CardTitle>
+        <VerdictDonut verdicts={data.verdicts}/>
+      </Card>}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card><CardTitle>{bi("Today's verification", "আজকের যাচাই")}</CardTitle>
           <p data-testid="verification-status" className={failed ? "text-red-600" : checked ? "text-emerald-600" : "text-brand-amber"}>

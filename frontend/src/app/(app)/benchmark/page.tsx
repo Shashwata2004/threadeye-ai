@@ -1,9 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
 import { useTranslations } from "next-intl";
 import { Card, CardTitle, KpiCard, PageHeader, pct, screenRoot, useBi } from "@/components/screenKit";
 import { useModelEvaluation } from "@/lib/api/hooks";
 import { EvaluationWorkbench } from "@/components/EvaluationWorkbench";
+import type { BenchmarkRow } from "@/components/charts/BenchmarkBars";
+
+const BenchmarkBars = dynamic(() => import("@/components/charts/BenchmarkBars"), { ssr: false });
 
 // The trained detector scored on the held-out test split (ml/kaggle/train.py → test_report.json; the
 // matching rule and the per-class thresholds are in ml/fabricdata/operating.py). Every figure is measured:
@@ -32,10 +38,14 @@ export default function BenchmarkPage() {
   const t = useTranslations();
   const bi = useBi();
   const { data: ev, isLoading, isError } = useModelEvaluation();
+  const [comparison, setComparison] = useState<"source" | "class">("source");
 
   const defects = ev?.per_class.filter((c) => !c.nondefect) ?? [];
   const nondefects = ev?.per_class.filter((c) => c.nondefect) ?? [];
   const sources = [...(ev?.per_source ?? [])].sort((a, b) => b.tiles - a.tiles);
+  const chartRows: BenchmarkRow[] = comparison === "source"
+    ? sources.map(s => ({ label: s.source, first: s.found_any_class, second: s.found_right_class }))
+    : defects.map(c => ({ label: t.has(`cls.${c.cls}`) ? t(`cls.${c.cls}`) : c.cls, first: c.precision, second: c.recall }));
 
   return (
     <div className={`${screenRoot} space-y-5`}>
@@ -117,6 +127,21 @@ export default function BenchmarkPage() {
           tone={ev && (ev.nondefects_called_defect ?? 0) > 0.2 ? "red" : "amber"}
         />
       </div>
+
+      <Card>
+        <CardTitle>{bi("Evaluation comparison", "মূল্যায়নের তুলনা")}</CardTitle>
+        <label className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+          {bi("Compare by", "তুলনার ধরন")}
+          <select className="rounded border border-slate-200 bg-white px-3 py-2" value={comparison} onChange={e => setComparison(e.target.value as "source" | "class")}>
+            <option value="source">{bi("Dataset", "ডেটাসেট")}</option>
+            <option value="class">{bi("Defect class", "ত্রুটির শ্রেণি")}</option>
+          </select>
+        </label>
+        <BenchmarkBars rows={chartRows}
+          firstLabel={comparison === "source" ? bi("Detection recall", "শনাক্তের রিকল") : bi("Precision", "প্রিসিশন")}
+          secondLabel={comparison === "source" ? bi("Correct-class recall", "সঠিক শ্রেণির রিকল") : bi("Recall", "রিকল")}/>
+        <p className="mt-2 text-xs text-slate-500">{bi("Dataset precision is not provided by this evaluation. Missing measurements remain unavailable (—), not zero.", "এই মূল্যায়নে ডেটাসেটভিত্তিক precision দেওয়া নেই। অনুপস্থিত মান — দিয়ে দেখানো হয়েছে, শূন্য নয়।")}</p>
+      </Card>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>

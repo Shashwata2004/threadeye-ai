@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { ProviderBadge } from "@/components/badges";
@@ -11,6 +12,9 @@ import { Button, inputClass } from "@/components/form";
 import { Lightbox, largePhoto } from "@/components/Lightbox";
 import { api, hasPerm, idempotencyKey, type Defect, type Inspection } from "@/lib/api/client";
 import { errorDetail, useDefects, useInspection, useMe } from "@/lib/api/hooks";
+import { Card, CardTitle, useBi } from "@/components/screenKit";
+
+const DefectHeatmap = dynamic(() => import("@/components/charts/DefectHeatmap"), { ssr: false });
 
 const VERDICT_STYLE: Record<string, string> = {
   PASS: "bg-green-700 text-white",
@@ -114,6 +118,7 @@ function DecisionPanel({ id, insp }: { id: string; insp: Inspection }) {
 }
 
 export default function VerdictPage() {
+  const bi = useBi();
   const { id } = useParams<{ id: string }>();
   const t = useTranslations();
   const { data: me } = useMe();
@@ -225,6 +230,9 @@ export default function VerdictPage() {
 
       <MeasurementPanel inspection={insp}/>
       <InspectionEvidenceTools inspection={insp} defects={real}/>
+      <Card><CardTitle>{bi("Confirmed defect distribution", "নিশ্চিত ত্রুটির বিস্তার")}</CardTitle>
+        <DefectHeatmap defects={defects} lengthYd={insp.yards_inspected ?? r.declared_length_yd}/>
+      </Card>
 
       {cells.length > 0 && (
         <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">

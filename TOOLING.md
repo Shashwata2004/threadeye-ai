@@ -69,9 +69,49 @@ workflow executed. Submission descriptions should say **setup added** until ther
 is evidence of an actual feature workflow and skill execution. No point increase
 or judge acceptance is established by these files.
 
-## MCP servers
+## Operational visualizations — 2026-11-20
 
-### LangGraph companion workflow — 2026-11-20
+Four open-source plotting libraries are integrated into existing app pages:
+
+| Library | Page | Actual use |
+|---|---|---|
+| Recharts | Dashboard (`/`) | Donut of today's finalized PASS / BORDERLINE / FAIL roll verdicts |
+| Chart.js | Mill scorecards (`/suppliers`) | Monthly points-per-100-sq-yd trend, gaps for missing months, and the existing 40-point scorecard reference |
+| Apache ECharts | Inspection report (`/inspections/[id]`) | Confirmed defect counts by class and yard-position bin; rejected, pending and nondefect entries excluded |
+| Plotly.js (basic bundle) | Benchmark (`/benchmark`) | Dataset localization/correct-class recall comparison and selectable per-class precision/recall bars |
+
+Dependencies and resolved versions are recorded in `frontend/package.json` and
+`frontend/pnpm-lock.yaml`. Chart components live in `frontend/src/components/charts/`
+and load on the client only for the corresponding page. ECharts imports the
+heatmap/SVG modules; Plotly uses its basic bundle. No CDN or external plotting
+service is required. Existing custom React/SVG cutting maps remain in use.
+
+All plots use existing API data, support English/Bangla and light/dark themes,
+and provide exact-value tables and empty states. Missing benchmark values are
+not plotted as zero; dataset precision is not available in the current report.
+The all-mill monthly trend is weighted by each month's actual inspected rolls.
+The heatmap counts each confirmed defect once at its center; it does not
+represent defect size, scoring or cutting instructions.
+
+Specification and acceptance checklist: `specs/003-operational-charts/`.
+Browser checks: `frontend/e2e/visualizations.spec.ts`, using isolated API fixtures
+rather than writing to a live factory or cloud database. These plots introduce
+no new model-performance or factory-impact measurements.
+
+Validation: `pnpm check` (locale parity, ESLint, TypeScript) and `pnpm build`
+passed. Against the local production build, the following browser command passed
+all 18 tests, including English/Bangla, both themes, mobile chart widths, empty
+states, monthly weighting, null values, confirmed-only heatmap counts, cutting
+overlays, saved decisions and permission notices:
+
+```sh
+E2E_BASE_URL=http://127.0.0.1:3100 pnpm exec playwright test \
+  e2e/visualizations.spec.ts e2e/cutting-map.spec.ts \
+  e2e/cutting-policy-decision.spec.ts e2e/permissions.spec.ts --workers=1
+```
+
+
+## LangGraph companion workflow — 2026-11-20
 
 The evidence companion now has an opt-in LangGraph 1.2.24 implementation in
 `threadeye-evidence-assistant/src/threadeye_evidence/answering/workflow.py`, selected
@@ -96,6 +136,8 @@ Submission wording for **Agentic Frameworks Used → LangGraph**:
 
 This feature is specified in `specs/002-evidence-recovery-workflow/`. Its completed
 implementation and tests are separate from the earlier setup-only manifest draft.
+
+## MCP servers
 
 | MCP server | Used for | Effect on code |
 |---|---|---|

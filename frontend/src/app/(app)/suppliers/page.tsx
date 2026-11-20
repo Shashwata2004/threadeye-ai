@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { PermissionNotice } from "@/components/PermissionNotice";
 import { ClaimPackButton } from "@/components/ClaimPackButton";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { hasPerm, type MillScorecard } from "@/lib/api/client";
 import { useMe, useScorecards } from "@/lib/api/hooks";
@@ -22,6 +23,7 @@ import {
 
 // Supplier scorecards (M5): GET /suppliers/scorecard, from each roll's latest finalized inspection.
 const FAIL_LIMIT = 40;
+const MillTrend = dynamic(() => import("@/components/charts/MillTrend"), { ssr: false });
 
 type Status = "accepted" | "review" | "rejected";
 interface Delivery {
@@ -47,6 +49,7 @@ interface Mill {
   claims: number;
   shortage: number;
   trend: (number | null)[];
+  monthlyRolls: number[];
   mix: { cls: string; share: number }[];
   deliveries: Delivery[];
 }
@@ -62,6 +65,7 @@ function toMill(c: Card): Mill {
     claims: c.claims,
     shortage: c.shortage ?? 0,
     trend: c.trend.map((m) => m.avg_points_per_100 ?? null),
+    monthlyRolls: c.trend.map((m) => m.rolls),
     mix: c.mix,
     deliveries: c.deliveries.map((d) => ({
       lotId: d.lot_id,
@@ -116,8 +120,8 @@ export default function SuppliersPage() {
     const weighted = (f: (m: Mill) => number) => MILLS.reduce((s, m) => s + f(m) * rolls(m), 0) / total;
     const monthly = (i: number) => {
       const withData = MILLS.filter((m) => m.trend[i] !== null);
-      const n = withData.reduce((s, m) => s + rolls(m), 0);
-      return n ? withData.reduce((s, m) => s + (m.trend[i] ?? 0) * rolls(m), 0) / n : null;
+      const n = withData.reduce((s, m) => s + (m.monthlyRolls[i] ?? 0), 0);
+      return n ? withData.reduce((s, m) => s + (m.trend[i] ?? 0) * (m.monthlyRolls[i] ?? 0), 0) / n : null;
     };
     return {
       acceptance: weighted((m) => m.acceptance),
@@ -137,7 +141,6 @@ export default function SuppliersPage() {
     })
     .sort((a, b) => b.received.localeCompare(a.received));
 
-  const chartMax = 50;
   const statusPill = (s: Status) =>
     s === "accepted" ? (
       <Pill tone="emerald">{bi("Accepted", "গৃহীত")}</Pill>
@@ -220,42 +223,7 @@ export default function SuppliersPage() {
           <CardTitle hint={bi("Average defect points per 100 sq yd, by month.", "মাসভিত্তিক গড় ত্রুটি পয়েন্ট (প্রতি ১০০ বর্গগজ)।")}>
             {bi("Quality trend", "মানের প্রবণতা")}
           </CardTitle>
-          <div className="relative h-48 border-b border-l border-slate-200 pl-1">
-            <div
-              className="absolute inset-x-0 border-t-2 border-dashed border-red-500"
-              style={{ bottom: `${(FAIL_LIMIT / chartMax) * 100}%` }}
-            >
-              <span className="absolute -top-5 right-0 text-xs font-semibold text-red-600">
-                {bi(`Fail ${FAIL_LIMIT} pts`, `ফেল ${FAIL_LIMIT} পয়েন্ট`)}
-              </span>
-            </div>
-            <div className="flex h-full items-end justify-around gap-2">
-              {MONTHS.map((month, i) => {
-                const v = view ? view.trend[i] : null;
-                return (
-                  <div key={month.key} className="flex h-full w-full max-w-12 flex-col items-center justify-end">
-                    <span className="mb-1 font-mono text-xs text-slate-600">{v !== null ? v.toFixed(1) : NONE}</span>
-                    {v !== null && (
-                      <div
-                        className={`w-full rounded-t transition-all duration-500 ${
-                          v >= FAIL_LIMIT ? "bg-red-500" : v >= 28 ? "bg-amber-500" : "bg-emerald-500"
-                        }`}
-                        style={{ height: `${(Math.min(v, chartMax) / chartMax) * 100}%` }}
-                        title={`${bi(month.en, month.bn)}: ${v.toFixed(1)}`}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="mt-1 flex justify-around pl-1 text-xs text-slate-500">
-            {MONTHS.map((m) => (
-              <span key={m.key} className="w-full max-w-12 text-center">
-                {bi(m.en, m.bn)}
-              </span>
-            ))}
-          </div>
+          <MillTrend months={MONTHS.map(m => bi(m.en, m.bn))} values={view?.trend ?? MONTHS.map(() => null)} limit={FAIL_LIMIT}/>
         </Card>
 
         <Card>
