@@ -56,14 +56,14 @@ for (const locale of ["bn", "en"]) {
     await page.goto("/suppliers");
     const button = page.getByTestId("claim-pack");
     await button.click();
-    await expect(page.locator("main").getByRole("alert")).toContainText("Delivery decision required");
-    await expect(page.locator("main").getByRole("status")).toHaveCount(0);
+    await expect(button.locator("..").getByRole("alert")).toContainText("Delivery decision required");
+    await expect(button.locator("..").getByRole("status")).toHaveCount(0);
     state.ok = true;
     const downloaded = page.waitForEvent("download");
     await button.click();
     expect((await downloaded).suggestedFilename()).toBe("claim-pack-lot-1.zip");
-    await expect(page.locator("main").getByRole("status")).toContainText(locale === "bn" ? "ডাউনলোড শুরু হয়েছে" : "download started");
-    await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
+    await expect(button.locator("..").getByRole("status")).toContainText(locale === "bn" ? "ডাউনলোড শুরু হয়েছে" : "download started");
+    await expect(button.locator("..").getByRole("alert")).toHaveCount(0);
     expect(state.requests).toBe(2);
   });
 }
