@@ -21,6 +21,60 @@ implemented.
 
 ## Environments
 
+### Optional LangGraph evidence-recovery workflow
+
+The companion CLI supports a real LangGraph `StateGraph` workflow, using a
+conditional recovery branch around the existing evidence-answer engine:
+
+```text
+primary_answer ── vector retrieval failure ──> keyword_recovery ──> finalize
+       └──────────── all other outcomes ─────────────────────────> finalize
+```
+
+Install the optional dependencies with Python 3.10 or later, from this directory:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e '.[vector,agentic]'
+```
+
+With the existing isolated database configured and synthetic evidence indexed:
+
+```bash
+.venv/bin/threadeye-evidence answer-evidence \
+  --orchestration langgraph --mode hybrid \
+  --question 'Who reviews flagged defect classifications and records a reason?' \
+  --offline-model --format json
+```
+
+`--orchestration direct` remains the default. The LangGraph mode makes at most
+two attempts. It retries only an identified vector-retrieval backend failure,
+using the same scope and limits with keyword-only retrieval. Each attempt repeats
+authorization, policy, evidence sufficiency and citation checks. Weak evidence,
+denied requests and invalid citations do not trigger a retry. Recovery is marked
+as degraded and does not claim successful hybrid retrieval.
+
+JSON output includes `retrieval_metadata.orchestration` with the LangGraph version,
+workflow identity and per-attempt outcomes. No checkpointer, persistent chat
+memory, LLM, external model API or production-write tool is used. This is an
+opt-in companion CLI workflow; the main inspection app and companion MCP/UI
+entry points do not automatically switch to it.
+
+Validation on 2026-11-20 used actual LangGraph execution with synthetic retriever
+fixtures: eight workflow tests passed. Existing answering tests: 30 passed and
+nine database integration tests skipped; retrieval tests: ten passed. This checks
+orchestration and guard behavior, not live database connectivity or model quality.
+
+```bash
+python -m unittest discover -s tests -p 'test_evidence_workflow.py' -v
+python -m unittest discover -s tests -p 'test_answering*.py'
+python -m unittest discover -s tests -p 'test_retrieval*.py'
+```
+
+Implementation: `src/threadeye_evidence/answering/workflow.py`.
+Specification: `../specs/002-evidence-recovery-workflow/`.
+Upstream API: [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api).
+
 The inventory and Prompt 03 ingestion commands remain pure Python and work with Python 3.9+. Prompt 04 vector
 features use an isolated Python 3.11 environment:
 

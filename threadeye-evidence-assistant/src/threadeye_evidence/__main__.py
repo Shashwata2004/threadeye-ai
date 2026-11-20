@@ -270,6 +270,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     answer = subparsers.add_parser("answer-evidence", help="answer from authorized evidence or explicitly abstain")
     answer.add_argument("--question", required=True)
+    answer.add_argument("--orchestration", choices=("direct", "langgraph"), default="direct")
     answer.add_argument("--mode", choices=[mode.value for mode in RetrievalMode], default="hybrid")
     answer.add_argument("--top-k", type=int, default=5)
     answer.add_argument("--candidate-k", type=int, default=20)
@@ -461,6 +462,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.command == "answer-evidence":
             engine = EvidenceAnswerEngine(_retriever(args), sufficiency_config=_sufficiency_config(args))
+            if args.orchestration == "langgraph":
+                from threadeye_evidence.answering.workflow import EvidenceRecoveryWorkflow
+
+                engine = EvidenceRecoveryWorkflow(engine)
             response = engine.answer(
                 args.question,
                 filters=_retrieval_filters(args),

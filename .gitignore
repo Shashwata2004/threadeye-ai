@@ -56,6 +56,11 @@ data/*/*.mp4
 !.vscode/extensions.json
 CLAUDE.md
 
+# Share project skills while keeping machine-local Claude settings private.
+!/.claude/
+/.claude/*
+!/.claude/skills/
+
 # Cloud profile (Supabase + Vercel): see .env.cloud.example
 .env.cloud
 

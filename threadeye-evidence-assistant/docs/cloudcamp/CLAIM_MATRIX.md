@@ -5,6 +5,17 @@ The detailed checkbox point schedule was not publicly accessible; no current poi
 
 ## Pre-judgment claim audit
 
+**2026-11-20 update — LangGraph:** The companion now implements an optional
+LangGraph evidence-recovery workflow, exposed through `answer-evidence
+--orchestration langgraph`. Actual graph execution passed eight focused tests;
+answering/retrieval regressions passed 40 tests, with nine database integration
+tests skipped. It provides conditional keyword recovery from vector-backend
+failure with preserved scope, citation checks and a disclosed attempt trace.
+It is a bounded deterministic companion CLI workflow, not a generative LLM or
+an autonomous decision-maker. See the root `TOOLING.md` and companion README.
+The table below retains the earlier audit; its absence-of-LangGraph conclusion
+predates this addition.
+
 | Category / criterion | Source status | Evidence status | Implementation / test evidence | Remaining blocker | Suggested truthful wording | Confidence limit |
 |---|---|---|---|---|---|---|
 | Clear problem and target users | Official | Implemented and documented | Root `README.md`, `docs/congress/one-pager.md`, roles and workflow tests | Team must confirm final wording | “ThreadEye helps garment receiving/QC teams detect, review and trace fabric-roll defects before cutting.” | Product value is documented; factory adoption is not measured |
