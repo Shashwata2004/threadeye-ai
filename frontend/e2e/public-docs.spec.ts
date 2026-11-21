@@ -58,6 +58,9 @@ test("public docs, admin edits and unpublishing", async ({
         : r.fulfill({ status: 404, json: { detail: "unpublished" } });
     return r.fulfill({ status: 404, json: { detail: "fixture" } });
   });
+  const background = await page.request.get("/images/docs-garment-factory.webp");
+  expect(background.status()).toBe(200);
+  expect(background.headers()["content-type"]).toContain("image/webp");
   await page.goto("/docs");
   await expect(
     page.getByRole("heading", { name: "Fixture docs", exact: true }),

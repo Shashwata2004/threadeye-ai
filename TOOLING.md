@@ -210,3 +210,14 @@ checkpoint if results lag and resumes after a small lead is restored; review
 replay is unaffected. This preserves detector identity and sampling. Cloud CPU
 and network limits can still require buffering; no laptop-equivalent throughput
 is claimed without a hosted timing measurement.
+
+## Documentation visual design — 2026-11-21
+
+The docs page uses a self-hosted reference photograph of a Bangladesh sewing floor,
+by Tareq Salahuddin (2 July 2011), licensed CC BY 2.0. Source:
+https://commons.wikimedia.org/wiki/File:Garment_factory_in_Bangladesh_Women_working.jpg
+License: https://creativecommons.org/licenses/by/2.0/
+The image was resized to 1800px maximum width and converted to WebP. CSS overlays
+provide text contrast. Visible attribution appears on the docs page. This replaces
+the initial generated concept image; it implies no factory partnership or endorsement.
+Scoped docs styles add the hero, readable theme-aware cards and chapter navigation.

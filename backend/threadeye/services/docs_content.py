@@ -225,7 +225,13 @@ def default_config() -> DocsConfig:
         ),
     )
     members = [
-        ("shashwata", "Shashwata Nandi", "Backend & AI Integration", "Backend ও AI সংযোগ", "nandisantu274@gmail.com"),
+        (
+            "shashwata",
+            "Shashwata Nandi",
+            "Backend & ML Engineering",
+            "Backend ও ML Engineering",
+            "nandisantu274@gmail.com",
+        ),
         ("fahmid", "Mohammad Mahmudul Kabir Fahmid", "Frontend", "Frontend", "gmahmud1944@gmail.com"),
         ("turja", "Arin Saha Turja", "Testing & Presentation", "যাচাই ও উপস্থাপনা", "turja2k21@gmail.com"),
         ("jahin", "Abshary Jahin", "UI/UX", "UI/UX", "abshary-2025815502@cs.du.ac.bd"),

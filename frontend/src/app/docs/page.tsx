@@ -6,6 +6,7 @@ import { Document, type DocumentData } from "@/components/docs/Document";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle, useTheme } from "@/components/ThemeToggle";
 import "@/styles/fabric.css";
+import "@/styles/docs.css";
 export default function DocsPage() {
   const theme = useTheme();
   const q = useQuery({
@@ -32,8 +33,8 @@ export default function DocsPage() {
     return () => clearTimeout(timer);
   }, [q.data?.content.ends_at]);
   return (
-    <main className="te-linen min-h-screen" data-theme={theme}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-300 p-4">
+    <main className="te-linen docs-surface min-h-screen" data-theme={theme}>
+      <div className="docs-topbar flex flex-wrap items-center justify-between gap-3 border-b border-slate-300 p-4">
         <Link href="/login" className="font-semibold">
           ThreadEye AI
         </Link>
