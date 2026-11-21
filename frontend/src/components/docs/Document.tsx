@@ -152,14 +152,14 @@ export function Document({ data }: { data: DocumentData }) {
                   <Image unoptimized
                     src={m.image_data}
                     alt={m.name}
-                    width={80}
-                    height={80}
-                    className="mb-3 h-20 w-20 rounded-full object-cover"
+                    width={96}
+                    height={96}
+                    className="mb-3 h-24 w-24 rounded-full object-cover"
                   />
                 ) : (
                   <div
                     aria-hidden
-                    className="mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-teal-600 text-2xl text-white"
+                    className="mb-3 flex h-24 w-24 items-center justify-center rounded-full bg-teal-600 text-2xl text-white"
                   >
                     {m.name
                       .split(" ")
@@ -170,6 +170,18 @@ export function Document({ data }: { data: DocumentData }) {
                 )}
                 <h3 className="font-semibold">{m.name}</h3>
                 <p className="my-2">{m.role[locale]}</p>
+                {m.github_username && (
+                  <div className="mb-3">
+                    <a
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1 text-xs font-medium"
+                      href={`https://github.com/${m.github_username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      GitHub · @{m.github_username} ↗
+                    </a>
+                  </div>
+                )}
                 <a
                   className="break-all text-sm text-teal-600 underline"
                   href={`mailto:${m.email}`}

@@ -1984,6 +1984,8 @@ export interface components {
             email: string;
             /** Image Data */
             image_data?: string | null;
+            /** Github Username */
+            github_username?: string | null;
         };
         /** DocsSection */
         DocsSection: {

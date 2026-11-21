@@ -71,6 +71,7 @@ class DocsMember(ApiModel):
     role: DocsText
     email: str = Field(max_length=254, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
     image_data: str | None = Field(default=None, max_length=85_000)
+    github_username: str | None = Field(default=None, max_length=39, pattern=r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}$")
 
     @field_validator("image_data")
     @classmethod

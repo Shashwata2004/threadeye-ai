@@ -347,15 +347,22 @@ export default function DocsAdmin() {
           >
             <legend>{m.name}</legend>
             <div className="grid gap-3 sm:grid-cols-2">
-              {(["name", "email"] as const).map((key) => (
-                <Field key={key} label={key}>
+              {(["name", "email", "github_username"] as const).map((key) => (
+                <Field key={key} label={key === "github_username" ? "GitHub username" : key}>
                   <input
                     className={inputCls}
-                    value={m[key]}
+                    value={m[key] ?? ""}
                     onChange={(e) =>
                       change({
                         members: (c.members ?? []).map((x, j) =>
-                          j === i ? { ...x, [key]: e.target.value } : x,
+                          j === i
+                            ? {
+                                ...x,
+                                [key]: key === "github_username"
+                                  ? (e.target.value || null)
+                                  : e.target.value,
+                              }
+                            : x,
                         ),
                       })
                     }

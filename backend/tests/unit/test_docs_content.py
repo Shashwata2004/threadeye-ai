@@ -30,3 +30,13 @@ def test_schedule_timezone_and_boundaries() -> None:
     values["starts_at"] = "2026-11-21T12:00:00"
     with pytest.raises(ValidationError):
         DocsConfig.model_validate(values)
+
+
+def test_github_profile_is_an_optional_username() -> None:
+    values = default_config().model_dump(mode="json")
+    assert values["members"][0]["github_username"] == "Shashwata2004"
+    values["members"][0]["github_username"] = "https://github.com/example"
+    with pytest.raises(ValidationError):
+        DocsConfig.model_validate(values)
+    values["members"][0].pop("github_username")
+    assert DocsConfig.model_validate(values).members[0].github_username is None

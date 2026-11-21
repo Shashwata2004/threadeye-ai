@@ -243,6 +243,13 @@ def default_config() -> DocsConfig:
             "rupanty-2025515523@cs.du.ac.bd",
         ),
     ]
+    github_accounts = {
+        "shashwata": "Shashwata2004",
+        "fahmid": "mohammad30395",
+        "turja": "A-S-Turja",
+        "jahin": "felix-lee-1013",
+        "rupanty": "rupanty-2025",
+    }
     return DocsConfig(
         tagline=text("From fabric defects to traceable decisions.", "কাপড়ের ত্রুটি থেকে প্রমাণসহ সিদ্ধান্ত।"),
         repository_url="https://github.com/Shashwata2004/threadeye-ai",
@@ -250,7 +257,13 @@ def default_config() -> DocsConfig:
         video_url="https://youtu.be/dFBMcYwV3NI",
         sections=content,
         members=[
-            {"id": key, "name": name, "role": text(role, role_bn), "email": email}
+            {
+                "id": key,
+                "name": name,
+                "role": text(role, role_bn),
+                "email": email,
+                "github_username": github_accounts[key],
+            }
             for key, name, role, role_bn, email in members
         ],
     )
